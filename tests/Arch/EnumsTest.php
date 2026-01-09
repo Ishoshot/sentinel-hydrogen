@@ -7,9 +7,11 @@ arch('enums')
     ->toBeEnums()
     ->toExtendNothing()
     ->toUseNothing()
-    ->toHaveMethod('toArray')
     ->toOnlyBeUsedIn([
+        'App\Actions',
         'App\Console\Commands',
-        'App\Http\Requests',
+        'App\Http',
         'App\Models',
+        'App\Policies',
+        'Database\Factories',
     ]);

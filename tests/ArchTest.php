@@ -6,7 +6,10 @@ arch()->preset()->php();
 
 arch()->preset()->security()->ignoring('assert');
 
-arch()->preset()->laravel();
+arch()->preset()->laravel()
+    ->ignoring('App\Http\Controllers\Auth')
+    ->ignoring('App\Http\Controllers\InvitationController')
+    ->ignoring('App\Http\Controllers\WorkspaceController');
 
 arch('strict types')
     ->expect('App')

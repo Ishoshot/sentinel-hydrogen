@@ -7,12 +7,14 @@ arch('models')
     ->toHaveMethod('casts')
     ->toExtend('Illuminate\Database\Eloquent\Model')
     ->toOnlyBeUsedIn([
+        'App\Actions',
         'App\Console',
         'App\Http',
         'App\Jobs',
         'App\Observers',
         'App\Mail',
         'App\Models',
+        'App\Policies',
         'App\Providers',
         'App\Rules',
         'App\Services',
