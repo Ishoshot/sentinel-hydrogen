@@ -1,4 +1,4 @@
-# Sentinel
+# Project Sentinel
 
 AI-powered code review platform that integrates directly into your development workflow to help teams maintain code quality, correctness, and security at scale.
 
