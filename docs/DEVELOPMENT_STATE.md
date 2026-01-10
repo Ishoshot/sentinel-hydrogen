@@ -59,16 +59,22 @@
 | **TeamMember** | User's membership in a Team with role |
 | **Invitation** | Pending request to join a Team |
 | **ProviderIdentity** | OAuth provider link to User |
+| **Activity** | Workspace activity log entry (audit trail) |
+
+### Source Control Entities (Phase 2 - Implemented)
+
+| Entity | Description |
+|--------|-------------|
+| **Provider** | External source control platform (GitHub) |
+| **Connection** | Authorization between Workspace and Provider |
+| **Installation** | GitHub App installed in Provider account |
+| **Repository** | Source code repository connected to Sentinel |
+| **RepositorySettings** | Configuration for a Repository |
 
 ### Future Entities (Not Yet Implemented)
 
 | Entity | Description |
 |--------|-------------|
-| **Provider** | External source control platform (GitHub, GitLab) |
-| **Connection** | Authorization between Workspace and Provider |
-| **Installation** | Sentinel installed in Provider account |
-| **Repository** | Source code repository connected to Sentinel |
-| **RepositorySettings** | Configuration for a Repository |
 | **Run** | Single execution of Sentinel's review process |
 | **Finding** | Issue identified during a Run |
 | **Annotation** | Finding surfaced in source control platform |
@@ -92,24 +98,28 @@
 - [x] Member invitation & role assignment (Owner, Admin, Member)
 - [x] Workspace switcher
 - [x] Renaming workspace renames team automatically
-- [x] All 86 tests passing (including arch tests)
 
 ### Phase 2: Source Control Integration (GitHub)
-**Status: NOT STARTED**
+**Status: COMPLETE**
 
-- [ ] GitHub OAuth app configuration
-- [ ] GitHub App installation flow
-- [ ] Repository discovery and selection
-- [ ] Webhook registration
-- [ ] Connection status management
+- [x] GitHub App configuration (config/github.php)
+- [x] Provider model and seeder
+- [x] GitHub connection initiation flow
+- [x] GitHub App installation callback handling
+- [x] Repository discovery and sync
+- [x] Webhook handlers (installation, repository events)
+- [x] Connection status management (pending, active, disconnected, failed)
+- [x] Repository settings management
+- [x] Activity logging (workspace audit trail)
+- [x] All 135 tests passing (including arch tests)
 
 ### Phase 3: Repository Management
-**Status: NOT STARTED**
+**Status: COMPLETE** (merged into Phase 2)
 
-- [ ] Repository CRUD operations
-- [ ] Repository settings (enabled/disabled)
-- [ ] Default branch configuration
-- [ ] Review trigger configuration
+- [x] Repository CRUD operations (via GitHub sync)
+- [x] Repository settings (auto_review_enabled, review_rules)
+- [x] Default branch configuration (synced from GitHub)
+- [ ] Review trigger configuration (deferred to Phase 4)
 
 ### Phase 4: Review System Core
 **Status: NOT STARTED**
@@ -228,7 +238,7 @@ GET /auth/{provider}/callback
 - `TeamMemberPolicy` - update, delete
 - `InvitationPolicy` - create, delete
 
-#### Tests (64 total, all passing)
+#### Tests (Phase 1)
 - `tests/Feature/Auth/OAuthLoginTest.php` (9 tests)
 - `tests/Feature/Workspaces/CreateWorkspaceTest.php` (10 tests)
 - `tests/Feature/Workspaces/UpdateWorkspaceTest.php` (8 tests)
@@ -236,6 +246,89 @@ GET /auth/{provider}/callback
 - `tests/Feature/Members/TeamMemberManagementTest.php` (10 tests)
 - `tests/Feature/Invitations/CreateInvitationTest.php` (12 tests)
 - `tests/Feature/Invitations/AcceptInvitationTest.php` (9 tests)
+
+### Source Control Integration (GitHub) & Activity Logging
+
+#### Database Tables Created
+```
+providers (id, type, name, is_active, settings)
+connections (id, workspace_id, provider_id, status, external_id, metadata)
+installations (id, connection_id, workspace_id, installation_id, account_type, account_login, account_avatar_url, status, permissions, events, suspended_at)
+repositories (id, workspace_id, installation_id, github_id, name, full_name, private, default_branch, language, description)
+repository_settings (id, repository_id, workspace_id, auto_review_enabled, review_rules)
+activities (id, workspace_id, actor_id, type, subject_type, subject_id, description, metadata, created_at)
+```
+
+#### Enums
+- `App\Enums\ProviderType` - GitHub (extensible)
+- `App\Enums\ConnectionStatus` - Pending, Active, Disconnected, Failed
+- `App\Enums\InstallationStatus` - Active, Suspended, Deleted
+- `App\Enums\GitHubWebhookEvent` - Installation, InstallationRepositories, Push, PullRequest
+- `App\Enums\ActivityType` - WorkspaceCreated, WorkspaceUpdated, WorkspaceDeleted, MemberInvited, MemberJoined, MemberRemoved, MemberRoleUpdated, GitHubConnected, GitHubDisconnected, RepositoriesSynced, RepositorySettingsUpdated
+
+#### Models
+- `App\Models\Provider` - type, name, is_active, settings
+- `App\Models\Connection` - workspace, provider, installation, status helpers
+- `App\Models\Installation` - connection, workspace, repositories, status helpers
+- `App\Models\Repository` - workspace, installation, settings
+- `App\Models\RepositorySettings` - repository, workspace
+- `App\Models\Activity` - workspace, actor, polymorphic subject
+
+#### Actions
+- `App\Actions\GitHub\InitiateGitHubConnection` - Creates pending connection with state
+- `App\Actions\GitHub\HandleGitHubInstallation` - Processes installation callback
+- `App\Actions\GitHub\SyncInstallationRepositories` - Syncs repos from GitHub API
+- `App\Actions\GitHub\UpdateRepositorySettings` - Updates repo settings
+- `App\Actions\GitHub\DisconnectGitHubConnection` - Disconnects GitHub
+- `App\Actions\Activities\LogActivity` - Creates activity log entries
+
+#### Controllers
+- `App\Http\Controllers\GitHub\ConnectionController` - initiate, callback, status, disconnect
+- `App\Http\Controllers\GitHub\RepositoryController` - index, show, update, sync
+- `App\Http\Controllers\Webhooks\GitHubWebhookController` - handles GitHub webhooks
+- `App\Http\Controllers\ActivityController` - lists workspace activities
+
+#### API Resources
+- `App\Http\Resources\ProviderResource`
+- `App\Http\Resources\ConnectionResource`
+- `App\Http\Resources\InstallationResource`
+- `App\Http\Resources\RepositoryResource`
+- `App\Http\Resources\RepositorySettingsResource`
+- `App\Http\Resources\ActivityResource`
+
+#### Services
+- `App\Services\GitHub\GitHubAppService` - JWT generation, token management
+- `App\Services\GitHub\GitHubApiService` - API calls to GitHub
+
+#### Routes (routes/api.php - GitHub)
+```php
+// GitHub Integration (workspace-scoped)
+GET    /api/workspaces/{workspace}/github/connect      - Initiate connection
+GET    /api/workspaces/{workspace}/github/callback     - Installation callback
+GET    /api/workspaces/{workspace}/github/status       - Connection status
+DELETE /api/workspaces/{workspace}/github/disconnect   - Disconnect GitHub
+GET    /api/workspaces/{workspace}/repositories        - List repositories
+GET    /api/workspaces/{workspace}/repositories/{repository} - Get repository
+PATCH  /api/workspaces/{workspace}/repositories/{repository} - Update settings
+POST   /api/workspaces/{workspace}/repositories/sync   - Sync repositories
+
+// Activities (workspace-scoped)
+GET    /api/workspaces/{workspace}/activities          - List activities (paginated)
+
+// Webhooks (public)
+POST   /api/webhooks/github                            - GitHub webhook handler
+```
+
+#### Policies
+- `ConnectionPolicy` - view, disconnect
+- `RepositoryPolicy` - viewAny, view, update, sync
+
+#### Tests (Phase 2 - 135 total, all passing)
+- `tests/Feature/GitHub/ConnectionTest.php`
+- `tests/Feature/GitHub/RepositoryTest.php`
+- `tests/Feature/Webhooks/GitHubWebhookTest.php`
+- `tests/Feature/Activities/ActivityLogTest.php`
+- Architecture tests for enums, exceptions, etc.
 
 ---
 
@@ -275,18 +368,25 @@ GOOGLE_CLIENT_SECRET=
 - Use factories with states for model creation
 - Use `actingAs($user, 'sanctum')` for authenticated requests
 
+### Action Pattern
+- All Actions must have their primary method named `handle` (not `execute`)
+- Actions use constructor injection for dependencies
+- Actions are `final readonly` classes
+- See `docs/backend/CODING_STANDARDS.md` for full Action conventions
+
 ---
 
-## Frontend Handover Document Location
-A handover document for the frontend agent was created at:
-`FRONTEND_HANDOVER_IDENTITY_WORKSPACE.md` (root of project)
+## Frontend Handover Documents
+Handover documents for the frontend agent are located in `handover/`:
+- `handover/FRONTEND_HANDOVER_IDENTITY_WORKSPACE.md` - Phase 1 (Identity & Workspace)
+- `handover/FRONTEND_HANDOVER_GITHUB_INTEGRATION.md` - Phase 2 (GitHub Integration)
 
-This document contains:
+These documents contain:
 - Full API endpoint documentation with request/response examples
-- OAuth flow details
+- Authentication and OAuth flow details
 - Role permissions matrix
 - State management suggestions
-- Component/page requirements
+- UI mockups and component requirements
 
 ---
 
@@ -309,22 +409,32 @@ This document contains:
 
 ## Next Implementation Steps
 
-1. **Source Control Integration (GitHub)**
-   - Configure GitHub App in GitHub Developer settings
-   - Implement Installation flow
-   - Build repository discovery
-
-2. **Repository Management**
-   - Create migrations for repositories, repository_settings
-   - Build CRUD API endpoints
-   - Implement webhook handlers
-
-3. **Review System**
+1. **Review System Core (Phase 4)**
    - Create migrations for runs, findings, annotations
    - Integrate PrismPHP for AI routing
    - Build review execution pipeline
+   - Implement webhook handlers for PR events
+
+2. **Plans & Billing (Phase 5)**
+   - Create Plan model with limits
+   - Implement subscription management
+   - Add usage metering
+   - Build limit enforcement
+
+3. **Dashboards & Analytics (Phase 6)**
+   - Workspace dashboard
+   - Repository-level metrics
+   - Finding trends
+   - Usage reports
 
 ---
 
-*Last Updated: 2026-01-09*
-*Phase Completed: Identity & Workspace Foundation*
+## Setup Guides
+
+For setting up OAuth and GitHub App credentials, see:
+- `docs/OAUTH_AND_GITHUB_APP_SETUP.md`
+
+---
+
+*Last Updated: 2026-01-10*
+*Phases Completed: Identity & Workspace Foundation, Source Control Integration (GitHub)*
