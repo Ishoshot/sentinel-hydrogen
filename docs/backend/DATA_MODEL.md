@@ -220,6 +220,7 @@ Key fields:
 -   completed_at
 -   metrics (JSONB)
 -   policy_snapshot (JSONB)
+-   metadata (JSONB)
 -   created_at
 
 Indexes:
@@ -261,6 +262,7 @@ Key fields:
 
 -   id
 -   finding_id
+-   workspace_id
 -   provider_id
 -   external_id
 -   type

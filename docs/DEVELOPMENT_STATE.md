@@ -122,9 +122,11 @@
 - [ ] Review trigger configuration (deferred to Phase 4)
 
 ### Phase 4: Review System Core
-**Status: NOT STARTED**
+**Status: IN PROGRESS**
 
-- [ ] Run creation from webhook events
+- [x] Run creation from webhook events
+- [x] Finding and annotation storage (schema + models)
+- [x] Run listing and detail APIs
 - [ ] Policy configuration
 - [ ] AI provider routing (PrismPHP)
 - [ ] Finding generation and storage
@@ -329,6 +331,40 @@ POST   /api/webhooks/github                            - GitHub webhook handler
 - `tests/Feature/Webhooks/GitHubWebhookTest.php`
 - `tests/Feature/Activities/ActivityLogTest.php`
 - Architecture tests for enums, exceptions, etc.
+
+### Review System Core (Phase 4 - In Progress)
+
+#### Database Tables Created
+```
+runs (id, workspace_id, repository_id, external_reference, status, started_at, completed_at, metrics, policy_snapshot, metadata, created_at)
+findings (id, run_id, workspace_id, severity, category, title, description, file_path, line_start, line_end, confidence, metadata, created_at)
+annotations (id, finding_id, workspace_id, provider_id, external_id, type, created_at)
+```
+
+#### Enums
+- `App\Enums\RunStatus` - Queued, InProgress, Completed, Failed, Skipped
+
+#### Models
+- `App\Models\Run` - workspace, repository, findings
+- `App\Models\Finding` - run, workspace, annotations
+- `App\Models\Annotation` - finding, workspace, provider
+
+#### Actions
+- `App\Actions\Reviews\CreatePullRequestRun` - Creates/ensures Runs for pull request webhooks
+
+#### Controllers
+- `App\Http\Controllers\RunController` - list runs, show run detail
+
+#### API Resources
+- `App\Http\Resources\RunResource`
+- `App\Http\Resources\FindingResource`
+- `App\Http\Resources\AnnotationResource`
+
+#### Routes (routes/api.php - Runs)
+```php
+GET /api/workspaces/{workspace}/repositories/{repository}/runs
+GET /api/workspaces/{workspace}/runs/{run}
+```
 
 ---
 
