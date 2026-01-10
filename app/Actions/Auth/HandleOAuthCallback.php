@@ -24,7 +24,7 @@ final readonly class HandleOAuthCallback
     /**
      * Handle the OAuth callback and authenticate the user.
      */
-    public function execute(OAuthProvider $provider, SocialiteUser $socialiteUser): User
+    public function handle(OAuthProvider $provider, SocialiteUser $socialiteUser): User
     {
         return DB::transaction(function () use ($provider, $socialiteUser): User {
             $user = $this->findOrCreateUser($provider, $socialiteUser);
@@ -77,7 +77,7 @@ final readonly class HandleOAuthCallback
             'password' => null,
         ]);
 
-        $this->createWorkspaceForNewUser->execute($user);
+        $this->createWorkspaceForNewUser->handle($user);
 
         return $user;
     }

@@ -11,7 +11,10 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\AbstractProvider;
 use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
 
 final class OAuthController
@@ -47,7 +50,11 @@ final class OAuthController
         }
 
         try {
-            $socialiteUser = Socialite::driver($provider)->user();
+            /** @var AbstractProvider $driver */
+            $driver = Socialite::driver($provider);
+
+            /** @var SocialiteUser $socialiteUser */
+            $socialiteUser = $driver->stateless()->user();
         } catch (Exception) {
             return redirect($frontendUrl.'/auth/error?message='.urlencode('Failed to authenticate with '.$oauthProvider->label().'. Please try again.'));
         }
@@ -56,7 +63,7 @@ final class OAuthController
             return redirect($frontendUrl.'/auth/error?message='.urlencode('Your '.$oauthProvider->label().' account does not have a verified email address.'));
         }
 
-        $user = $handleOAuthCallback->execute($oauthProvider, $socialiteUser);
+        $user = $handleOAuthCallback->handle($oauthProvider, $socialiteUser);
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
