@@ -11,6 +11,7 @@ arch('models')
         'App\Console',
         'App\Http',
         'App\Jobs',
+        'App\Notifications',
         'App\Observers',
         'App\Mail',
         'App\Models',

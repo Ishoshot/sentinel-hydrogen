@@ -10,6 +10,7 @@ arch()->preset()->laravel()
     ->ignoring('App\Http\Controllers\Auth')
     ->ignoring('App\Http\Controllers\GitHub')
     ->ignoring('App\Http\Controllers\InvitationController')
+    ->ignoring('App\Http\Controllers\NotificationController')
     ->ignoring('App\Http\Controllers\Webhooks')
     ->ignoring('App\Http\Controllers\WorkspaceController');
 
