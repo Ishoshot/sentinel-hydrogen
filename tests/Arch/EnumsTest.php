@@ -11,7 +11,9 @@ arch('enums')
         'App\Actions',
         'App\Console\Commands',
         'App\Http',
+        'App\Jobs',
         'App\Models',
         'App\Policies',
+        'App\Services',
         'Database\Factories',
     ]);

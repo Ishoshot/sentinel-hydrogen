@@ -21,7 +21,7 @@ beforeEach(function (): void {
 it('creates a new user on first OAuth login', function (): void {
     $action = app(HandleOAuthCallback::class);
 
-    $user = $action->execute(OAuthProvider::GitHub, $this->socialiteUser);
+    $user = $action->handle(OAuthProvider::GitHub, $this->socialiteUser);
 
     expect($user)->toBeInstanceOf(User::class)
         ->and($user->email)->toBe('test@example.com')
@@ -33,7 +33,7 @@ it('creates a new user on first OAuth login', function (): void {
 it('creates a workspace for new user on first login', function (): void {
     $action = app(HandleOAuthCallback::class);
 
-    $user = $action->execute(OAuthProvider::GitHub, $this->socialiteUser);
+    $user = $action->handle(OAuthProvider::GitHub, $this->socialiteUser);
 
     expect($user->ownedWorkspaces)->toHaveCount(1);
 
@@ -44,7 +44,7 @@ it('creates a workspace for new user on first login', function (): void {
 it('creates a team for new workspace on first login', function (): void {
     $action = app(HandleOAuthCallback::class);
 
-    $user = $action->execute(OAuthProvider::GitHub, $this->socialiteUser);
+    $user = $action->handle(OAuthProvider::GitHub, $this->socialiteUser);
 
     $workspace = $user->ownedWorkspaces->first();
     expect($workspace->team)->not->toBeNull()
@@ -54,7 +54,7 @@ it('creates a team for new workspace on first login', function (): void {
 it('creates an owner membership for new user', function (): void {
     $action = app(HandleOAuthCallback::class);
 
-    $user = $action->execute(OAuthProvider::GitHub, $this->socialiteUser);
+    $user = $action->handle(OAuthProvider::GitHub, $this->socialiteUser);
 
     $workspace = $user->ownedWorkspaces->first();
     $membership = $workspace->teamMembers()->where('user_id', $user->id)->first();
@@ -66,7 +66,7 @@ it('creates an owner membership for new user', function (): void {
 it('creates provider identity for new user', function (): void {
     $action = app(HandleOAuthCallback::class);
 
-    $user = $action->execute(OAuthProvider::GitHub, $this->socialiteUser);
+    $user = $action->handle(OAuthProvider::GitHub, $this->socialiteUser);
 
     $identity = ProviderIdentity::where('user_id', $user->id)
         ->where('provider', OAuthProvider::GitHub)
@@ -81,7 +81,7 @@ it('links provider to existing user with same email', function (): void {
 
     $action = app(HandleOAuthCallback::class);
 
-    $user = $action->execute(OAuthProvider::GitHub, $this->socialiteUser);
+    $user = $action->handle(OAuthProvider::GitHub, $this->socialiteUser);
 
     expect($user->id)->toBe($existingUser->id)
         ->and($user->providerIdentities)->toHaveCount(1);
@@ -97,7 +97,7 @@ it('returns existing user when already linked to provider', function (): void {
 
     $action = app(HandleOAuthCallback::class);
 
-    $user = $action->execute(OAuthProvider::GitHub, $this->socialiteUser);
+    $user = $action->handle(OAuthProvider::GitHub, $this->socialiteUser);
 
     expect($user->id)->toBe($existingUser->id)
         ->and(ProviderIdentity::where('user_id', $existingUser->id)->count())->toBe(1);
@@ -114,7 +114,7 @@ it('updates provider identity tokens on subsequent login', function (): void {
 
     $action = app(HandleOAuthCallback::class);
 
-    $action->execute(OAuthProvider::GitHub, $this->socialiteUser);
+    $action->handle(OAuthProvider::GitHub, $this->socialiteUser);
 
     $identity->refresh();
     expect($identity->access_token)->toBe('access-token');
@@ -131,8 +131,8 @@ it('supports multiple providers for same user', function (): void {
 
     $action = app(HandleOAuthCallback::class);
 
-    $user = $action->execute(OAuthProvider::GitHub, $this->socialiteUser);
-    $sameUser = $action->execute(OAuthProvider::Google, $googleSocialiteUser);
+    $user = $action->handle(OAuthProvider::GitHub, $this->socialiteUser);
+    $sameUser = $action->handle(OAuthProvider::Google, $googleSocialiteUser);
 
     expect($sameUser->id)->toBe($user->id)
         ->and($user->providerIdentities()->count())->toBe(2);

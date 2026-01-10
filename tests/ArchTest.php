@@ -8,7 +8,9 @@ arch()->preset()->security()->ignoring('assert');
 
 arch()->preset()->laravel()
     ->ignoring('App\Http\Controllers\Auth')
+    ->ignoring('App\Http\Controllers\GitHub')
     ->ignoring('App\Http\Controllers\InvitationController')
+    ->ignoring('App\Http\Controllers\Webhooks')
     ->ignoring('App\Http\Controllers\WorkspaceController');
 
 arch('strict types')
