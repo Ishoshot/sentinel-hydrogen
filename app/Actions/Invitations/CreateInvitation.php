@@ -11,6 +11,7 @@ use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\InvitationSentNotification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Notification;
 use InvalidArgumentException;
 
@@ -39,7 +40,9 @@ final readonly class CreateInvitation
         }
 
         $existingMember = $workspace->teamMembers()
-            ->whereHas('user', fn ($query) => $query->where('email', $email))
+            ->whereHas('user', function (Builder $query) use ($email): void {
+                $query->where('email', $email);
+            })
             ->exists();
 
         if ($existingMember) {
