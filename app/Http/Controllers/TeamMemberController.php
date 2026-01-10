@@ -12,6 +12,7 @@ use App\Http\Resources\TeamMemberResource;
 use App\Models\TeamMember;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 
@@ -48,13 +49,20 @@ final class TeamMemberController
 
         Gate::authorize('update', $member);
 
+        $user = $request->user();
+
+        if ($user === null) {
+            abort(401);
+        }
+
         /** @var string $role */
         $role = $request->validated('role');
 
         try {
-            $updateTeamMemberRole->execute(
+            $updateTeamMemberRole->handle(
                 member: $member,
                 role: TeamRole::from($role),
+                actor: $user,
             );
         } catch (InvalidArgumentException $invalidArgumentException) {
             return response()->json([
@@ -75,6 +83,7 @@ final class TeamMemberController
      * Remove a team member from the workspace.
      */
     public function destroy(
+        Request $request,
         Workspace $workspace,
         TeamMember $member,
         RemoveTeamMember $removeTeamMember,
@@ -85,8 +94,14 @@ final class TeamMemberController
 
         Gate::authorize('delete', $member);
 
+        $user = $request->user();
+
+        if ($user === null) {
+            abort(401);
+        }
+
         try {
-            $removeTeamMember->execute($member);
+            $removeTeamMember->handle($member, $user);
         } catch (InvalidArgumentException $invalidArgumentException) {
             return response()->json([
                 'message' => $invalidArgumentException->getMessage(),

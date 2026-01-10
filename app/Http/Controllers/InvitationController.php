@@ -58,7 +58,7 @@ final class InvitationController
         $role = $request->validated('role');
 
         try {
-            $invitation = $createInvitation->execute(
+            $invitation = $createInvitation->handle(
                 workspace: $workspace,
                 invitedBy: $user,
                 email: $email,
@@ -93,7 +93,7 @@ final class InvitationController
         Gate::authorize('delete', $invitation);
 
         try {
-            $cancelInvitation->execute($invitation);
+            $cancelInvitation->handle($invitation);
         } catch (InvalidArgumentException $invalidArgumentException) {
             return response()->json([
                 'message' => $invalidArgumentException->getMessage(),
@@ -154,7 +154,7 @@ final class InvitationController
         }
 
         try {
-            $acceptInvitation->execute($invitation, $user);
+            $acceptInvitation->handle($invitation, $user);
         } catch (InvalidArgumentException $invalidArgumentException) {
             return response()->json([
                 'message' => $invalidArgumentException->getMessage(),

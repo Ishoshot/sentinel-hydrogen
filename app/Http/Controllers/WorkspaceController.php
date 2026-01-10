@@ -56,7 +56,7 @@ final class WorkspaceController
         /** @var string $name */
         $name = $request->validated('name');
 
-        $workspace = $createWorkspace->execute(
+        $workspace = $createWorkspace->handle(
             owner: $user,
             name: $name,
         );
@@ -93,12 +93,19 @@ final class WorkspaceController
     ): JsonResponse {
         Gate::authorize('update', $workspace);
 
+        $user = $request->user();
+
+        if ($user === null) {
+            abort(401);
+        }
+
         /** @var string $name */
         $name = $request->validated('name');
 
-        $updateWorkspace->execute(
+        $updateWorkspace->handle(
             workspace: $workspace,
             name: $name,
+            actor: $user,
         );
 
         $workspace->refresh();
@@ -121,7 +128,7 @@ final class WorkspaceController
     ): JsonResponse {
         Gate::authorize('delete', $workspace);
 
-        $deleteWorkspace->execute($workspace);
+        $deleteWorkspace->handle($workspace);
 
         return response()->json([
             'message' => 'Workspace deleted successfully.',
