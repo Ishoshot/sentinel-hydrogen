@@ -14,6 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'workspace.access' => App\Http\Middleware\EnsureWorkspaceAccess::class,
             'workspace.role' => App\Http\Middleware\EnsureWorkspaceRole::class,
