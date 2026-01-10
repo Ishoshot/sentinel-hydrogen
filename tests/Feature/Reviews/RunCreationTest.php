@@ -6,6 +6,7 @@ use App\Actions\Reviews\CreatePullRequestRun;
 use App\Enums\ProviderType;
 use App\Enums\RunStatus;
 use App\Jobs\GitHub\ProcessPullRequestWebhook;
+use App\Jobs\Reviews\ExecuteReviewRun;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Provider;
@@ -13,6 +14,7 @@ use App\Models\Repository;
 use App\Models\RepositorySettings;
 use App\Models\Run;
 use App\Services\GitHub\GitHubWebhookService;
+use Illuminate\Support\Facades\Queue;
 
 it('creates a run for pull request webhook when auto review is enabled', function (): void {
     $provider = Provider::query()->firstOrCreate(
@@ -29,6 +31,8 @@ it('creates a run for pull request webhook when auto review is enabled', functio
         'name' => 'repo',
     ]);
     RepositorySettings::factory()->forRepository($repository)->autoReviewEnabled()->create();
+
+    Queue::fake();
 
     $payload = [
         'action' => 'opened',
@@ -55,6 +59,8 @@ it('creates a run for pull request webhook when auto review is enabled', functio
     expect($run)->not->toBeNull()
         ->and($run?->status)->toBe(RunStatus::Queued)
         ->and($run?->external_reference)->toBe('github:pull_request:42:abc123');
+
+    Queue::assertPushed(ExecuteReviewRun::class, fn (ExecuteReviewRun $job): bool => $job->runId === $run?->id);
 });
 
 it('skips run creation when auto review is disabled', function (): void {
@@ -72,6 +78,8 @@ it('skips run creation when auto review is disabled', function (): void {
         'name' => 'repo',
     ]);
     RepositorySettings::factory()->forRepository($repository)->autoReviewDisabled()->create();
+
+    Queue::fake();
 
     $payload = [
         'action' => 'opened',
@@ -94,4 +102,5 @@ it('skips run creation when auto review is disabled', function (): void {
     $job->handle(app(GitHubWebhookService::class), app(CreatePullRequestRun::class));
 
     expect(Run::query()->count())->toBe(0);
+    Queue::assertNotPushed(ExecuteReviewRun::class);
 });

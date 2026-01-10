@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\GitHub;
 
 use App\Actions\Reviews\CreatePullRequestRun;
+use App\Jobs\Reviews\ExecuteReviewRun;
 use App\Models\Installation;
 use App\Models\Repository;
 use App\Services\GitHub\GitHubWebhookService;
@@ -76,6 +77,8 @@ final class ProcessPullRequestWebhook implements ShouldQueue
         }
 
         $run = $createPullRequestRun->handle($repository, $data);
+
+        ExecuteReviewRun::dispatch($run->id);
 
         Log::info('Pull request queued for review', [
             'run_id' => $run->id,
