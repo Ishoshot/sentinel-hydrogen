@@ -127,7 +127,8 @@ final readonly class GitHubApiService
      *
      * @param  string  $body  The review body
      * @param  string  $event  The review action: APPROVE, REQUEST_CHANGES, COMMENT
-     * @param  array<int, array{path: string, position: int, body: string}>  $comments  Inline comments
+     * @param  array<int, array{path: string, line: int, side: string, body: string}>  $comments  Inline comments
+     * @param  string|null  $commitId  The SHA of the commit to review (required for line-based comments)
      * @return array<string, mixed> The review response
      */
     public function createPullRequestReview(
@@ -137,7 +138,8 @@ final readonly class GitHubApiService
         int $number,
         string $body,
         string $event = 'COMMENT',
-        array $comments = []
+        array $comments = [],
+        ?string $commitId = null
     ): array {
         $this->authenticateWithInstallationToken($installationId);
 
@@ -145,6 +147,11 @@ final readonly class GitHubApiService
             'body' => $body,
             'event' => $event,
         ];
+
+        // commit_id is required when using line-based comments
+        if ($commitId !== null) {
+            $params['commit_id'] = $commitId;
+        }
 
         if ($comments !== []) {
             $params['comments'] = $comments;
@@ -174,6 +181,67 @@ final readonly class GitHubApiService
         $comment = $this->github->connection()->issue()->comments()->create($owner, $repo, $number, ['body' => $body]);
 
         return $comment;
+    }
+
+    /**
+     * Update an existing comment on a pull request.
+     *
+     * @return array<string, mixed> The updated comment response
+     */
+    public function updatePullRequestComment(
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $commentId,
+        string $body
+    ): array {
+        $this->authenticateWithInstallationToken($installationId);
+
+        /** @var array<string, mixed> $comment */
+        $comment = $this->github->connection()->issue()->comments()->update($owner, $repo, $commentId, ['body' => $body]);
+
+        return $comment;
+    }
+
+    /**
+     * Get an issue from a repository.
+     *
+     * @return array<string, mixed> The issue data
+     */
+    public function getIssue(int $installationId, string $owner, string $repo, int $number): array
+    {
+        $this->authenticateWithInstallationToken($installationId);
+
+        /** @var array<string, mixed> $issue */
+        $issue = $this->github->connection()->issue()->show($owner, $repo, $number);
+
+        return $issue;
+    }
+
+    /**
+     * Get comments on an issue.
+     *
+     * @return array<int, array<string, mixed>> List of comments
+     */
+    public function getIssueComments(int $installationId, string $owner, string $repo, int $number): array
+    {
+        $this->authenticateWithInstallationToken($installationId);
+
+        /** @var array<int, array<string, mixed>> $comments */
+        $comments = $this->github->connection()->issue()->comments()->all($owner, $repo, $number);
+
+        return $comments;
+    }
+
+    /**
+     * Get comments on a pull request (issue-style comments, not review comments).
+     *
+     * @return array<int, array<string, mixed>> List of comments
+     */
+    public function getPullRequestComments(int $installationId, string $owner, string $repo, int $number): array
+    {
+        // PR comments are actually issue comments in GitHub's API
+        return $this->getIssueComments($installationId, $owner, $repo, $number);
     }
 
     /**

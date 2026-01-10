@@ -10,7 +10,7 @@ use App\Enums\RunStatus;
 use App\Jobs\Reviews\PostRunAnnotations;
 use App\Models\Finding;
 use App\Models\Run;
-use App\Services\Reviews\Contracts\PullRequestDataResolver;
+use App\Services\Context\Contracts\ContextEngineContract;
 use App\Services\Reviews\Contracts\ReviewEngine;
 use App\Services\Reviews\ReviewPolicyResolver;
 use Illuminate\Support\Arr;
@@ -25,7 +25,7 @@ final readonly class ExecuteReviewRun
      */
     public function __construct(
         private ReviewPolicyResolver $policyResolver,
-        private PullRequestDataResolver $pullRequestDataResolver,
+        private ContextEngineContract $contextEngine,
         private ReviewEngine $reviewEngine,
         private LogActivity $logActivity,
     ) {}
@@ -57,14 +57,15 @@ final readonly class ExecuteReviewRun
         $startTime = microtime(true);
 
         try {
-            $pullRequestData = $this->pullRequestDataResolver->resolve($repository, $run);
-            $context = [
-                'run' => $run,
+            // Build rich context using the Context Engine
+            $contextBag = $this->contextEngine->build([
                 'repository' => $repository,
+                'run' => $run,
+            ]);
+
+            $context = [
                 'policy_snapshot' => $policySnapshot,
-                'pull_request' => $pullRequestData['pull_request'],
-                'files' => $pullRequestData['files'],
-                'metrics' => $pullRequestData['metrics'],
+                'context_bag' => $contextBag,
             ];
 
             $result = $this->reviewEngine->review($context);

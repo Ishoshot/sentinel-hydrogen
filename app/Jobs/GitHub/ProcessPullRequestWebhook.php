@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\GitHub;
 
+use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Actions\Reviews\CreatePullRequestRun;
 use App\Actions\Reviews\SyncPullRequestRunMetadata;
 use App\Enums\Queue;
@@ -34,7 +35,8 @@ final class ProcessPullRequestWebhook implements ShouldQueue
     public function handle(
         GitHubWebhookService $webhookService,
         CreatePullRequestRun $createPullRequestRun,
-        SyncPullRequestRunMetadata $syncMetadata
+        SyncPullRequestRunMetadata $syncMetadata,
+        PostsGreetingComment $postGreeting
     ): void {
         $data = $webhookService->parsePullRequestPayload($this->payload);
 
@@ -77,7 +79,7 @@ final class ProcessPullRequestWebhook implements ShouldQueue
             return;
         }
 
-        // Handle metadata sync (labels, assignees, reviewers, draft status)
+        // Handle metadata sync (labels, assignees, reviewers, draft status, update (title, branch change))
         if ($shouldSyncMetadata) {
             $syncMetadata->handle($repository, $data);
 
@@ -93,7 +95,10 @@ final class ProcessPullRequestWebhook implements ShouldQueue
             return;
         }
 
-        $run = $createPullRequestRun->handle($repository, $data);
+        // Post greeting comment immediately for low latency feedback
+        $greetingCommentId = $postGreeting->handle($repository, $data['pull_request_number']);
+
+        $run = $createPullRequestRun->handle($repository, $data, $greetingCommentId);
 
         // Determine the queue based on workspace tier
         $workspace = $repository->workspace;
@@ -111,6 +116,7 @@ final class ProcessPullRequestWebhook implements ShouldQueue
             'head_sha' => $data['head_sha'],
             'action' => $data['action'],
             'queue' => $queue->value,
+            'greeting_comment_id' => $greetingCommentId,
         ]);
     }
 }

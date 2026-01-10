@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Actions\Reviews\CreatePullRequestRun;
 use App\Actions\Reviews\SyncPullRequestRunMetadata;
 use App\Enums\ProviderType;
@@ -57,18 +58,34 @@ it('creates a run for pull request webhook when auto review is enabled', functio
         'sender' => ['login' => 'testuser'],
     ];
 
+    // Create a fake greeting action that returns a comment ID
+    $fakeGreeting = new class implements PostsGreetingComment
+    {
+        public bool $wasCalled = false;
+
+        public function handle(Repository $repository, int $pullRequestNumber): ?int
+        {
+            $this->wasCalled = true;
+
+            return 12345;
+        }
+    };
+
     $job = new ProcessPullRequestWebhook($payload);
     $job->handle(
         app(GitHubWebhookService::class),
         app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class)
+        app(SyncPullRequestRunMetadata::class),
+        $fakeGreeting
     );
 
     $run = Run::query()->first();
 
-    expect($run)->not->toBeNull()
+    expect($fakeGreeting->wasCalled)->toBeTrue()
+        ->and($run)->not->toBeNull()
         ->and($run?->status)->toBe(RunStatus::Queued)
-        ->and($run?->external_reference)->toBe('github:pull_request:42:abc123');
+        ->and($run?->external_reference)->toBe('github:pull_request:42:abc123')
+        ->and($run?->metadata['github_comment_id'])->toBe(12345);
 
     Queue::assertPushed(ExecuteReviewRun::class, fn (ExecuteReviewRun $job): bool => $job->runId === $run?->id);
 });
@@ -113,11 +130,21 @@ it('skips run creation when auto review is disabled', function (): void {
         'sender' => ['login' => 'testuser'],
     ];
 
+    // Create a fake greeting action that should NOT be called
+    $fakeGreeting = new class implements PostsGreetingComment
+    {
+        public function handle(Repository $repository, int $pullRequestNumber): ?int
+        {
+            throw new Exception('Greeting action should not be called when auto-review is disabled');
+        }
+    };
+
     $job = new ProcessPullRequestWebhook($payload);
     $job->handle(
         app(GitHubWebhookService::class),
         app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class)
+        app(SyncPullRequestRunMetadata::class),
+        $fakeGreeting
     );
 
     expect(Run::query()->count())->toBe(0);
@@ -178,11 +205,21 @@ it('syncs metadata when labels are added to an existing run', function (): void 
         'sender' => ['login' => 'testuser'],
     ];
 
+    // Create a fake greeting action that should NOT be called for metadata sync
+    $fakeGreeting = new class implements PostsGreetingComment
+    {
+        public function handle(Repository $repository, int $pullRequestNumber): ?int
+        {
+            throw new Exception('Greeting action should not be called for metadata sync');
+        }
+    };
+
     $job = new ProcessPullRequestWebhook($payload);
     $job->handle(
         app(GitHubWebhookService::class),
         app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class)
+        app(SyncPullRequestRunMetadata::class),
+        $fakeGreeting
     );
 
     $existingRun->refresh();
@@ -247,11 +284,21 @@ it('syncs metadata when reviewers are requested on an existing run', function ()
         'sender' => ['login' => 'testuser'],
     ];
 
+    // Create a fake greeting action that should NOT be called for metadata sync
+    $fakeGreeting = new class implements PostsGreetingComment
+    {
+        public function handle(Repository $repository, int $pullRequestNumber): ?int
+        {
+            throw new Exception('Greeting action should not be called for metadata sync');
+        }
+    };
+
     $job = new ProcessPullRequestWebhook($payload);
     $job->handle(
         app(GitHubWebhookService::class),
         app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class)
+        app(SyncPullRequestRunMetadata::class),
+        $fakeGreeting
     );
 
     $existingRun->refresh();
@@ -305,11 +352,21 @@ it('does not sync metadata when no existing run is found', function (): void {
         'sender' => ['login' => 'testuser'],
     ];
 
+    // Create a fake greeting action that should NOT be called for metadata sync
+    $fakeGreeting = new class implements PostsGreetingComment
+    {
+        public function handle(Repository $repository, int $pullRequestNumber): ?int
+        {
+            throw new Exception('Greeting action should not be called for metadata sync');
+        }
+    };
+
     $job = new ProcessPullRequestWebhook($payload);
     $job->handle(
         app(GitHubWebhookService::class),
         app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class)
+        app(SyncPullRequestRunMetadata::class),
+        $fakeGreeting
     );
 
     // No runs should exist and no review should be triggered

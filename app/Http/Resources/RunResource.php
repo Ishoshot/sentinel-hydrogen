@@ -27,6 +27,7 @@ final class RunResource extends JsonResource
             'metrics' => $this->metrics,
             'policy_snapshot' => $this->policy_snapshot,
             'pull_request' => $this->formatPullRequest(),
+            'summary' => $this->formatSummary(),
             'repository' => new RepositoryResource($this->whenLoaded('repository')),
             'findings' => FindingResource::collection($this->whenLoaded('findings')),
             'created_at' => $this->created_at->toISOString(),
@@ -61,6 +62,41 @@ final class RunResource extends JsonResource
             'assignees' => $metadata['assignees'] ?? [],
             'reviewers' => $metadata['reviewers'] ?? [],
             'labels' => $metadata['labels'] ?? [],
+        ];
+    }
+
+    /**
+     * Format the review summary from metadata.
+     *
+     * @return array{overview: string, risk_level: string, recommendations: array<int, string>}|null
+     */
+    private function formatSummary(): ?array
+    {
+        $metadata = $this->metadata;
+
+        if (! is_array($metadata) || ! isset($metadata['review_summary'])) {
+            return null;
+        }
+
+        $summary = $metadata['review_summary'];
+
+        if (! is_array($summary)) {
+            return null;
+        }
+
+        $recommendations = [];
+        if (is_array($summary['recommendations'] ?? null)) {
+            foreach ($summary['recommendations'] as $rec) {
+                if (is_string($rec)) {
+                    $recommendations[] = $rec;
+                }
+            }
+        }
+
+        return [
+            'overview' => is_string($summary['overview'] ?? null) ? $summary['overview'] : '',
+            'risk_level' => is_string($summary['risk_level'] ?? null) ? $summary['risk_level'] : 'low',
+            'recommendations' => $recommendations,
         ];
     }
 }

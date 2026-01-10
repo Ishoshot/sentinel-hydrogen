@@ -186,6 +186,7 @@ final class GitHubWebhookService
     public function shouldSyncMetadata(string $action): bool
     {
         return in_array($action, [
+            'edited',
             'labeled',
             'unlabeled',
             'assigned',
