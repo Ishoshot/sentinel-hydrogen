@@ -27,6 +27,9 @@ final readonly class GitHubWebhookController
      */
     public function handle(Request $request): JsonResponse
     {
+        Log::info('GitHub webhook received', [
+            'payload' => $request->getContent(),
+        ]);
         $payload = $request->getContent();
         $signature = $request->header('X-Hub-Signature-256', '');
         $event = $request->header('X-GitHub-Event', '');

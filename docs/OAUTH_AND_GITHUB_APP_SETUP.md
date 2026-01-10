@@ -10,8 +10,8 @@ This guide walks you through setting up the three external services Sentinel req
 
 ## Prerequisites
 
-- Your backend running at: `http://localhost:8000` (or your `APP_URL`)
-- Your frontend running at: `http://localhost:3000` (or your `FRONTEND_URL`)
+-   Your backend running at: `http://localhost:8000` (or your `APP_URL`)
+-   Your frontend running at: `http://localhost:3000` (or your `FRONTEND_URL`)
 
 ---
 
@@ -27,11 +27,11 @@ This allows users to sign in to Sentinel using their GitHub account.
 
 ### Step 2: Fill in the Application Details
 
-| Field | Value |
-|-------|-------|
-| **Application name** | `Sentinel Local` (or any name you prefer) |
-| **Homepage URL** | `http://localhost:3000` |
-| **Application description** | (optional) AI-powered code review platform |
+| Field                          | Value                                        |
+| ------------------------------ | -------------------------------------------- |
+| **Application name**           | `Sentinel Local` (or any name you prefer)    |
+| **Homepage URL**               | `http://localhost:3000`                      |
+| **Application description**    | (optional) AI-powered code review platform   |
 | **Authorization callback URL** | `http://localhost:8000/auth/github/callback` |
 
 > **Important**: The callback URL must point to your **backend** URL, not the frontend.
@@ -85,20 +85,20 @@ This allows users to sign in to Sentinel using their Google account.
 
 Fill in the required fields:
 
-| Field | Value |
-|-------|-------|
-| **App name** | `Sentinel` |
-| **User support email** | Your email address |
-| **App logo** | (optional) |
-| **App domain** | Leave blank for local dev |
-| **Developer contact email** | Your email address |
+| Field                       | Value                     |
+| --------------------------- | ------------------------- |
+| **App name**                | `Sentinel`                |
+| **User support email**      | Your email address        |
+| **App logo**                | (optional)                |
+| **App domain**              | Leave blank for local dev |
+| **Developer contact email** | Your email address        |
 
 4. Click **Save and Continue**
 5. On the **Scopes** page, click **Add or Remove Scopes**
 6. Select these scopes:
-   - `openid`
-   - `email`
-   - `profile`
+    - `openid`
+    - `email`
+    - `profile`
 7. Click **Update**, then **Save and Continue**
 8. On **Test users**, add your Google email address
 9. Click **Save and Continue**, then **Back to Dashboard**
@@ -111,11 +111,11 @@ Fill in the required fields:
 
 Fill in:
 
-| Field | Value |
-|-------|-------|
-| **Name** | `Sentinel Web Client` |
-| **Authorized JavaScript origins** | `http://localhost:3000` |
-| **Authorized redirect URIs** | `http://localhost:8000/auth/google/callback` |
+| Field                             | Value                                        |
+| --------------------------------- | -------------------------------------------- |
+| **Name**                          | `Sentinel Web Client`                        |
+| **Authorized JavaScript origins** | `http://localhost:3000`                      |
+| **Authorized redirect URIs**      | `http://localhost:8000/auth/google/callback` |
 
 > **Important**: Click **+ Add URI** to add each origin/redirect URI.
 
@@ -124,8 +124,9 @@ Fill in:
 ### Step 5: Copy Your Credentials
 
 A dialog will appear with:
-- **Client ID** - Copy this
-- **Client Secret** - Copy this
+
+-   **Client ID** - Copy this
+-   **Client Secret** - Copy this
 
 ### Step 6: Add to Your `.env` File
 
@@ -146,9 +147,10 @@ php artisan tinker --execute="dump(config('services.google'));"
 ## 3. GitHub App (Repository Integration)
 
 This is different from the OAuth App. The GitHub App allows Sentinel to:
-- Receive webhooks when PRs are opened
-- Post review comments on PRs
-- Access repository contents for code review
+
+-   Receive webhooks when PRs are opened
+-   Post review comments on PRs
+-   Access repository contents for code review
 
 ### Step 1: Create the GitHub App
 
@@ -158,22 +160,23 @@ This is different from the OAuth App. The GitHub App allows Sentinel to:
 
 ### Step 2: Fill in Basic Information
 
-| Field | Value |
-|-------|-------|
+| Field               | Value                                           |
+| ------------------- | ----------------------------------------------- |
 | **GitHub App name** | `Sentinel Local` (must be unique across GitHub) |
-| **Description** | AI-powered code review assistant |
-| **Homepage URL** | `http://localhost:3000` |
+| **Description**     | AI-powered code review assistant                |
+| **Homepage URL**    | `http://localhost:3000`                         |
 
 ### Step 3: Configure Callback & Setup URLs
 
-| Field | Value |
-|-------|-------|
-| **Callback URL** | `http://localhost:8000/api/github/callback` |
-| **Setup URL** | `http://localhost:3000/github/setup` (optional) |
-| **Webhook URL** | `http://localhost:8000/api/webhooks/github` |
-| **Webhook secret** | Generate a secure random string (see below) |
+| Field              | Value                                           |
+| ------------------ | ----------------------------------------------- |
+| **Callback URL**   | `http://localhost:8000/api/github/callback`     |
+| **Setup URL**      | `http://localhost:3000/github/setup` (optional) |
+| **Webhook URL**    | `http://localhost:8000/api/webhooks/github`     |
+| **Webhook secret** | Generate a secure random string (see below)     |
 
 Generate a webhook secret:
+
 ```bash
 openssl rand -hex 32
 ```
@@ -184,32 +187,34 @@ Copy this value - you'll need it for both GitHub and your `.env`.
 
 Under **Repository permissions**:
 
-| Permission | Access Level |
-|------------|--------------|
-| **Contents** | Read-only |
-| **Metadata** | Read-only |
-| **Pull requests** | Read and write |
+| Permission          | Access Level   |
+| ------------------- | -------------- |
+| **Contents**        | Read-only      |
+| **Metadata**        | Read-only      |
+| **Pull requests**   | Read and write |
 | **Commit statuses** | Read and write |
 
 Under **Organization permissions**:
-- None required for basic functionality
+
+-   None required for basic functionality
 
 Under **Account permissions**:
-- None required
+
+-   None required
 
 ### Step 5: Subscribe to Events
 
 Check these webhook events:
 
-- [x] **Pull request**
-- [x] **Pull request review**
-- [x] **Pull request review comment**
-- [x] **Push** (optional, for branch tracking)
+-   [x] **Pull request**
+-   [x] **Pull request review**
+-   [x] **Pull request review comment**
+-   [x] **Push** (optional, for branch tracking)
 
 ### Step 6: Installation Settings
 
-| Field | Value |
-|-------|-------|
+| Field                                       | Value                                                 |
+| ------------------------------------------- | ----------------------------------------------------- |
 | **Where can this GitHub App be installed?** | `Any account` (or `Only on this account` for testing) |
 
 ### Step 7: Create the App
@@ -340,7 +345,7 @@ GITHUB_WEBHOOK_SECRET=your_64_character_hex_string_here
 
 1. Same as above, but click "Sign in with Google"
 2. If you get an "unverified app" warning, click "Advanced" > "Go to Sentinel (unsafe)"
-   - This is normal for development; production apps need verification
+    - This is normal for development; production apps need verification
 
 ### Test GitHub App Webhook
 
@@ -355,26 +360,26 @@ GITHUB_WEBHOOK_SECRET=your_64_character_hex_string_here
 
 ### "redirect_uri_mismatch" Error (Google)
 
-- Ensure the redirect URI in Google Console exactly matches your `.env`
-- Include the full path: `http://localhost:8000/auth/google/callback`
-- Wait 5 minutes after making changes (Google caches settings)
+-   Ensure the redirect URI in Google Console exactly matches your `.env`
+-   Include the full path: `http://localhost:8000/auth/google/callback`
+-   Wait 5 minutes after making changes (Google caches settings)
 
 ### "Bad credentials" Error (GitHub OAuth)
 
-- Double-check your Client ID and Secret
-- Ensure there are no extra spaces or newlines in your `.env`
+-   Double-check your Client ID and Secret
+-   Ensure there are no extra spaces or newlines in your `.env`
 
 ### "Integration not found" Error (GitHub App)
 
-- Verify the App ID is correct
-- Ensure the private key file exists and is readable
-- Check file permissions: `ls -la storage/app/github/`
+-   Verify the App ID is correct
+-   Ensure the private key file exists and is readable
+-   Check file permissions: `ls -la storage/app/github/`
 
 ### Webhooks Not Received
 
-- Verify your tunnel is running
-- Check GitHub App settings > Advanced > Recent Deliveries
-- Look for failed deliveries and their error messages
+-   Verify your tunnel is running
+-   Check GitHub App settings > Advanced > Recent Deliveries
+-   Look for failed deliveries and their error messages
 
 ---
 
@@ -390,4 +395,4 @@ When deploying to production:
 
 ---
 
-*Last Updated: 2025-01-09*
+_Last Updated: 2025-01-09_

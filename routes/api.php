@@ -8,6 +8,7 @@ use App\Http\Controllers\GitHub\ConnectionController;
 use App\Http\Controllers\GitHub\RepositoryController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\TeamMemberController;
+use App\Http\Controllers\Webhooks\GitHubWebhookController;
 use App\Http\Controllers\WorkspaceController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,13 +18,26 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | Routes for the Sentinel API. All routes require Sanctum authentication
-| except the invitation acceptance endpoint which allows unauthenticated
-| requests to check invitation status.
+| except the invitation acceptance endpoint and webhooks which allow
+| unauthenticated requests.
 |
 */
 
 Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])
     ->name('invitations.accept');
+
+/*
+|--------------------------------------------------------------------------
+| Webhook Routes
+|--------------------------------------------------------------------------
+|
+| Webhook endpoints for external services. These routes are public and
+| authenticate via signature verification instead of tokens.
+|
+*/
+
+Route::post('/webhooks/github', [GitHubWebhookController::class, 'handle'])
+    ->name('webhooks.github');
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/user', [OAuthController::class, 'user'])->name('user');
