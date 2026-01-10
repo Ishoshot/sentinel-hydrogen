@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Reviews\ExecuteReviewRun;
 use App\Enums\ProviderType;
 use App\Enums\RunStatus;
+use App\Jobs\Reviews\PostRunAnnotations;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Provider;
@@ -13,10 +14,12 @@ use App\Models\RepositorySettings;
 use App\Models\Run;
 use App\Services\Reviews\Contracts\PullRequestDataResolver;
 use App\Services\Reviews\Contracts\ReviewEngine;
+use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\mock;
 
 it('executes a review run and stores findings', function (): void {
+    Queue::fake();
     $provider = Provider::query()->firstOrCreate(
         ['type' => ProviderType::GitHub],
         ['name' => 'GitHub', 'is_active' => true]
@@ -126,4 +129,6 @@ it('executes a review run and stores findings', function (): void {
         ->and($run->metrics['files_changed'])->toBe(1)
         ->and($run->metadata['review_summary']['risk_level'])->toBe('medium')
         ->and($run->findings()->count())->toBe(1);
+
+    Queue::assertPushed(PostRunAnnotations::class, fn ($job) => $job->runId === $run->id);
 });
