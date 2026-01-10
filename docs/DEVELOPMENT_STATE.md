@@ -71,13 +71,18 @@
 | **Repository** | Source code repository connected to Sentinel |
 | **RepositorySettings** | Configuration for a Repository |
 
-### Future Entities (Not Yet Implemented)
+### Review Entities (Phase 4 - Implemented)
 
 | Entity | Description |
 |--------|-------------|
 | **Run** | Single execution of Sentinel's review process |
 | **Finding** | Issue identified during a Run |
 | **Annotation** | Finding surfaced in source control platform |
+
+### Future Entities (Not Yet Implemented)
+
+| Entity | Description |
+|--------|-------------|
 | **Policy** | Collection of rules and thresholds |
 | **Plan** | Subscription tier defining limits |
 | **Subscription** | Active billing state of Workspace |
@@ -127,9 +132,11 @@
 - [x] Run creation from webhook events
 - [x] Finding and annotation storage (schema + models)
 - [x] Run listing and detail APIs
-- [ ] Policy configuration
-- [ ] AI provider routing (PrismPHP)
-- [ ] Finding generation and storage
+- [x] Review execution pipeline (contract-based architecture)
+- [x] Policy resolution (default + repository-specific rules)
+- [x] GitHub PR data resolution (files, metrics)
+- [x] Finding generation and storage
+- [ ] AI provider routing (PrismPHP integration)
 - [ ] Annotation posting to GitHub
 
 ### Phase 5: Plans & Billing
@@ -351,6 +358,20 @@ annotations (id, finding_id, workspace_id, provider_id, external_id, type, creat
 
 #### Actions
 - `App\Actions\Reviews\CreatePullRequestRun` - Creates/ensures Runs for pull request webhooks
+- `App\Actions\Reviews\ExecuteReviewRun` - Orchestrates review execution pipeline
+
+#### Jobs
+- `App\Jobs\Reviews\ExecuteReviewRun` - Queued job that dispatches review execution
+
+#### Services (Contract-Based Architecture)
+- `App\Services\Reviews\Contracts\ReviewEngine` - Interface for AI review engines (swap implementations)
+- `App\Services\Reviews\Contracts\PullRequestDataResolver` - Interface for fetching PR data
+- `App\Services\Reviews\DefaultReviewEngine` - No-op placeholder (returns empty findings)
+- `App\Services\Reviews\GitHubPullRequestDataResolver` - Fetches PR files from GitHub API
+- `App\Services\Reviews\ReviewPolicyResolver` - Merges default policy with repository rules
+
+#### Configuration
+- `config/reviews.php` - Default review policy (enabled_rules, severity_thresholds, comment_limits, ignored_paths)
 
 #### Controllers
 - `App\Http\Controllers\RunController` - list runs, show run detail
@@ -365,6 +386,13 @@ annotations (id, finding_id, workspace_id, provider_id, external_id, type, creat
 GET /api/workspaces/{workspace}/repositories/{repository}/runs
 GET /api/workspaces/{workspace}/runs/{run}
 ```
+
+#### Policies
+- `RunPolicy` - viewAny, view (workspace membership)
+
+#### Tests (Phase 4)
+- `tests/Feature/Reviews/RunCreationTest.php` - Run creation from webhooks
+- `tests/Feature/Reviews/ExecuteReviewRunTest.php` - Execution pipeline with mocked services
 
 ---
 
@@ -416,6 +444,8 @@ GOOGLE_CLIENT_SECRET=
 Handover documents for the frontend agent are located in `handover/`:
 - `handover/FRONTEND_HANDOVER_IDENTITY_WORKSPACE.md` - Phase 1 (Identity & Workspace)
 - `handover/FRONTEND_HANDOVER_GITHUB_INTEGRATION.md` - Phase 2 (GitHub Integration)
+- `handover/FRONTEND_HANDOVER_REVIEW_SYSTEM_CORE.md` - Phase 4 (Runs & Findings Data Model)
+- `handover/FRONTEND_HANDOVER_REVIEW_EXECUTION_PIPELINE.md` - Phase 4 (Execution Pipeline)
 
 These documents contain:
 - Full API endpoint documentation with request/response examples
@@ -445,11 +475,10 @@ These documents contain:
 
 ## Next Implementation Steps
 
-1. **Review System Core (Phase 4)**
-   - Create migrations for runs, findings, annotations
-   - Integrate PrismPHP for AI routing
-   - Build review execution pipeline
-   - Implement webhook handlers for PR events
+1. **Review System Core (Phase 4) - Remaining**
+   - Integrate PrismPHP for AI-powered reviews (swap `DefaultReviewEngine` implementation)
+   - Post annotations to GitHub as PR comments
+   - Add activity logging for review events
 
 2. **Plans & Billing (Phase 5)**
    - Create Plan model with limits
@@ -474,3 +503,4 @@ For setting up OAuth and GitHub App credentials, see:
 
 *Last Updated: 2026-01-10*
 *Phases Completed: Identity & Workspace Foundation, Source Control Integration (GitHub)*
+*Phase In Progress: Review System Core (execution pipeline complete, AI integration pending)*
