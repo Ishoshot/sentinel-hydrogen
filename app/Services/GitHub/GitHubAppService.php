@@ -30,8 +30,9 @@ final readonly class GitHubAppService
      */
     public function generateJwt(): string
     {
-        /** @var string $privateKeyPath */
-        $privateKeyPath = config('github.private_key_path');
+        /** @var string $configPath */
+        $configPath = config('github.private_key_path');
+        $privateKeyPath = str_starts_with($configPath, '/') ? $configPath : base_path($configPath);
 
         if (! file_exists($privateKeyPath)) {
             throw new RuntimeException('GitHub App private key not found at: '.$privateKeyPath);
@@ -43,12 +44,14 @@ final readonly class GitHubAppService
             throw new RuntimeException('Failed to read GitHub App private key');
         }
 
-        $config = Configuration::forSymmetricSigner(
+        $config = Configuration::forAsymmetricSigner(
             new Sha256,
+            InMemory::plainText($privateKey),
             InMemory::plainText($privateKey)
         );
 
-        $now = new DateTimeImmutable;
+        $now = new DateTimeImmutable('@'.time());
+        $exp = new DateTimeImmutable('@'.(time() + 600));
 
         /** @var string|int $appIdRaw */
         $appIdRaw = config('github.app_id');
@@ -59,7 +62,7 @@ final readonly class GitHubAppService
         $token = $config->builder()
             ->issuedBy($appId)
             ->issuedAt($now)
-            ->expiresAt($now->modify('+10 minutes'))
+            ->expiresAt($exp)
             ->getToken($config->signer(), $config->signingKey());
 
         return $token->toString();

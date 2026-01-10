@@ -35,7 +35,9 @@ final class ConnectionController
             ]);
         }
 
-        $connection = Connection::with('installation')
+        $connection = Connection::with(['installation' => function ($query): void {
+            $query->withCount('repositories');
+        }])
             ->where('workspace_id', $workspace->id)
             ->where('provider_id', $provider->id)
             ->first();
