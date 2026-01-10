@@ -6,6 +6,7 @@ namespace App\Jobs\GitHub;
 
 use App\Enums\ConnectionStatus;
 use App\Enums\InstallationStatus;
+use App\Enums\Queue;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Services\GitHub\GitHubAppService;
@@ -23,7 +24,9 @@ final class ProcessInstallationWebhook implements ShouldQueue
      */
     public function __construct(
         public array $payload
-    ) {}
+    ) {
+        $this->onQueue(Queue::Webhooks->value);
+    }
 
     /**
      * Execute the job.

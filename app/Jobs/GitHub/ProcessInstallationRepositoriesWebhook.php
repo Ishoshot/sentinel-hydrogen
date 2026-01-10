@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\GitHub;
 
 use App\Actions\GitHub\SyncInstallationRepositories;
+use App\Enums\Queue;
 use App\Models\Installation;
 use App\Services\GitHub\GitHubWebhookService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,7 +21,9 @@ final class ProcessInstallationRepositoriesWebhook implements ShouldQueue
      */
     public function __construct(
         public array $payload
-    ) {}
+    ) {
+        $this->onQueue(Queue::Webhooks->value);
+    }
 
     /**
      * Execute the job.
