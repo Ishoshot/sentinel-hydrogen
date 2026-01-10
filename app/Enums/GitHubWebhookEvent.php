@@ -22,6 +22,7 @@ enum GitHubWebhookEvent: string
 
     // Code review events
     case PullRequest = 'pull_request';
+    case PullRequestReview = 'pull_request_review';
     case PullRequestReviewComment = 'pull_request_review_comment';
     case CommitComment = 'commit_comment';
 
@@ -54,6 +55,7 @@ enum GitHubWebhookEvent: string
             self::Create => 'Create',
             self::Push => 'Push',
             self::PullRequest => 'Pull Request',
+            self::PullRequestReview => 'Pull Request Review',
             self::PullRequestReviewComment => 'Pull Request Review Comment',
             self::CommitComment => 'Commit Comment',
             self::Issues => 'Issues',
