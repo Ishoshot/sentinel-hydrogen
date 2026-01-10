@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Context\Collectors;
 
 use App\Enums\RunStatus;
+use App\Models\Finding;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\ContextBag;
@@ -29,16 +30,25 @@ final readonly class ReviewHistoryCollector implements ContextCollector
      */
     private const int MAX_FINDINGS_PER_REVIEW = 5;
 
+    /**
+     * {@inheritdoc}
+     */
     public function name(): string
     {
         return 'review_history';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function priority(): int
     {
         return 60; // Medium priority - useful context for follow-up reviews
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function shouldCollect(array $params): bool
     {
         if (! isset($params['repository'], $params['run'])) {
@@ -57,6 +67,9 @@ final readonly class ReviewHistoryCollector implements ContextCollector
             && $metadata['pull_request_number'] > 0;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function collect(ContextBag $bag, array $params): void
     {
         /** @var Repository $repository */
@@ -107,14 +120,14 @@ final readonly class ReviewHistoryCollector implements ContextCollector
             // Build summary of findings by severity
             /** @var array<string, int> $severityCounts */
             $severityCounts = $findings->groupBy('severity')
-                ->map(fn ($group) => $group->count())
+                ->map(fn (\Illuminate\Support\Collection $group): int => $group->count())
                 ->toArray();
 
             $summary = $this->buildSummary($severityCounts, $findingsCount);
 
             // Extract key findings
             $keyFindings = $findings->take(self::MAX_FINDINGS_PER_REVIEW)
-                ->map(fn ($finding) => [
+                ->map(fn (Finding $finding): array => [
                     'severity' => $finding->severity,
                     'category' => $finding->category,
                     'title' => $finding->title,
@@ -161,12 +174,12 @@ final readonly class ReviewHistoryCollector implements ContextCollector
             if (isset($severityCounts[$severity]) && $severityCounts[$severity] > 0) {
                 $count = $severityCounts[$severity];
                 $label = $count === 1 ? $severity : $severity;
-                $parts[] = "{$count} {$label}";
+                $parts[] = sprintf('%d %s', $count, $label);
             }
         }
 
         if ($parts === []) {
-            return "Previous review found {$totalFindings} finding(s).";
+            return sprintf('Previous review found %s finding(s).', $totalFindings);
         }
 
         return 'Previous review found: '.implode(', ', $parts).'.';

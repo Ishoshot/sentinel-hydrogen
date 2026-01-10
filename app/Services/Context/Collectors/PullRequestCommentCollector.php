@@ -25,18 +25,30 @@ final readonly class PullRequestCommentCollector implements ContextCollector
      */
     private const int MAX_COMMENTS = 20;
 
+    /**
+     * Create a new PullRequestCommentCollector instance.
+     */
     public function __construct(private GitHubApiService $gitHubApiService) {}
 
+    /**
+     * {@inheritdoc}
+     */
     public function name(): string
     {
         return 'pr_comments';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function priority(): int
     {
         return 70; // Medium-high priority - discussion provides useful context
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function shouldCollect(array $params): bool
     {
         return isset($params['repository'], $params['run'])
@@ -44,6 +56,9 @@ final readonly class PullRequestCommentCollector implements ContextCollector
             && $params['run'] instanceof Run;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function collect(ContextBag $bag, array $params): void
     {
         /** @var Repository $repository */
@@ -62,11 +77,11 @@ final readonly class PullRequestCommentCollector implements ContextCollector
         }
 
         $fullName = $repository->full_name ?? '';
-        if ($fullName === '' || ! str_contains($fullName, '/')) {
+        if ($fullName === '' || ! str_contains((string) $fullName, '/')) {
             return;
         }
 
-        [$owner, $repo] = explode('/', $fullName, 2);
+        [$owner, $repo] = explode('/', (string) $fullName, 2);
         $installationId = $installation->installation_id;
         $pullRequestNumber = is_int($metadata['pull_request_number'] ?? null)
             ? $metadata['pull_request_number']
@@ -84,7 +99,7 @@ final readonly class PullRequestCommentCollector implements ContextCollector
                 $pullRequestNumber
             );
 
-            // Validate response structure
+            // @phpstan-ignore function.alreadyNarrowedType (defensive check against GitHub API changes)
             if (! is_array($rawComments)) {
                 Log::warning('PullRequestCommentCollector: Unexpected response format from GitHub API', [
                     'pr_number' => $pullRequestNumber,
@@ -101,11 +116,11 @@ final readonly class PullRequestCommentCollector implements ContextCollector
                 'pr_number' => $pullRequestNumber,
                 'comments_count' => count($comments),
             ]);
-        } catch (Throwable $e) {
+        } catch (Throwable $throwable) {
             Log::warning('PullRequestCommentCollector: Failed to fetch PR comments', [
                 'repository' => $fullName,
                 'pr_number' => $pullRequestNumber,
-                'error' => $e->getMessage(),
+                'error' => $throwable->getMessage(),
             ]);
         }
     }
@@ -133,9 +148,12 @@ final readonly class PullRequestCommentCollector implements ContextCollector
 
             $body = is_string($comment['body'] ?? null) ? $comment['body'] : '';
             $createdAt = is_string($comment['created_at'] ?? null) ? $comment['created_at'] : '';
-
             // Skip empty comments or bot comments
-            if ($body === '' || $this->isBotComment($author, $body)) {
+            if ($body === '') {
+                continue;
+            }
+
+            if ($this->isBotComment($author, $body)) {
                 continue;
             }
 
@@ -172,10 +190,6 @@ final readonly class PullRequestCommentCollector implements ContextCollector
         }
 
         // Check for Sentinel's own comments to avoid circular context
-        if (str_contains($body, '<!-- sentinel-review -->') || str_contains($body, '<!-- sentinel-greeting -->')) {
-            return true;
-        }
-
-        return false;
+        return str_contains($body, '<!-- sentinel-review -->') || str_contains($body, '<!-- sentinel-greeting -->');
     }
 }

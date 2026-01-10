@@ -16,7 +16,6 @@ use App\Models\Repository;
 use App\Models\RepositorySettings;
 use App\Models\Run;
 use App\Services\GitHub\GitHubWebhookService;
-use Exception;
 use Illuminate\Support\Facades\Queue;
 
 it('creates a run for pull request webhook when auto review is enabled', function (): void {

@@ -41,18 +41,30 @@ final readonly class LinkedIssueCollector implements ContextCollector
         '/#(\d+)/',
     ];
 
+    /**
+     * Create a new LinkedIssueCollector instance.
+     */
     public function __construct(private GitHubApiService $gitHubApiService) {}
 
+    /**
+     * {@inheritdoc}
+     */
     public function name(): string
     {
         return 'linked_issues';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function priority(): int
     {
         return 80; // High priority - issue context is important
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function shouldCollect(array $params): bool
     {
         if (! isset($params['repository'], $params['run'])) {
@@ -70,6 +82,9 @@ final readonly class LinkedIssueCollector implements ContextCollector
         return is_string($body) && $body !== '';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function collect(ContextBag $bag, array $params): void
     {
         /** @var Repository $repository */
@@ -89,11 +104,11 @@ final readonly class LinkedIssueCollector implements ContextCollector
         }
 
         $fullName = $repository->full_name ?? '';
-        if ($fullName === '' || ! str_contains($fullName, '/')) {
+        if ($fullName === '' || ! str_contains((string) $fullName, '/')) {
             return;
         }
 
-        [$owner, $repo] = explode('/', $fullName, 2);
+        [$owner, $repo] = explode('/', (string) $fullName, 2);
         $installationId = $installation->installation_id;
 
         // Extract issue numbers from PR body
@@ -176,7 +191,7 @@ final readonly class LinkedIssueCollector implements ContextCollector
     ): ?array {
         $issue = $this->gitHubApiService->getIssue($installationId, $owner, $repo, $issueNumber);
 
-        // Validate response structure
+        // @phpstan-ignore function.alreadyNarrowedType (defensive check against GitHub API changes)
         if (! is_array($issue)) {
             Log::debug('LinkedIssueCollector: Unexpected issue response format', [
                 'issue_number' => $issueNumber,
@@ -230,7 +245,7 @@ final readonly class LinkedIssueCollector implements ContextCollector
                 $issueNumber
             );
 
-            // Validate response structure
+            // @phpstan-ignore function.alreadyNarrowedType (defensive check against GitHub API changes)
             if (! is_array($rawComments)) {
                 Log::debug('LinkedIssueCollector: Unexpected comments response format', [
                     'issue_number' => $issueNumber,
@@ -264,10 +279,10 @@ final readonly class LinkedIssueCollector implements ContextCollector
             }
 
             return $comments;
-        } catch (Throwable $e) {
+        } catch (Throwable $throwable) {
             Log::debug('LinkedIssueCollector: Failed to fetch issue comments', [
                 'issue_number' => $issueNumber,
-                'error' => $e->getMessage(),
+                'error' => $throwable->getMessage(),
             ]);
 
             return [];

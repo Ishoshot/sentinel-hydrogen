@@ -31,16 +31,25 @@ final class VendorPathFilter implements ContextFilter
         '/^\.nuxt\//',
     ];
 
+    /**
+     * {@inheritdoc}
+     */
     public function name(): string
     {
         return 'vendor_path';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function order(): int
     {
         return 10; // Run early to remove noise before other processing
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function filter(ContextBag $bag): void
     {
         $bag->files = array_values(array_filter(

@@ -48,16 +48,25 @@ final class TokenLimitFilter implements ContextFilter
      */
     private const int MAX_TOKENS_COMMENTS = 5000;
 
+    /**
+     * {@inheritdoc}
+     */
     public function name(): string
     {
         return 'token_limit';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function order(): int
     {
         return 100; // Run last to truncate after all other filters
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function filter(ContextBag $bag): void
     {
         $initialTokens = $bag->estimateTokens();
@@ -155,6 +164,7 @@ final class TokenLimitFilter implements ContextFilter
                     $issue = $this->truncateIssue($issue, $remainingBudget);
                     $result[] = $issue;
                 }
+
                 break;
             }
 

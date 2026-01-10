@@ -52,18 +52,30 @@ final readonly class RepositoryContextCollector implements ContextCollector
         'CONTRIBUTING',
     ];
 
+    /**
+     * Create a new RepositoryContextCollector instance.
+     */
     public function __construct(private GitHubApiService $gitHubApiService) {}
 
+    /**
+     * {@inheritdoc}
+     */
     public function name(): string
     {
         return 'repository_context';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function priority(): int
     {
         return 50; // Lower priority - supplementary context
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function shouldCollect(array $params): bool
     {
         return isset($params['repository'], $params['run'])
@@ -71,12 +83,16 @@ final readonly class RepositoryContextCollector implements ContextCollector
             && $params['run'] instanceof Run;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function collect(ContextBag $bag, array $params): void
     {
         /** @var Repository $repository */
         $repository = $params['repository'];
 
         $repository->loadMissing('installation');
+
         $installation = $repository->installation;
 
         if ($installation === null) {
@@ -84,11 +100,11 @@ final readonly class RepositoryContextCollector implements ContextCollector
         }
 
         $fullName = $repository->full_name ?? '';
-        if ($fullName === '' || ! str_contains($fullName, '/')) {
+        if ($fullName === '' || ! str_contains((string) $fullName, '/')) {
             return;
         }
 
-        [$owner, $repo] = explode('/', $fullName, 2);
+        [$owner, $repo] = explode('/', (string) $fullName, 2);
         $installationId = $installation->installation_id;
 
         $context = [];
@@ -174,7 +190,7 @@ final readonly class RepositoryContextCollector implements ContextCollector
                 return $response;
             }
 
-            // Validate response is an array before accessing properties
+            // @phpstan-ignore function.alreadyNarrowedType (defensive check against GitHub API changes)
             if (! is_array($response)) {
                 Log::debug('RepositoryContextCollector: Unexpected response format', [
                     'path' => $path,
@@ -199,10 +215,10 @@ final readonly class RepositoryContextCollector implements ContextCollector
             }
 
             return null;
-        } catch (Throwable $e) {
+        } catch (Throwable $throwable) {
             Log::debug('RepositoryContextCollector: Failed to fetch file', [
                 'path' => $path,
-                'error' => $e->getMessage(),
+                'error' => $throwable->getMessage(),
             ]);
 
             return null;

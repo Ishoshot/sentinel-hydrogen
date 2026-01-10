@@ -50,16 +50,25 @@ final class BinaryFileFilter implements ContextFilter
         'Thumbs.db',
     ];
 
+    /**
+     * {@inheritdoc}
+     */
     public function name(): string
     {
         return 'binary_file';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function order(): int
     {
         return 20; // Run after vendor path filter
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function filter(ContextBag $bag): void
     {
         $bag->files = array_values(array_filter(
@@ -95,10 +104,6 @@ final class BinaryFileFilter implements ContextFilter
         }
 
         // Check compound extensions (e.g., .min.js)
-        if (str_ends_with(mb_strtolower($path), '.min.js') || str_ends_with(mb_strtolower($path), '.min.css')) {
-            return true;
-        }
-
-        return false;
+        return str_ends_with(mb_strtolower($path), '.min.js') || str_ends_with(mb_strtolower($path), '.min.css');
     }
 }

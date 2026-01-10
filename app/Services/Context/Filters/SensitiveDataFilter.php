@@ -85,16 +85,25 @@ final class SensitiveDataFilter implements ContextFilter
         '.htpasswd',
     ];
 
+    /**
+     * {@inheritdoc}
+     */
     public function name(): string
     {
         return 'sensitive_data';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function order(): int
     {
         return 30; // Run early, after path filters but before token limits
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function filter(ContextBag $bag): void
     {
         $redactedCount = 0;
@@ -194,11 +203,7 @@ final class SensitiveDataFilter implements ContextFilter
         }
 
         // Check for .env variants
-        if (str_starts_with($lowercaseFilename, '.env')) {
-            return true;
-        }
-
-        return false;
+        return str_starts_with($lowercaseFilename, '.env');
     }
 
     /**
@@ -226,6 +231,6 @@ final class SensitiveDataFilter implements ContextFilter
         $length = mb_strlen($original);
         $preview = mb_substr($original, 0, min(4, $length));
 
-        return "[REDACTED:{$type}:{$preview}***]";
+        return sprintf('[REDACTED:%s:%s***]', $type, $preview);
     }
 }

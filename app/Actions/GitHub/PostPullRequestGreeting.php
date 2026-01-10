@@ -65,11 +65,11 @@ final readonly class PostPullRequestGreeting implements PostsGreetingComment
             ]);
 
             return $commentId;
-        } catch (Throwable $e) {
+        } catch (Throwable $throwable) {
             Log::error('Failed to post greeting comment', [
                 'repository' => $repository->full_name,
                 'pr_number' => $pullRequestNumber,
-                'error' => $e->getMessage(),
+                'error' => $throwable->getMessage(),
             ]);
 
             return null;

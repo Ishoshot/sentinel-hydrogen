@@ -77,16 +77,25 @@ final class RelevanceFilter implements ContextFilter
      */
     private const int MAX_FILES = 50;
 
+    /**
+     * {@inheritdoc}
+     */
     public function name(): string
     {
         return 'relevance';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function order(): int
     {
         return 40; // Run after sensitive data filter, before token limit
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function filter(ContextBag $bag): void
     {
         if ($bag->files === []) {

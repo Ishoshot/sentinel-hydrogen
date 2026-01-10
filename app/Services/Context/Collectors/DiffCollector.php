@@ -18,18 +18,30 @@ use Illuminate\Support\Facades\Log;
  */
 final readonly class DiffCollector implements ContextCollector
 {
+    /**
+     * Create a new DiffCollector instance.
+     */
     public function __construct(private GitHubApiService $gitHubApiService) {}
 
+    /**
+     * {@inheritdoc}
+     */
     public function name(): string
     {
         return 'diff';
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function priority(): int
     {
         return 100; // Highest priority - code diffs are essential
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function shouldCollect(array $params): bool
     {
         return isset($params['repository'], $params['run'])
@@ -37,6 +49,9 @@ final readonly class DiffCollector implements ContextCollector
             && $params['run'] instanceof Run;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function collect(ContextBag $bag, array $params): void
     {
         /** @var Repository $repository */
@@ -58,7 +73,7 @@ final readonly class DiffCollector implements ContextCollector
         }
 
         $fullName = $repository->full_name ?? '';
-        if ($fullName === '' || ! str_contains($fullName, '/')) {
+        if ($fullName === '' || ! str_contains((string) $fullName, '/')) {
             Log::warning('DiffCollector: Invalid repository full name', [
                 'repository_id' => $repository->id,
             ]);
@@ -66,7 +81,7 @@ final readonly class DiffCollector implements ContextCollector
             return;
         }
 
-        [$owner, $repo] = explode('/', $fullName, 2);
+        [$owner, $repo] = explode('/', (string) $fullName, 2);
         $installationId = $installation->installation_id;
         $pullRequestNumber = is_int($metadata['pull_request_number'] ?? null)
             ? $metadata['pull_request_number']
@@ -89,6 +104,7 @@ final readonly class DiffCollector implements ContextCollector
             $pullRequestNumber
         );
 
+        // @phpstan-ignore function.alreadyNarrowedType (defensive check against GitHub API changes)
         if (! is_array($files)) {
             Log::warning('DiffCollector: Unexpected response format from GitHub API', [
                 'pr_number' => $pullRequestNumber,
