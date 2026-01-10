@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews;
 
+use App\Actions\Activities\LogActivity;
+use App\Enums\ActivityType;
 use App\Enums\RunStatus;
+use App\Jobs\Reviews\PostRunAnnotations;
 use App\Models\Finding;
 use App\Models\Run;
 use App\Services\Reviews\Contracts\PullRequestDataResolver;
@@ -23,7 +26,8 @@ final readonly class ExecuteReviewRun
     public function __construct(
         private ReviewPolicyResolver $policyResolver,
         private PullRequestDataResolver $pullRequestDataResolver,
-        private ReviewEngine $reviewEngine
+        private ReviewEngine $reviewEngine,
+        private LogActivity $logActivity,
     ) {}
 
     /**
@@ -95,7 +99,15 @@ final readonly class ExecuteReviewRun
             }
         });
 
-        return $run->refresh();
+        $run->refresh();
+
+        $this->logRunCompleted($run, $result);
+
+        if ($run->findings()->exists()) {
+            PostRunAnnotations::dispatch($run->id)->delay(now()->addSeconds(5));
+        }
+
+        return $run;
     }
 
     /**
@@ -151,5 +163,74 @@ final readonly class ExecuteReviewRun
             'exception' => $exception->getMessage(),
         ]);
 
+        $this->logRunFailed($run, $exception);
+    }
+
+    /**
+     * Log activity for a completed run.
+     *
+     * @param  array{summary: array{overview: string, risk_level: string, recommendations: array<int, string>}, findings: array<int, mixed>, metrics: array<string, mixed>}  $result
+     */
+    private function logRunCompleted(Run $run, array $result): void
+    {
+        $run->loadMissing('workspace');
+        $workspace = $run->workspace;
+
+        if ($workspace === null) {
+            return;
+        }
+
+        $metadata = $run->metadata ?? [];
+        $pullRequestNumber = is_int($metadata['pull_request_number'] ?? null) ? $metadata['pull_request_number'] : 0;
+        $repositoryFullName = is_string($metadata['repository_full_name'] ?? null) ? $metadata['repository_full_name'] : 'unknown';
+
+        $this->logActivity->handle(
+            workspace: $workspace,
+            type: ActivityType::RunCompleted,
+            description: sprintf(
+                'Review completed for PR #%d in %s',
+                $pullRequestNumber,
+                $repositoryFullName
+            ),
+            subject: $run,
+            metadata: [
+                'findings_count' => count($result['findings']),
+                'risk_level' => $result['summary']['risk_level'],
+                'pull_request_number' => $pullRequestNumber,
+            ],
+        );
+    }
+
+    /**
+     * Log activity for a failed run.
+     */
+    private function logRunFailed(Run $run, Throwable $exception): void
+    {
+        $run->loadMissing('workspace');
+        $workspace = $run->workspace;
+
+        if ($workspace === null) {
+            return;
+        }
+
+        $metadata = $run->metadata ?? [];
+        $pullRequestNumber = is_int($metadata['pull_request_number'] ?? null) ? $metadata['pull_request_number'] : 0;
+        $repositoryFullName = is_string($metadata['repository_full_name'] ?? null) ? $metadata['repository_full_name'] : 'unknown';
+
+        $this->logActivity->handle(
+            workspace: $workspace,
+            type: ActivityType::RunFailed,
+            description: sprintf(
+                'Review failed for PR #%d in %s',
+                $pullRequestNumber,
+                $repositoryFullName
+            ),
+            subject: $run,
+            metadata: [
+                'error_type' => $exception::class,
+                'error_message' => $exception->getMessage(),
+                'pull_request_number' => $pullRequestNumber,
+            ],
+        );
     }
 }

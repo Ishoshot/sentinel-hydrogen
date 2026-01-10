@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\Reviews;
 
 use App\Actions\Reviews\ExecuteReviewRun as ExecuteReviewRunAction;
+use App\Enums\Queue;
 use App\Models\Run;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -17,9 +18,9 @@ final class ExecuteReviewRun implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public int $runId)
+    public function __construct(public int $runId, ?Queue $queue = null)
     {
-        $this->onQueue('reviews-default');
+        $this->onQueue(($queue ?? Queue::ReviewsDefault)->value);
     }
 
     /**
