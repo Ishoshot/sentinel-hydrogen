@@ -116,6 +116,22 @@ final class Workspace extends Model
     }
 
     /**
+     * @return HasMany<Run, $this>
+     */
+    public function runs(): HasMany
+    {
+        return $this->hasMany(Run::class);
+    }
+
+    /**
+     * @return HasMany<Finding, $this>
+     */
+    public function findings(): HasMany
+    {
+        return $this->hasMany(Finding::class);
+    }
+
+    /**
      * @param  Builder<Workspace>  $query
      * @return Builder<Workspace>
      */

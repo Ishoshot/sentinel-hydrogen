@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class Repository extends Model
@@ -53,6 +54,14 @@ final class Repository extends Model
     public function settings(): HasOne
     {
         return $this->hasOne(RepositorySettings::class);
+    }
+
+    /**
+     * @return HasMany<Run, $this>
+     */
+    public function runs(): HasMany
+    {
+        return $this->hasMany(Run::class);
     }
 
     /**
