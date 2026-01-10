@@ -40,7 +40,7 @@ final class ConnectionController
         }])
             ->where('workspace_id', $workspace->id)
             ->where('provider_id', $provider->id)
-            ->first();
+            ->all();
 
         return response()->json([
             'data' => $connection !== null ? new ConnectionResource($connection) : null,
