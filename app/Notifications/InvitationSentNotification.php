@@ -41,7 +41,7 @@ final class InvitationSentNotification extends Notification implements ShouldQue
         $workspaceName = $this->invitation->workspace?->name ?? 'a workspace';
 
         return (new MailMessage)
-            ->subject("You're invited to join {$workspaceName}")
+            ->subject('You\'re invited to join ' . $workspaceName)
             ->markdown('mail.invitation-sent', [
                 'invitation' => $this->invitation,
                 'acceptUrl' => $this->getAcceptUrl(),
