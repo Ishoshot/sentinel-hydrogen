@@ -35,7 +35,7 @@ final class ConnectionController
             ]);
         }
 
-        $connection = Connection::with(['installation' => function ($query): void {
+        $connection = Connection::with(['installation' => function (\Illuminate\Database\Eloquent\Relations\HasOne $query): void {
             $query->withCount('repositories');
         }])
             ->where('workspace_id', $workspace->id)

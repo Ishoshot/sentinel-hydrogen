@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\GitHub;
 
+use App\Actions\Reviews\CreatePullRequestRun;
 use App\Models\Installation;
 use App\Models\Repository;
 use App\Services\GitHub\GitHubWebhookService;
@@ -25,7 +26,7 @@ final class ProcessPullRequestWebhook implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(GitHubWebhookService $webhookService): void
+    public function handle(GitHubWebhookService $webhookService, CreatePullRequestRun $createPullRequestRun): void
     {
         $data = $webhookService->parsePullRequestPayload($this->payload);
 
@@ -74,17 +75,15 @@ final class ProcessPullRequestWebhook implements ShouldQueue
             return;
         }
 
-        // TODO: In Phase 3, dispatch the actual code review job
-        // For now, just log that we would trigger a review
-        Log::info('Pull request ready for review', [
+        $run = $createPullRequestRun->handle($repository, $data);
+
+        Log::info('Pull request queued for review', [
+            'run_id' => $run->id,
             'repository' => $data['repository_full_name'],
             'pr_number' => $data['pull_request_number'],
             'pr_title' => $data['pull_request_title'],
             'head_sha' => $data['head_sha'],
             'action' => $data['action'],
         ]);
-
-        // Placeholder for Phase 3: AI Code Review Pipeline
-        // dispatch(new TriggerCodeReview($repository, $data));
     }
 }
