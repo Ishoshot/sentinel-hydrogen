@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Context\ContextBag;
 use App\Services\Reviews\PrismReviewEngine;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\Testing\TextResponseFake;
@@ -10,21 +11,21 @@ use Prism\Prism\ValueObjects\Usage;
 function buildTestContext(): array
 {
     return [
-        'run' => (object) ['id' => 1, 'workspace_id' => 1],
-        'repository' => (object) ['id' => 1, 'full_name' => 'org/repo'],
         'policy_snapshot' => [],
-        'pull_request' => [
-            'number' => 1,
-            'title' => 'Test PR',
-            'body' => null,
-            'base_branch' => 'main',
-            'head_branch' => 'feature',
-            'head_sha' => 'abc123',
-            'sender_login' => 'user',
-            'repository_full_name' => 'org/repo',
-        ],
-        'files' => [],
-        'metrics' => ['files_changed' => 0, 'lines_added' => 0, 'lines_deleted' => 0],
+        'context_bag' => new ContextBag(
+            pullRequest: [
+                'number' => 1,
+                'title' => 'Test PR',
+                'body' => null,
+                'base_branch' => 'main',
+                'head_branch' => 'feature',
+                'head_sha' => 'abc123',
+                'sender_login' => 'user',
+                'repository_full_name' => 'org/repo',
+            ],
+            files: [],
+            metrics: ['files_changed' => 0, 'lines_added' => 0, 'lines_deleted' => 0],
+        ),
     ];
 }
 
@@ -36,16 +37,28 @@ function createFakeResponse(string $text, int $promptTokens = 50, int $completio
 }
 
 it('parses a valid AI response and returns structured review data', function (): void {
-    $context = buildTestContext();
-    $context['policy_snapshot'] = [
-        'severity_thresholds' => ['comment' => 'medium', 'block' => 'critical'],
-        'enabled_rules' => ['security', 'maintainability'],
+    $context = [
+        'policy_snapshot' => [
+            'severity_thresholds' => ['comment' => 'medium', 'block' => 'critical'],
+            'enabled_rules' => ['security', 'maintainability'],
+        ],
+        'context_bag' => new ContextBag(
+            pullRequest: [
+                'number' => 42,
+                'title' => 'Test PR',
+                'body' => null,
+                'base_branch' => 'main',
+                'head_branch' => 'feature',
+                'head_sha' => 'abc123',
+                'sender_login' => 'user',
+                'repository_full_name' => 'org/repo',
+            ],
+            files: [
+                ['filename' => 'src/Test.php', 'status' => 'modified', 'additions' => 10, 'deletions' => 2, 'changes' => 12, 'patch' => null],
+            ],
+            metrics: ['files_changed' => 1, 'lines_added' => 10, 'lines_deleted' => 2],
+        ),
     ];
-    $context['pull_request']['number'] = 42;
-    $context['files'] = [
-        ['filename' => 'src/Test.php', 'additions' => 10, 'deletions' => 2, 'changes' => 12],
-    ];
-    $context['metrics'] = ['files_changed' => 1, 'lines_added' => 10, 'lines_deleted' => 2];
 
     $jsonResponse = json_encode([
         'summary' => [

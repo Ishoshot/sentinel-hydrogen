@@ -12,7 +12,8 @@ use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\RepositorySettings;
 use App\Models\Run;
-use App\Services\Reviews\Contracts\PullRequestDataResolver;
+use App\Services\Context\ContextBag;
+use App\Services\Context\Contracts\ContextEngineContract;
 use App\Services\Reviews\Contracts\ReviewEngine;
 use Illuminate\Support\Facades\Queue;
 
@@ -53,8 +54,8 @@ it('executes a review run and stores findings', function (): void {
         ],
     ]);
 
-    $pullRequestPayload = [
-        'pull_request' => [
+    $contextBag = new ContextBag(
+        pullRequest: [
             'number' => 42,
             'title' => 'Test PR',
             'body' => 'Test body',
@@ -64,20 +65,22 @@ it('executes a review run and stores findings', function (): void {
             'sender_login' => 'octocat',
             'repository_full_name' => 'org/repo',
         ],
-        'files' => [
+        files: [
             [
                 'filename' => 'app/Services/Example.php',
+                'status' => 'modified',
                 'additions' => 10,
                 'deletions' => 2,
                 'changes' => 12,
+                'patch' => '@@ -1,5 +1,15 @@\n+// Added code',
             ],
         ],
-        'metrics' => [
+        metrics: [
             'files_changed' => 1,
             'lines_added' => 10,
             'lines_deleted' => 2,
         ],
-    ];
+    );
 
     $reviewResult = [
         'summary' => [
@@ -109,11 +112,11 @@ it('executes a review run and stores findings', function (): void {
         ],
     ];
 
-    mock(PullRequestDataResolver::class)
-        ->shouldReceive('resolve')
+    mock(ContextEngineContract::class)
+        ->shouldReceive('build')
         ->once()
         ->withAnyArgs()
-        ->andReturn($pullRequestPayload);
+        ->andReturn($contextBag);
 
     mock(ReviewEngine::class)
         ->shouldReceive('review')
