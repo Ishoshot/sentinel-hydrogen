@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Auth\OAuthController;
+use App\Http\Controllers\GitHub\ConnectionController;
+use App\Http\Controllers\GitHub\RepositoryController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\TeamMemberController;
 use App\Http\Controllers\WorkspaceController;
@@ -44,5 +47,21 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::get('/invitations', [InvitationController::class, 'index'])->name('invitations.index');
             Route::post('/invitations', [InvitationController::class, 'store'])->name('invitations.store');
             Route::delete('/invitations/{invitation}', [InvitationController::class, 'destroy'])->name('invitations.destroy');
+
+            // GitHub Integration
+            Route::get('/github/connection', [ConnectionController::class, 'show'])->name('github.connection.show');
+            Route::post('/github/connect', [ConnectionController::class, 'store'])->name('github.connection.store');
+            Route::delete('/github/disconnect', [ConnectionController::class, 'destroy'])->name('github.connection.destroy');
+
+            Route::get('/repositories', [RepositoryController::class, 'index'])->name('repositories.index');
+            Route::post('/repositories/sync', [RepositoryController::class, 'sync'])->name('repositories.sync');
+            Route::get('/repositories/{repository}', [RepositoryController::class, 'show'])->name('repositories.show');
+            Route::patch('/repositories/{repository}', [RepositoryController::class, 'update'])->name('repositories.update');
+
+            // Activities
+            Route::get('/activities', [ActivityController::class, 'index'])->name('activities.index');
         });
+
+    // GitHub callback (needs auth but no workspace context)
+    Route::get('/github/callback', [ConnectionController::class, 'callback'])->name('github.callback');
 });

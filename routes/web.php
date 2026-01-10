@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\OAuthProvider;
 use App\Http\Controllers\Auth\OAuthController;
+use App\Http\Controllers\Webhooks\GitHubWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,8 +19,22 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/auth/{provider}/redirect', [OAuthController::class, 'redirect'])
     ->name('auth.redirect')
-    ->whereIn('provider', ['github', 'google']);
+    ->whereIn('provider', OAuthProvider::values());
 
 Route::get('/auth/{provider}/callback', [OAuthController::class, 'callback'])
     ->name('auth.callback')
-    ->whereIn('provider', ['github', 'google']);
+    ->whereIn('provider', OAuthProvider::values());
+
+/*
+|--------------------------------------------------------------------------
+| Webhook Routes
+|--------------------------------------------------------------------------
+|
+| Webhook endpoints for external services. These routes bypass CSRF
+| verification as they receive callbacks from third-party services.
+|
+*/
+
+Route::post('/webhooks/github', [GitHubWebhookController::class, 'handle'])
+    ->name('webhooks.github')
+    ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
