@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews;
 
-use App\Models\Repository;
-use App\Models\Run;
+use App\Services\Context\ContextBag;
 use App\Services\Reviews\Contracts\ReviewEngine;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
@@ -38,9 +37,9 @@ final readonly class PrismReviewEngine implements ReviewEngine
     public function __construct(private ReviewPromptBuilder $promptBuilder) {}
 
     /**
-     * Perform AI-powered code review.
+     * Perform AI-powered code review using ContextBag.
      *
-     * @param  array{run: Run, repository: Repository, policy_snapshot: array<string, mixed>, pull_request: array{number: int, title: string, body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, repository_full_name: string}, files: array<int, array{filename: string, additions: int, deletions: int, changes: int}>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int}}  $context
+     * @param  array{policy_snapshot: array<string, mixed>, context_bag: ContextBag}  $context
      * @return array{summary: array{overview: string, risk_level: string, recommendations: array<int, string>}, findings: array<int, array{severity: string, category: string, title: string, description: string, rationale: string, confidence: float, file_path?: string, line_start?: int, line_end?: int, suggestion?: string, patch?: string, references?: array<int, string>, tags?: array<int, string>}>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
      */
     public function review(array $context): array
@@ -51,7 +50,10 @@ final readonly class PrismReviewEngine implements ReviewEngine
         $model = $this->resolveModel();
 
         $systemPrompt = $this->promptBuilder->buildSystemPrompt($context['policy_snapshot']);
-        $userPrompt = $this->promptBuilder->buildUserPrompt($context);
+
+        $bag = $context['context_bag'];
+        $userPrompt = $this->promptBuilder->buildUserPromptFromBag($bag);
+        $inputMetrics = $bag->metrics;
 
         $response = Prism::text()
             ->using($provider, $model)
@@ -63,7 +65,14 @@ final readonly class PrismReviewEngine implements ReviewEngine
 
         $durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
-        return $this->parseResponse($response, $context['metrics'], $model, $provider->value, $durationMs);
+        /** @var array{files_changed: int, lines_added: int, lines_deleted: int} $metricsForParsing */
+        $metricsForParsing = [
+            'files_changed' => $inputMetrics['files_changed'] ?? 0,
+            'lines_added' => $inputMetrics['lines_added'] ?? 0,
+            'lines_deleted' => $inputMetrics['lines_deleted'] ?? 0,
+        ];
+
+        return $this->parseResponse($response, $metricsForParsing, $model, $provider->value, $durationMs);
     }
 
     /**
