@@ -8,6 +8,7 @@ use App\Services\Reviews\Contracts\PullRequestDataResolver;
 use App\Services\Reviews\Contracts\ReviewEngine;
 use App\Services\Reviews\DefaultReviewEngine;
 use App\Services\Reviews\GitHubPullRequestDataResolver;
+use App\Services\Reviews\PrismReviewEngine;
 use Illuminate\Support\ServiceProvider;
 
 final class AppServiceProvider extends ServiceProvider
@@ -18,7 +19,17 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(PullRequestDataResolver::class, GitHubPullRequestDataResolver::class);
-        $this->app->bind(ReviewEngine::class, DefaultReviewEngine::class);
+
+        $this->app->bind(ReviewEngine::class, function (): ReviewEngine {
+            $anthropicKey = config('prism.providers.anthropic.api_key', '');
+            $openAiKey = config('prism.providers.openai.api_key', '');
+
+            if ($anthropicKey !== '' || $openAiKey !== '') {
+                return app(PrismReviewEngine::class);
+            }
+
+            return app(DefaultReviewEngine::class);
+        });
     }
 
     /**
