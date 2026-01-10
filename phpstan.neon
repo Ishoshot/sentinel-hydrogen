@@ -12,3 +12,12 @@ parameters:
         - bootstrap
         - database/factories
         - routes
+
+    ignoreErrors:
+        # JsonResource @mixin types are not properly resolved by PHPStan
+        - '#Cannot access property \$value on string#'
+        - '#Cannot call method label\(\) on string#'
+        - '#Cannot call method icon\(\) on string#'
+        - '#Cannot call method toISOString\(\) on string#'
+        - '#Strict comparison using === between string and .+ will always evaluate to false#'
+        - '#Method .+::isActive\(\) never returns true#'
