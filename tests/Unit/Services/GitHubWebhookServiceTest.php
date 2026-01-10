@@ -132,8 +132,24 @@ it('parses pull request payload', function (): void {
             'number' => 42,
             'title' => 'Add new feature',
             'body' => 'This PR adds a new feature',
+            'draft' => false,
+            'user' => [
+                'login' => 'pr-author',
+                'avatar_url' => 'https://example.com/author-avatar.png',
+            ],
             'base' => ['ref' => 'main'],
             'head' => ['ref' => 'feature-branch', 'sha' => 'abc123def'],
+            'assignees' => [
+                ['login' => 'assignee1', 'avatar_url' => 'https://example.com/a1.png'],
+            ],
+            'requested_reviewers' => [
+                ['login' => 'reviewer1', 'avatar_url' => 'https://example.com/r1.png'],
+                ['login' => 'reviewer2', 'avatar_url' => 'https://example.com/r2.png'],
+            ],
+            'labels' => [
+                ['name' => 'enhancement', 'color' => '84b6eb'],
+                ['name' => 'needs-review', 'color' => 'fbca04'],
+            ],
         ],
         'sender' => ['login' => 'contributor'],
     ];
@@ -151,6 +167,17 @@ it('parses pull request payload', function (): void {
     expect($result['head_branch'])->toBe('feature-branch');
     expect($result['head_sha'])->toBe('abc123def');
     expect($result['sender_login'])->toBe('contributor');
+    expect($result['is_draft'])->toBeFalse();
+    expect($result['author'])->toBe([
+        'login' => 'pr-author',
+        'avatar_url' => 'https://example.com/author-avatar.png',
+    ]);
+    expect($result['assignees'])->toHaveCount(1);
+    expect($result['assignees'][0]['login'])->toBe('assignee1');
+    expect($result['reviewers'])->toHaveCount(2);
+    expect($result['reviewers'][0]['login'])->toBe('reviewer1');
+    expect($result['labels'])->toHaveCount(2);
+    expect($result['labels'][0]['name'])->toBe('enhancement');
 });
 
 it('determines if action should trigger review', function (): void {
@@ -163,4 +190,24 @@ it('determines if action should trigger review', function (): void {
     expect($service->shouldTriggerReview('closed'))->toBeFalse();
     expect($service->shouldTriggerReview('labeled'))->toBeFalse();
     expect($service->shouldTriggerReview('assigned'))->toBeFalse();
+});
+
+it('determines if action should sync metadata', function (): void {
+    $service = new GitHubWebhookService;
+
+    // Actions that should sync metadata
+    expect($service->shouldSyncMetadata('labeled'))->toBeTrue();
+    expect($service->shouldSyncMetadata('unlabeled'))->toBeTrue();
+    expect($service->shouldSyncMetadata('assigned'))->toBeTrue();
+    expect($service->shouldSyncMetadata('unassigned'))->toBeTrue();
+    expect($service->shouldSyncMetadata('review_requested'))->toBeTrue();
+    expect($service->shouldSyncMetadata('review_request_removed'))->toBeTrue();
+    expect($service->shouldSyncMetadata('converted_to_draft'))->toBeTrue();
+    expect($service->shouldSyncMetadata('ready_for_review'))->toBeTrue();
+
+    // Actions that should NOT sync metadata
+    expect($service->shouldSyncMetadata('opened'))->toBeFalse();
+    expect($service->shouldSyncMetadata('synchronize'))->toBeFalse();
+    expect($service->shouldSyncMetadata('closed'))->toBeFalse();
+    expect($service->shouldSyncMetadata('merged'))->toBeFalse();
 });
