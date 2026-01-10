@@ -127,7 +127,7 @@
 - [ ] Review trigger configuration (deferred to Phase 4)
 
 ### Phase 4: Review System Core
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 - [x] Run creation from webhook events
 - [x] Finding and annotation storage (schema + models)
@@ -136,8 +136,9 @@
 - [x] Policy resolution (default + repository-specific rules)
 - [x] GitHub PR data resolution (files, metrics)
 - [x] Finding generation and storage
-- [ ] AI provider routing (PrismPHP integration)
-- [ ] Annotation posting to GitHub
+- [x] AI provider routing (PrismPHP integration)
+- [x] Annotation posting to GitHub
+- [x] Activity logging for review events
 
 ### Phase 5: Plans & Billing
 **Status: NOT STARTED**
@@ -273,7 +274,7 @@ activities (id, workspace_id, actor_id, type, subject_type, subject_id, descript
 - `App\Enums\ConnectionStatus` - Pending, Active, Disconnected, Failed
 - `App\Enums\InstallationStatus` - Active, Suspended, Deleted
 - `App\Enums\GitHubWebhookEvent` - Installation, InstallationRepositories, Push, PullRequest
-- `App\Enums\ActivityType` - WorkspaceCreated, WorkspaceUpdated, WorkspaceDeleted, MemberInvited, MemberJoined, MemberRemoved, MemberRoleUpdated, GitHubConnected, GitHubDisconnected, RepositoriesSynced, RepositorySettingsUpdated
+- `App\Enums\ActivityType` - WorkspaceCreated, WorkspaceUpdated, WorkspaceDeleted, MemberInvited, MemberJoined, MemberRemoved, MemberRoleUpdated, GitHubConnected, GitHubDisconnected, RepositoriesSynced, RepositorySettingsUpdated, RunCreated, RunCompleted, RunFailed, AnnotationsPosted
 
 #### Models
 - `App\Models\Provider` - type, name, is_active, settings
@@ -339,7 +340,7 @@ POST   /api/webhooks/github                            - GitHub webhook handler
 - `tests/Feature/Activities/ActivityLogTest.php`
 - Architecture tests for enums, exceptions, etc.
 
-### Review System Core (Phase 4 - In Progress)
+### Review System Core (Phase 4 - Complete)
 
 #### Database Tables Created
 ```
@@ -350,6 +351,7 @@ annotations (id, finding_id, workspace_id, provider_id, external_id, type, creat
 
 #### Enums
 - `App\Enums\RunStatus` - Queued, InProgress, Completed, Failed, Skipped
+- `App\Enums\AnnotationType` - Inline, Summary
 
 #### Models
 - `App\Models\Run` - workspace, repository, findings
@@ -357,21 +359,49 @@ annotations (id, finding_id, workspace_id, provider_id, external_id, type, creat
 - `App\Models\Annotation` - finding, workspace, provider
 
 #### Actions
-- `App\Actions\Reviews\CreatePullRequestRun` - Creates/ensures Runs for pull request webhooks
-- `App\Actions\Reviews\ExecuteReviewRun` - Orchestrates review execution pipeline
+- `App\Actions\Reviews\CreatePullRequestRun` - Creates/ensures Runs for pull request webhooks (includes activity logging)
+- `App\Actions\Reviews\ExecuteReviewRun` - Orchestrates review execution pipeline (includes activity logging + annotation job dispatch)
+- `App\Actions\Reviews\PostRunAnnotations` - Posts findings to GitHub as PR review comments
 
 #### Jobs
 - `App\Jobs\Reviews\ExecuteReviewRun` - Queued job that dispatches review execution
+- `App\Jobs\Reviews\PostRunAnnotations` - Queued job for posting annotations (idempotent, retryable)
 
 #### Services (Contract-Based Architecture)
 - `App\Services\Reviews\Contracts\ReviewEngine` - Interface for AI review engines (swap implementations)
 - `App\Services\Reviews\Contracts\PullRequestDataResolver` - Interface for fetching PR data
-- `App\Services\Reviews\DefaultReviewEngine` - No-op placeholder (returns empty findings)
+- `App\Services\Reviews\DefaultReviewEngine` - No-op placeholder (returns empty findings, used when no AI key configured)
+- `App\Services\Reviews\PrismReviewEngine` - AI-powered reviews using PrismPHP (Anthropic Claude or OpenAI)
+- `App\Services\Reviews\ReviewPromptBuilder` - Builds system/user prompts for AI engine
 - `App\Services\Reviews\GitHubPullRequestDataResolver` - Fetches PR files from GitHub API
 - `App\Services\Reviews\ReviewPolicyResolver` - Merges default policy with repository rules
 
+#### Prompt Templates
+- `resources/views/prompts/review-system.blade.php` - AI system prompt (persona, JSON output spec)
+- `resources/views/prompts/review-user.blade.php` - AI user prompt (PR details, files)
+
 #### Configuration
 - `config/reviews.php` - Default review policy (enabled_rules, severity_thresholds, comment_limits, ignored_paths)
+- `config/prism.php` - PrismPHP AI provider configuration (Anthropic, OpenAI, etc.)
+
+#### Environment Variables (AI Integration)
+```env
+ANTHROPIC_API_KEY=    # Required for Claude AI reviews
+OPENAI_API_KEY=       # Alternative: Use OpenAI instead
+```
+
+#### Service Binding (AppServiceProvider)
+```php
+// Conditional binding based on API key availability
+$this->app->bind(ReviewEngine::class, function () {
+    $anthropicKey = config('prism.providers.anthropic.api_key', '');
+    $openAiKey = config('prism.providers.openai.api_key', '');
+    if ($anthropicKey !== '' || $openAiKey !== '') {
+        return app(PrismReviewEngine::class);
+    }
+    return app(DefaultReviewEngine::class);
+});
+```
 
 #### Controllers
 - `App\Http\Controllers\RunController` - list runs, show run detail
@@ -390,9 +420,122 @@ GET /api/workspaces/{workspace}/runs/{run}
 #### Policies
 - `RunPolicy` - viewAny, view (workspace membership)
 
+#### Activity Types (Review Events)
+- `RunCreated` - Review queued for PR
+- `RunCompleted` - Review completed with findings
+- `RunFailed` - Review failed with error
+- `AnnotationsPosted` - Annotations posted to GitHub
+
 #### Tests (Phase 4)
 - `tests/Feature/Reviews/RunCreationTest.php` - Run creation from webhooks
 - `tests/Feature/Reviews/ExecuteReviewRunTest.php` - Execution pipeline with mocked services
+- `tests/Feature/Reviews/PrismReviewEngineTest.php` - AI engine response parsing and normalization
+- `tests/Feature/Reviews/PostRunAnnotationsTest.php` - Annotation filtering and posting logic
+
+#### Behavior: PR Webhooks & Run Creation
+
+**Trigger Events**: Review runs are created for pull_request webhook events with actions:
+- `opened` - New PR opened
+- `synchronize` - New commit pushed to existing PR
+- `reopened` - Closed PR reopened
+
+**Run Idempotency**: Each run has a unique `external_reference`:
+```
+github:pull_request:{pr_number}:{head_sha}
+```
+
+Since `head_sha` changes with each commit, **each new commit to a PR creates a new Run**. This provides:
+- Full audit trail of reviews per commit
+- Independent review results for each code state
+- Historical record of findings across PR lifetime
+
+**Future Enhancement**: Consider canceling/skipping pending runs when newer commits arrive to avoid reviewing stale code.
+
+### Infrastructure: Queue System (Redis + Horizon)
+
+#### Overview
+Sentinel uses Redis-backed queues with Laravel Horizon for queue management and monitoring. The system supports tiered queue priorities and includes a rule-based queue resolution system.
+
+#### Queue Enum (`App\Enums\Queue`)
+Central enum defining all valid queue names and their base priorities:
+
+| Queue | Priority | Description |
+|-------|----------|-------------|
+| `system` | 1 | Critical internal tasks |
+| `webhooks` | 5 | External event intake |
+| `reviews-enterprise` | 20 | Enterprise tier reviews |
+| `reviews-paid` | 30 | Paid tier reviews |
+| `reviews-default` | 40 | Free tier reviews |
+| `annotations` | 50 | PR comment posting |
+| `notifications` | 55 | User notifications |
+| `sync` | 70 | Data synchronization |
+| `default` | 80 | General workloads |
+| `long-running` | 90 | Extended operations |
+| `bulk` | 100 | Bulk operations |
+
+Lower priority values = processed first (higher priority).
+
+#### QueueResolver System
+Rule-based queue routing for intelligent job placement.
+
+**Components:**
+- `App\Services\Queue\JobContext` - Immutable value object carrying dispatch signals (tier, importance, duration, etc.)
+- `App\Services\Queue\QueueRuleResult` - Result of rule evaluation (force, boost, penalize, skip)
+- `App\Services\Queue\QueueResolution` - Final resolution with trace and scores
+- `App\Services\Queue\QueueResolver` - Central service applying rules in priority order
+- `App\Services\Queue\Contracts\QueueRule` - Interface for rule implementations
+
+**Rules (in priority order):**
+| Rule | Priority | Effect |
+|------|----------|--------|
+| `SystemJobRule` | 1 | Forces system jobs to `system` queue |
+| `WebhookJobRule` | 5 | Forces webhook jobs to `webhooks` queue |
+| `ReviewJobTierRule` | 20 | Routes reviews by tier (enterprise/paid/free) |
+| `AnnotationJobRule` | 25 | Routes annotation jobs to `annotations` queue |
+| `LongRunningJobRule` | 80 | Routes long jobs to `long-running` or `bulk` |
+
+**Usage in Jobs:**
+```php
+use App\Enums\Queue;
+
+public function __construct(public int $runId, ?Queue $queue = null)
+{
+    $this->onQueue(($queue ?? Queue::ReviewsDefault)->value);
+}
+```
+
+#### Horizon Configuration
+Four supervisors aligned to workload types:
+
+| Supervisor | Queues | Max Workers | Purpose |
+|------------|--------|-------------|---------|
+| `supervisor-critical` | system, webhooks | 3 | Critical & time-sensitive |
+| `supervisor-reviews` | reviews-enterprise, reviews-paid, reviews-default | 5 | AI review execution |
+| `supervisor-default` | annotations, notifications, sync, default | 3 | General workloads |
+| `supervisor-background` | long-running, bulk | 2 | Extended operations |
+
+#### Horizon Dashboard Access
+Dashboard (`/horizon`) restricted to authorized email in non-production:
+```php
+Gate::define('viewHorizon', function (?User $user = null): bool {
+    return $user !== null && in_array($user->email, ['ishoshot@gmail.com'], true);
+});
+```
+
+#### Environment Variables
+```env
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+```
+
+#### Service Provider
+`App\Providers\QueueServiceProvider` - Registers QueueResolver as singleton with all rules. Implements `DeferrableProvider` for performance.
+
+#### Tests
+- `tests/Feature/Queue/QueueResolverTest.php` - 23 tests covering Queue enum, JobContext, QueueRuleResult, and QueueResolver behavior
 
 ---
 
@@ -475,18 +618,14 @@ These documents contain:
 
 ## Next Implementation Steps
 
-1. **Review System Core (Phase 4) - Remaining**
-   - Integrate PrismPHP for AI-powered reviews (swap `DefaultReviewEngine` implementation)
-   - Post annotations to GitHub as PR comments
-   - Add activity logging for review events
-
-2. **Plans & Billing (Phase 5)**
+1. **Plans & Billing (Phase 5)**
    - Create Plan model with limits
    - Implement subscription management
    - Add usage metering
    - Build limit enforcement
+   - BYOK provider key management
 
-3. **Dashboards & Analytics (Phase 6)**
+2. **Dashboards & Analytics (Phase 6)**
    - Workspace dashboard
    - Repository-level metrics
    - Finding trends
@@ -502,5 +641,6 @@ For setting up OAuth and GitHub App credentials, see:
 ---
 
 *Last Updated: 2026-01-10*
-*Phases Completed: Identity & Workspace Foundation, Source Control Integration (GitHub)*
-*Phase In Progress: Review System Core (execution pipeline complete, AI integration pending)*
+*Phases Completed: Identity & Workspace Foundation, Source Control Integration (GitHub), Review System Core*
+*Infrastructure: Queue System (Redis + Horizon)*
+*Next Phase: Plans & Billing (Phase 5)*
