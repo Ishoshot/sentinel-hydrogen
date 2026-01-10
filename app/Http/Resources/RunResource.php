@@ -26,10 +26,41 @@ final class RunResource extends JsonResource
             'completed_at' => $this->completed_at?->toISOString(),
             'metrics' => $this->metrics,
             'policy_snapshot' => $this->policy_snapshot,
-            'metadata' => $this->metadata,
+            'pull_request' => $this->formatPullRequest(),
             'repository' => new RepositoryResource($this->whenLoaded('repository')),
             'findings' => FindingResource::collection($this->whenLoaded('findings')),
             'created_at' => $this->created_at->toISOString(),
+        ];
+    }
+
+    /**
+     * Format the pull request data from metadata.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function formatPullRequest(): ?array
+    {
+        $metadata = $this->metadata;
+
+        if (! is_array($metadata) || ! isset($metadata['pull_request_number'])) {
+            return null;
+        }
+
+        return [
+            'number' => $metadata['pull_request_number'],
+            'title' => $metadata['pull_request_title'] ?? null,
+            'body' => $metadata['pull_request_body'] ?? null,
+            'base_branch' => $metadata['base_branch'] ?? null,
+            'head_branch' => $metadata['head_branch'] ?? null,
+            'head_sha' => $metadata['head_sha'] ?? null,
+            'is_draft' => $metadata['is_draft'] ?? false,
+            'author' => $metadata['author'] ?? [
+                'login' => $metadata['sender_login'] ?? null,
+                'avatar_url' => null,
+            ],
+            'assignees' => $metadata['assignees'] ?? [],
+            'reviewers' => $metadata['reviewers'] ?? [],
+            'labels' => $metadata['labels'] ?? [],
         ];
     }
 }
