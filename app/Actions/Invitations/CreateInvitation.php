@@ -10,6 +10,8 @@ use App\Enums\TeamRole;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Notifications\InvitationSentNotification;
+use Illuminate\Support\Facades\Notification;
 use InvalidArgumentException;
 
 final readonly class CreateInvitation
@@ -76,6 +78,27 @@ final readonly class CreateInvitation
             metadata: ['email' => $email, 'role' => $role->value],
         );
 
+        // Send notification to invitee
+        $this->sendInvitationNotification($invitation, $email);
+
         return $invitation;
+    }
+
+    /**
+     * Send the invitation notification to the invitee.
+     */
+    private function sendInvitationNotification(Invitation $invitation, string $email): void
+    {
+        // Check if invitee has an existing account
+        $existingUser = User::where('email', $email)->first();
+
+        if ($existingUser !== null) {
+            // User exists - send both email and DB notification
+            $existingUser->notify(new InvitationSentNotification($invitation));
+        } else {
+            // No account yet - send email only (on-demand notification)
+            Notification::route('mail', $email)
+                ->notify(new InvitationSentNotification($invitation));
+        }
     }
 }
