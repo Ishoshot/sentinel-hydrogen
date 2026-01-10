@@ -14,7 +14,7 @@ final class CancelInvitation
      *
      * @throws InvalidArgumentException
      */
-    public function execute(Invitation $invitation): void
+    public function handle(Invitation $invitation): void
     {
         if ($invitation->isAccepted()) {
             throw new InvalidArgumentException('Cannot cancel an accepted invitation.');

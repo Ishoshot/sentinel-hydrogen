@@ -4,20 +4,29 @@ declare(strict_types=1);
 
 namespace App\Actions\Invitations;
 
+use App\Actions\Activities\LogActivity;
+use App\Enums\ActivityType;
 use App\Models\Invitation;
 use App\Models\TeamMember;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
-final class AcceptInvitation
+final readonly class AcceptInvitation
 {
+    /**
+     * Create a new action instance.
+     */
+    public function __construct(
+        private LogActivity $logActivity,
+    ) {}
+
     /**
      * Accept an invitation and create the team membership.
      *
      * @throws InvalidArgumentException
      */
-    public function execute(Invitation $invitation, User $user): TeamMember
+    public function handle(Invitation $invitation, User $user): TeamMember
     {
         if ($invitation->isExpired()) {
             throw new InvalidArgumentException('This invitation has expired.');
@@ -41,7 +50,7 @@ final class AcceptInvitation
             throw new InvalidArgumentException('You are already a member of this workspace.');
         }
 
-        return DB::transaction(function () use ($invitation, $user): TeamMember {
+        return DB::transaction(function () use ($invitation, $user, $workspace): TeamMember {
             $member = TeamMember::create([
                 'user_id' => $user->id,
                 'team_id' => $invitation->team_id,
@@ -51,6 +60,15 @@ final class AcceptInvitation
             ]);
 
             $invitation->markAsAccepted();
+
+            $this->logActivity->handle(
+                workspace: $workspace,
+                type: ActivityType::MemberJoined,
+                description: sprintf('%s joined the workspace as %s', $user->name, $invitation->role->label()),
+                actor: $user,
+                subject: $member,
+                metadata: ['role' => $invitation->role->value],
+            );
 
             return $member;
         });
