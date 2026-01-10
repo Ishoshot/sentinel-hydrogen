@@ -432,6 +432,122 @@ GET /api/workspaces/{workspace}/runs/{run}
 - `tests/Feature/Reviews/PrismReviewEngineTest.php` - AI engine response parsing and normalization
 - `tests/Feature/Reviews/PostRunAnnotationsTest.php` - Annotation filtering and posting logic
 
+### Context Engine (Phase 4.5 - Complete)
+
+The Context Engine provides intelligent context gathering for AI reviews. It replaces "blind reviews" (where the AI only saw file names) with rich context including actual code diffs, linked issues, PR discussions, and repository documentation.
+
+#### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         CONTEXT ENGINE                                   │
+│                                                                          │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐              │
+│  │  COLLECTORS  │ →  │   FILTERS    │ →  │  ASSEMBLER   │ → Context    │
+│  │  (gather)    │    │  (refine)    │    │  (build)     │              │
+│  └──────────────┘    └──────────────┘    └──────────────┘              │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Contracts
+- `App\Services\Context\Contracts\ContextCollector` - Interface for collectors
+- `App\Services\Context\Contracts\ContextFilter` - Interface for filters
+- `App\Services\Context\Contracts\ContextEngineContract` - Interface for engine
+
+#### Context Collectors (by priority, highest first)
+| Collector | Priority | Source | Data |
+|-----------|----------|--------|------|
+| `DiffCollector` | 100 | GitHub API | File patches/diffs |
+| `LinkedIssueCollector` | 80 | GitHub API | Issues linked via "Fixes #123" patterns |
+| `PullRequestCommentCollector` | 70 | GitHub API | PR discussion comments |
+| `ReviewHistoryCollector` | 60 | Database | Previous Sentinel reviews on same PR |
+| `RepositoryContextCollector` | 50 | GitHub API | README.md, CONTRIBUTING.md |
+
+#### Context Filters (by order, lowest first)
+| Filter | Order | Purpose |
+|--------|-------|---------|
+| `VendorPathFilter` | 10 | Remove vendor/, node_modules/, etc. |
+| `BinaryFileFilter` | 20 | Skip binary files, images, fonts |
+| `SensitiveDataFilter` | 30 | Redact API keys, secrets, .env files |
+| `RelevanceFilter` | 40 | Prioritize important files (app/ > docs/) |
+| `TokenLimitFilter` | 100 | Enforce ~80,000 token budget |
+
+#### ContextBag DTO
+```php
+final class ContextBag {
+    public array $pullRequest = [];      // PR metadata
+    public array $files = [];            // Files with patches
+    public array $metrics = [];          // Change statistics
+    public array $linkedIssues = [];     // Referenced issues
+    public array $prComments = [];       // PR discussion
+    public array $repositoryContext = []; // README, CONTRIBUTING
+    public array $reviewHistory = [];    // Previous Sentinel reviews
+    public array $metadata = [];         // Additional data
+}
+```
+
+#### Token Budget Strategy
+```
+Total Budget: ~100,000 tokens (Claude 3.5 Sonnet)
+Reserved for Response: ~10,000 tokens
+Available for Context: ~90,000 tokens
+
+Priority Allocation:
+1. System Prompt          ~2,000 tokens
+2. PR Metadata            ~500 tokens
+3. Code Diffs (HIGH)      ~60,000 tokens  ← Most important
+4. Linked Issues (MED)    ~15,000 tokens
+5. PR Comments (MED)      ~10,000 tokens
+6. Repo Context (LOW)     ~2,500 tokens
+```
+
+#### Service Provider Registration
+```php
+// AppServiceProvider.php
+$this->app->singleton(ContextEngine::class, function (): ContextEngine {
+    $engine = new ContextEngine();
+
+    // Collectors (highest priority first)
+    $engine->registerCollector(app(DiffCollector::class));              // 100
+    $engine->registerCollector(app(LinkedIssueCollector::class));       // 80
+    $engine->registerCollector(app(PullRequestCommentCollector::class)); // 70
+    $engine->registerCollector(app(ReviewHistoryCollector::class));     // 60
+    $engine->registerCollector(app(RepositoryContextCollector::class)); // 50
+
+    // Filters (lowest order first)
+    $engine->registerFilter(app(VendorPathFilter::class));   // 10
+    $engine->registerFilter(app(BinaryFileFilter::class));   // 20
+    $engine->registerFilter(app(SensitiveDataFilter::class)); // 30
+    $engine->registerFilter(app(RelevanceFilter::class));    // 40
+    $engine->registerFilter(app(TokenLimitFilter::class));   // 100
+
+    return $engine;
+});
+```
+
+#### Sensitive Data Patterns Redacted
+- API keys (`api_key=xxx`)
+- AWS access keys (`AKIA...`)
+- GitHub tokens (`ghp_xxx`, `gho_xxx`)
+- JWT tokens (`eyJ...`)
+- Stripe keys (`sk_live_xxx`, `pk_live_xxx`)
+- Private keys (`-----BEGIN RSA PRIVATE KEY-----`)
+- Generic secrets (`password=xxx`, `secret=xxx`)
+- Entire `.env` family files
+
+#### Tests (Context Engine)
+- `tests/Feature/Context/ContextEngineTest.php` - Engine orchestration
+- `tests/Feature/Context/DiffCollectorTest.php` - Diff collection
+- `tests/Feature/Context/LinkedIssueCollectorTest.php` - Issue parsing
+- `tests/Feature/Context/PullRequestCommentCollectorTest.php` - Comment collection
+- `tests/Feature/Context/ReviewHistoryCollectorTest.php` - History lookup
+- `tests/Feature/Context/RepositoryContextCollectorTest.php` - README/CONTRIBUTING fetch
+- `tests/Feature/Context/VendorPathFilterTest.php` - Path filtering
+- `tests/Feature/Context/BinaryFileFilterTest.php` - Binary detection
+- `tests/Feature/Context/SensitiveDataFilterTest.php` - Secret redaction
+- `tests/Feature/Context/RelevanceFilterTest.php` - File prioritization
+- `tests/Feature/Context/TokenLimitFilterTest.php` - Token budget enforcement
+
 #### Behavior: PR Webhooks & Run Creation
 
 **Trigger Events**: Review runs are created for pull_request webhook events with actions:
@@ -618,18 +734,150 @@ These documents contain:
 
 ## Next Implementation Steps
 
-1. **Plans & Billing (Phase 5)**
+1. **Repository Configuration (Phase 5)** ← NEXT
+
+   Enable per-repository configuration via `.sentinel/config.yaml` file. Teams can customize Sentinel's behavior directly in their codebase.
+
+   ### Configuration Schema (v1)
+   ```yaml
+   version: 1
+
+   triggers:
+     target_branches: [main, develop, "release/*"]  # Which branches trigger reviews
+     skip_source_branches: ["dependabot/*"]         # Skip PRs from these branches
+     skip:                                          # Skip specific combinations
+       - from: dev
+         to: main
+     skip_labels: [skip-review, wip]                # Skip PRs with these labels
+     skip_authors: ["dependabot[bot]"]              # Skip PRs by these authors
+
+   paths:
+     ignore: ["*.lock", "docs/**"]                  # Files to completely ignore
+     include: ["app/**", "src/**"]                  # Allowlist mode (optional)
+     sensitive: ["**/auth/**"]                      # Extra scrutiny paths
+
+   review:
+     min_severity: low                              # Threshold: info|low|medium|high|critical
+     max_findings: 25                               # Limit per review (0 = unlimited)
+     categories:                                    # Enable/disable categories
+       security: true
+       correctness: true
+       performance: true
+       maintainability: true
+       style: false
+     tone: constructive                             # strict|constructive|educational|concise
+     language: en                                   # Response language (ISO 639-1)
+     focus:                                         # Priority areas for this codebase
+       - "SQL injection prevention"
+       - "Laravel best practices"
+
+   guidelines:                                      # Custom team rules (.md, .mdx, .blade.php)
+     - path: docs/CODING_STANDARDS.md
+       description: "Team coding conventions"
+     - path: docs/ARCHITECTURE.md
+       description: "System architecture"
+
+   annotations:
+     style: review                                  # review|comment|check_run
+     post_threshold: medium                         # Min severity to post
+     grouped: true                                  # Group findings or individual
+     include_suggestions: true                      # Include code suggestions
+   ```
+
+   ### Implementation Tasks
+
+   **Phase A: Core Infrastructure**
+   - Create `SentinelConfig` DTO (strongly-typed value object)
+   - Create `SentinelConfigSchema` (JSON Schema for validation)
+   - Create `SentinelConfigParser` service (YAML → DTO with validation)
+   - Migration: Add `sentinel_config`, `config_synced_at`, `config_error` to `repository_settings`
+
+   **Phase B: Config Sync**
+   - Create `FetchSentinelConfig` action (fetch from GitHub API)
+   - Create `SyncRepositorySentinelConfig` action (parse + validate + store)
+   - Hook into repository sync flow
+   - Webhook handler: Re-sync on push to default branch
+   - Caching strategy for performance
+
+   **Phase C: Error Handling**
+   - On invalid YAML: Skip review entirely
+   - Post GitHub PR comment explaining the error
+   - Create Run with `status: skipped` and error in metadata
+   - Surface errors in frontend (read-only config view)
+
+   **Phase D: Trigger Rules Integration**
+   - Create `TriggerRuleEvaluator` service
+   - Update `CreatePullRequestRun` to check trigger rules
+   - Branch pattern matching (wildcards: `release/*`)
+   - Skip logic with reason logging
+
+   **Phase E: Path Rules Integration**
+   - Create `ConfiguredPathFilter` context filter
+   - Apply ignore patterns before diff collection
+   - Apply include patterns (allowlist mode)
+   - Mark sensitive paths for extra handling
+
+   **Phase F: Review Settings Integration**
+   - Update `ReviewPolicyResolver` to merge with sentinel config
+   - Apply `min_severity` threshold
+   - Apply `max_findings` limit
+   - Apply `categories` filter
+   - Apply `tone` to AI prompt
+   - Apply `focus` areas to prompt
+
+   **Phase G: Guidelines Collector**
+   - Create `GuidelinesCollector` context collector
+   - Fetch referenced files via GitHub API
+   - Validate file types (.md, .mdx, .blade.php only)
+   - Limits: Max 5 files, max 50KB per file
+   - Add to AI review context
+
+   **Phase H: Frontend Display**
+   - Add `sentinel_config` to `RepositoryResource`
+   - Show sync status and last synced time
+   - Display validation errors if any
+   - Read-only config viewer (no editing from UI)
+
+   **Phase I: Documentation**
+   - Create `.sentinel/config.example.yaml` template with ALL options
+   - Add documentation in `docs/SENTINEL_CONFIG.md`
+   - User guide for configuration options
+
+2. **Plans & Billing (Phase 6)**
    - Create Plan model with limits
    - Implement subscription management
    - Add usage metering
    - Build limit enforcement
    - BYOK provider key management
 
-2. **Dashboards & Analytics (Phase 6)**
+3. **Dashboards & Analytics (Phase 7)**
    - Workspace dashboard
    - Repository-level metrics
    - Finding trends
    - Usage reports
+
+## Future Enhancements (Backlog)
+
+### Context Display for Frontend
+Currently, the Context Engine feeds data to the AI but doesn't expose it to the frontend. Future enhancement:
+- Store collected context in Run's metadata field
+- Add `context` field to RunResource API response
+- Frontend UI to display:
+  - Linked issues with their details
+  - Previous review history
+  - Repository guidelines (README/CONTRIBUTING)
+  - PR discussion context
+
+### Additional Context Collectors
+- `CIStatusCollector` - Include CI/CD status in context
+- `SecurityScanCollector` - Include SAST results
+- `DependencyCollector` - Flag dependency updates
+- `TestCoverageCollector` - Include coverage reports
+
+### Review Execution Improvements
+- Cancel/skip pending runs when newer commits arrive
+- Rate limiting for rapid PR updates
+- Webhook retry handling
 
 ---
 
@@ -641,6 +889,6 @@ For setting up OAuth and GitHub App credentials, see:
 ---
 
 *Last Updated: 2026-01-10*
-*Phases Completed: Identity & Workspace Foundation, Source Control Integration (GitHub), Review System Core*
+*Phases Completed: Identity & Workspace Foundation, Source Control Integration (GitHub), Review System Core, Context Engine*
 *Infrastructure: Queue System (Redis + Horizon)*
-*Next Phase: Plans & Billing (Phase 5)*
+*Next Phase: Repository Configuration (Phase 5)*
