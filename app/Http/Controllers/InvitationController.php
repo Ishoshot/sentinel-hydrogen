@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Actions\Invitations\AcceptInvitation;
 use App\Actions\Invitations\CancelInvitation;
 use App\Actions\Invitations\CreateInvitation;
+use App\Actions\Invitations\ResendInvitation;
 use App\Enums\TeamRole;
 use App\Http\Requests\Invitation\CreateInvitationRequest;
 use App\Http\Resources\InvitationResource;
@@ -102,6 +103,33 @@ final class InvitationController
 
         return response()->json([
             'message' => 'Invitation cancelled.',
+        ]);
+    }
+
+    /**
+     * Resend an invitation notification.
+     */
+    public function resend(
+        Workspace $workspace,
+        Invitation $invitation,
+        ResendInvitation $resendInvitation,
+    ): JsonResponse {
+        if ($invitation->workspace_id !== $workspace->id) {
+            abort(404);
+        }
+
+        Gate::authorize('create', [Invitation::class, $workspace]);
+
+        try {
+            $resendInvitation->handle($invitation);
+        } catch (InvalidArgumentException $invalidArgumentException) {
+            return response()->json([
+                'message' => $invalidArgumentException->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Invitation resent successfully.',
         ]);
     }
 
