@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Notifications\InvitationSentNotification;
+use Illuminate\Support\Facades\Notification;
 
 it('can create an invitation as owner', function (): void {
     $owner = User::factory()->create();
@@ -272,4 +274,47 @@ it('can cancel invitation', function (): void {
         ->assertJsonPath('message', 'Invitation cancelled.');
 
     expect(Invitation::find($invitation->id))->toBeNull();
+});
+
+it('sends notification when invitation is created', function (): void {
+    Notification::fake();
+
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $owner->id]);
+    $workspace->teamMembers()->create([
+        'user_id' => $owner->id,
+        'team_id' => $workspace->team->id,
+        'role' => 'owner',
+        'joined_at' => now(),
+    ]);
+
+    $this->actingAs($owner, 'sanctum')
+        ->postJson(route('invitations.store', $workspace), [
+            'email' => 'newuser@example.com',
+            'role' => 'member',
+        ]);
+
+    Notification::assertSentOnDemand(InvitationSentNotification::class);
+});
+
+it('sends db notification to existing user when invited', function (): void {
+    Notification::fake();
+
+    $owner = User::factory()->create();
+    $existingUser = User::factory()->create(['email' => 'existing@example.com']);
+    $workspace = Workspace::factory()->create(['owner_id' => $owner->id]);
+    $workspace->teamMembers()->create([
+        'user_id' => $owner->id,
+        'team_id' => $workspace->team->id,
+        'role' => 'owner',
+        'joined_at' => now(),
+    ]);
+
+    $this->actingAs($owner, 'sanctum')
+        ->postJson(route('invitations.store', $workspace), [
+            'email' => 'existing@example.com',
+            'role' => 'member',
+        ]);
+
+    Notification::assertSentTo($existingUser, InvitationSentNotification::class);
 });
