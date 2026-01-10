@@ -12,6 +12,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property RunStatus $status
+ * @property array<string, mixed>|null $metadata
+ * @property array<string, mixed>|null $metrics
+ * @property array<string, mixed>|null $policy_snapshot
+ */
 final class Run extends Model
 {
     /** @use HasFactory<RunFactory> */
