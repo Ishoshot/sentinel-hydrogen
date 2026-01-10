@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\GitHub\ConnectionController;
 use App\Http\Controllers\GitHub\RepositoryController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TeamMemberController;
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
 use App\Http\Controllers\WorkspaceController;
@@ -43,6 +44,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/user', [OAuthController::class, 'user'])->name('user');
     Route::post('/logout', [OAuthController::class, 'logout'])->name('logout');
 
+    // Notifications
+    Route::prefix('notifications')->group(function (): void {
+        Route::get('/', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/unread', [NotificationController::class, 'unread'])->name('notifications.unread');
+        Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+        Route::post('/{notification}/unread', [NotificationController::class, 'markAsUnread'])->name('notifications.mark-unread');
+    });
+
     Route::get('/workspaces', [WorkspaceController::class, 'index'])->name('workspaces.index');
     Route::post('/workspaces', [WorkspaceController::class, 'store'])->name('workspaces.store');
 
@@ -60,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
             Route::get('/invitations', [InvitationController::class, 'index'])->name('invitations.index');
             Route::post('/invitations', [InvitationController::class, 'store'])->name('invitations.store');
+            Route::post('/invitations/{invitation}/resend', [InvitationController::class, 'resend'])->name('invitations.resend');
             Route::delete('/invitations/{invitation}', [InvitationController::class, 'destroy'])->name('invitations.destroy');
 
             // GitHub Integration
