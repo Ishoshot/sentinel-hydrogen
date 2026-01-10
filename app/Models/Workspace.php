@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 final class Workspace extends Model
 {
@@ -74,6 +75,44 @@ final class Workspace extends Model
     public function invitations(): HasMany
     {
         return $this->hasMany(Invitation::class);
+    }
+
+    /**
+     * @return HasMany<Connection, $this>
+     */
+    public function connections(): HasMany
+    {
+        return $this->hasMany(Connection::class);
+    }
+
+    /**
+     * @return HasOneThrough<Installation, Connection, $this>
+     */
+    public function installation(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            Installation::class,
+            Connection::class,
+            'workspace_id',
+            'connection_id',
+            'id',
+            'id'
+        );
+    }
+
+    /**
+     * @return HasManyThrough<Repository, Installation, $this>
+     */
+    public function repositories(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Repository::class,
+            Installation::class,
+            'workspace_id',
+            'installation_id',
+            'id',
+            'id'
+        );
     }
 
     /**

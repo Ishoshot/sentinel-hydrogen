@@ -19,11 +19,11 @@ final readonly class CreateWorkspaceForNewUser
     /**
      * Create a personal workspace for a new user.
      */
-    public function execute(User $user): Workspace
+    public function handle(User $user): Workspace
     {
         $workspaceName = $this->generateWorkspaceName($user);
 
-        return $this->createWorkspace->execute(
+        return $this->createWorkspace->handle(
             owner: $user,
             name: $workspaceName,
         );

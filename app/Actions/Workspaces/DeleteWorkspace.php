@@ -12,7 +12,7 @@ final class DeleteWorkspace
     /**
      * Delete a workspace and all associated data.
      */
-    public function execute(Workspace $workspace): void
+    public function handle(Workspace $workspace): void
     {
         DB::transaction(function () use ($workspace): void {
             $workspace->delete();

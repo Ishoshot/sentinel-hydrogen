@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Workspaces;
 
+use App\Actions\Activities\LogActivity;
+use App\Enums\ActivityType;
 use App\Enums\TeamRole;
 use App\Models\Team;
 use App\Models\TeamMember;
@@ -12,14 +14,21 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-final class CreateWorkspace
+final readonly class CreateWorkspace
 {
+    /**
+     * Create a new action instance.
+     */
+    public function __construct(
+        private LogActivity $logActivity,
+    ) {}
+
     /**
      * Create a new workspace with its associated team and owner membership.
      *
      * @param  array<string, mixed>|null  $settings
      */
-    public function execute(User $owner, string $name, ?array $settings = null): Workspace
+    public function handle(User $owner, string $name, ?array $settings = null): Workspace
     {
         return DB::transaction(function () use ($owner, $name, $settings): Workspace {
             $workspace = Workspace::create([
@@ -41,6 +50,14 @@ final class CreateWorkspace
                 'role' => TeamRole::Owner,
                 'joined_at' => now(),
             ]);
+
+            $this->logActivity->handle(
+                workspace: $workspace,
+                type: ActivityType::WorkspaceCreated,
+                description: sprintf('Workspace "%s" was created', $name),
+                actor: $owner,
+                subject: $workspace,
+            );
 
             return $workspace->refresh();
         });
