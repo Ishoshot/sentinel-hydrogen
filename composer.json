@@ -74,13 +74,13 @@
             "pest --filter=arch"
         ],
         "test:type-coverage": [
-            "pest --type-coverage --min=100"
+            "pest --memory-limit=1G --type-coverage --min=100"
         ],
         "test:code-coverage": [
             "pest --parallel --coverage --min=100"
         ],
         "test:types": [
-            "phpstan analyse --memory-limit=512M"
+            "phpstan analyse --memory-limit=1G"
         ],
         "test": [
             "@php artisan config:clear --ansi",
