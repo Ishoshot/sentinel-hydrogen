@@ -124,11 +124,11 @@ final class GitHubWebhookService
      * Parse pull request event payload.
      *
      * @param  array<string, mixed>  $payload  The webhook payload
-     * @return array{action: string, installation_id: int, repository_id: int, repository_full_name: string, pull_request_number: int, pull_request_title: string, pull_request_body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string}
+     * @return array{action: string, installation_id: int, repository_id: int, repository_full_name: string, pull_request_number: int, pull_request_title: string, pull_request_body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, author: array{login: string, avatar_url: string|null}, is_draft: bool, assignees: array<int, array{login: string, avatar_url: string|null}>, reviewers: array<int, array{login: string, avatar_url: string|null}>, labels: array<int, array{name: string, color: string}>}
      */
     public function parsePullRequestPayload(array $payload): array
     {
-        /** @var array{number: int, title: string, body: string|null, base: array{ref: string}, head: array{ref: string, sha: string}} $pullRequest */
+        /** @var array{number: int, title: string, body: string|null, draft?: bool, user: array{login: string, avatar_url?: string|null}, base: array{ref: string}, head: array{ref: string, sha: string}, assignees?: array<int, array{login: string, avatar_url?: string|null}>, requested_reviewers?: array<int, array{login: string, avatar_url?: string|null}>, labels?: array<int, array{name: string, color: string}>} $pullRequest */
         $pullRequest = $payload['pull_request'];
 
         /** @var string $action */
@@ -155,6 +155,14 @@ final class GitHubWebhookService
             'head_branch' => $pullRequest['head']['ref'],
             'head_sha' => $pullRequest['head']['sha'],
             'sender_login' => $sender['login'],
+            'author' => [
+                'login' => $pullRequest['user']['login'],
+                'avatar_url' => $pullRequest['user']['avatar_url'] ?? null,
+            ],
+            'is_draft' => $pullRequest['draft'] ?? false,
+            'assignees' => $this->extractUsers($pullRequest['assignees'] ?? []),
+            'reviewers' => $this->extractUsers($pullRequest['requested_reviewers'] ?? []),
+            'labels' => $this->extractLabels($pullRequest['labels'] ?? []),
         ];
     }
 
@@ -164,5 +172,62 @@ final class GitHubWebhookService
     public function shouldTriggerReview(string $action): bool
     {
         return in_array($action, ['opened', 'synchronize', 'reopened'], true);
+    }
+
+    /**
+     * Check if a pull request action should sync metadata on an existing run.
+     *
+     * These actions update PR metadata but don't require a new review:
+     * - labeled/unlabeled: Label changes
+     * - assigned/unassigned: Assignee changes
+     * - review_requested/review_request_removed: Reviewer changes
+     * - converted_to_draft/ready_for_review: Draft status changes
+     */
+    public function shouldSyncMetadata(string $action): bool
+    {
+        return in_array($action, [
+            'labeled',
+            'unlabeled',
+            'assigned',
+            'unassigned',
+            'review_requested',
+            'review_request_removed',
+            'converted_to_draft',
+            'ready_for_review',
+        ], true);
+    }
+
+    /**
+     * Extract user information from an array of user objects.
+     *
+     * @param  array<int, array{login: string, avatar_url?: string|null}>  $users
+     * @return array<int, array{login: string, avatar_url: string|null}>
+     */
+    private function extractUsers(array $users): array
+    {
+        return array_map(
+            fn (array $user): array => [
+                'login' => $user['login'],
+                'avatar_url' => $user['avatar_url'] ?? null,
+            ],
+            $users
+        );
+    }
+
+    /**
+     * Extract label information from an array of label objects.
+     *
+     * @param  array<int, array{name: string, color: string}>  $labels
+     * @return array<int, array{name: string, color: string}>
+     */
+    private function extractLabels(array $labels): array
+    {
+        return array_map(
+            fn (array $label): array => [
+                'name' => $label['name'],
+                'color' => $label['color'],
+            ],
+            $labels
+        );
     }
 }
