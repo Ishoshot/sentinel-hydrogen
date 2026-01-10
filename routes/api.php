@@ -40,6 +40,9 @@ Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept
 Route::post('/webhooks/github', [GitHubWebhookController::class, 'handle'])
     ->name('webhooks.github');
 
+Route::get('/github/callback', [ConnectionController::class, 'callback'])
+    ->name('github.callback');
+
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/user', [OAuthController::class, 'user'])->name('user');
     Route::post('/logout', [OAuthController::class, 'logout'])->name('logout');
@@ -87,6 +90,4 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::get('/activities', [ActivityController::class, 'index'])->name('activities.index');
         });
 
-    // GitHub callback (needs auth but no workspace context)
-    Route::get('/github/callback', [ConnectionController::class, 'callback'])->name('github.callback');
 });
