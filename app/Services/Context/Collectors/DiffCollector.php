@@ -89,6 +89,14 @@ final readonly class DiffCollector implements ContextCollector
             $pullRequestNumber
         );
 
+        if (! is_array($files)) {
+            Log::warning('DiffCollector: Unexpected response format from GitHub API', [
+                'pr_number' => $pullRequestNumber,
+            ]);
+
+            return;
+        }
+
         $bag->files = $this->normalizeFiles($files);
         $bag->metrics = $this->calculateMetrics($bag->files);
 

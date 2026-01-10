@@ -174,6 +174,15 @@ final readonly class RepositoryContextCollector implements ContextCollector
                 return $response;
             }
 
+            // Validate response is an array before accessing properties
+            if (! is_array($response)) {
+                Log::debug('RepositoryContextCollector: Unexpected response format', [
+                    'path' => $path,
+                ]);
+
+                return null;
+            }
+
             // Response is array - check if content is base64 encoded
             if (isset($response['content']) && is_string($response['content'])) {
                 $content = $response['content'];

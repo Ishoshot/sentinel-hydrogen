@@ -176,6 +176,15 @@ final readonly class LinkedIssueCollector implements ContextCollector
     ): ?array {
         $issue = $this->gitHubApiService->getIssue($installationId, $owner, $repo, $issueNumber);
 
+        // Validate response structure
+        if (! is_array($issue)) {
+            Log::debug('LinkedIssueCollector: Unexpected issue response format', [
+                'issue_number' => $issueNumber,
+            ]);
+
+            return null;
+        }
+
         // Skip if this is actually a PR (PRs are issues in GitHub API)
         if (isset($issue['pull_request'])) {
             return null;
@@ -220,6 +229,15 @@ final readonly class LinkedIssueCollector implements ContextCollector
                 $repo,
                 $issueNumber
             );
+
+            // Validate response structure
+            if (! is_array($rawComments)) {
+                Log::debug('LinkedIssueCollector: Unexpected comments response format', [
+                    'issue_number' => $issueNumber,
+                ]);
+
+                return [];
+            }
 
             $comments = [];
             $count = 0;

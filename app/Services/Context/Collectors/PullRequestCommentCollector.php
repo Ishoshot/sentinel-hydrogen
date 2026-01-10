@@ -84,6 +84,15 @@ final readonly class PullRequestCommentCollector implements ContextCollector
                 $pullRequestNumber
             );
 
+            // Validate response structure
+            if (! is_array($rawComments)) {
+                Log::warning('PullRequestCommentCollector: Unexpected response format from GitHub API', [
+                    'pr_number' => $pullRequestNumber,
+                ]);
+
+                return;
+            }
+
             $comments = $this->normalizeComments($rawComments);
             $bag->prComments = $comments;
 
