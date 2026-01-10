@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews;
 
+use App\Services\Context\ContextBag;
 use App\Services\GitHub\GitHubApiService;
 
 /**
@@ -29,7 +30,25 @@ final readonly class ReviewPromptBuilder
     }
 
     /**
+     * Build the user prompt from a ContextBag.
+     */
+    public function buildUserPromptFromBag(ContextBag $bag): string
+    {
+        return view('prompts.review-user', [
+            'pull_request' => $bag->pullRequest,
+            'files' => $bag->files,
+            'metrics' => $bag->metrics,
+            'linked_issues' => $bag->linkedIssues,
+            'pr_comments' => $bag->prComments,
+            'repository_context' => $bag->repositoryContext,
+            'review_history' => $bag->reviewHistory,
+        ])->render();
+    }
+
+    /**
      * Build the user prompt for the AI review engine.
+     *
+     * @deprecated Use buildUserPromptFromBag() with ContextBag instead
      *
      * @param  array{pull_request: array{number: int, title: string, body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, repository_full_name: string}, files: array<int, array{filename: string, additions: int, deletions: int, changes: int}>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int}}  $context
      */
@@ -39,6 +58,10 @@ final readonly class ReviewPromptBuilder
             'pull_request' => $context['pull_request'],
             'files' => $context['files'],
             'metrics' => $context['metrics'],
+            'linked_issues' => [],
+            'pr_comments' => [],
+            'repository_context' => [],
+            'review_history' => [],
         ])->render();
     }
 
