@@ -132,6 +132,25 @@ final class Workspace extends Model
     }
 
     /**
+     * Get the current tier for this workspace.
+     *
+     * Returns the subscription tier (free, paid, enterprise) for queue prioritization.
+     * This is a placeholder until Plans & Billing (Phase 5) is implemented.
+     */
+    public function getCurrentTier(): string
+    {
+        // TODO: Implement proper tier resolution when Plans & Billing is implemented
+        // For now, check settings for a tier override
+        $settings = $this->settings;
+
+        if (is_array($settings) && isset($settings['tier']) && is_string($settings['tier'])) {
+            return $settings['tier'];
+        }
+
+        return 'free';
+    }
+
+    /**
      * @param  Builder<Workspace>  $query
      * @return Builder<Workspace>
      */

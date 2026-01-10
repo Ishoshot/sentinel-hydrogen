@@ -23,6 +23,12 @@ enum ActivityType: string
     case RepositoriesSynced = 'repositories.synced';
     case RepositorySettingsUpdated = 'repository.settings_updated';
 
+    // Reviews
+    case RunCreated = 'run.created';
+    case RunCompleted = 'run.completed';
+    case RunFailed = 'run.failed';
+    case AnnotationsPosted = 'annotations.posted';
+
     /**
      * @return array<string>
      */
@@ -48,6 +54,10 @@ enum ActivityType: string
             self::GitHubDisconnected => 'GitHub Disconnected',
             self::RepositoriesSynced => 'Repositories Synced',
             self::RepositorySettingsUpdated => 'Repository Settings Updated',
+            self::RunCreated => 'Review Run Created',
+            self::RunCompleted => 'Review Run Completed',
+            self::RunFailed => 'Review Run Failed',
+            self::AnnotationsPosted => 'Annotations Posted',
         };
     }
 
@@ -68,6 +78,10 @@ enum ActivityType: string
             self::GitHubDisconnected => 'github',
             self::RepositoriesSynced => 'refresh',
             self::RepositorySettingsUpdated => 'settings',
+            self::RunCreated => 'play',
+            self::RunCompleted => 'check-circle',
+            self::RunFailed => 'x-circle',
+            self::AnnotationsPosted => 'message-circle',
         };
     }
 
@@ -88,6 +102,10 @@ enum ActivityType: string
             self::GitHubDisconnected,
             self::RepositoriesSynced,
             self::RepositorySettingsUpdated => 'github',
+            self::RunCreated,
+            self::RunCompleted,
+            self::RunFailed,
+            self::AnnotationsPosted => 'review',
         };
     }
 }
