@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\SentinelConfig;
 
+use App\Enums\AiProvider;
 use App\Enums\AnnotationStyle;
 use App\Enums\SentinelConfigSeverity;
 use App\Enums\SentinelConfigTone;
@@ -105,6 +106,12 @@ final class SentinelConfigSchema
             'annotations.post_threshold' => ['sometimes', Rule::in(SentinelConfigSeverity::values())],
             'annotations.grouped' => ['sometimes', 'boolean'],
             'annotations.include_suggestions' => ['sometimes', 'boolean'],
+
+            // Provider section
+            'provider' => ['sometimes', 'array'],
+            'provider.preferred' => ['sometimes', 'nullable', Rule::in(AiProvider::values())],
+            'provider.model' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'provider.fallback' => ['sometimes', 'boolean'],
         ];
     }
 

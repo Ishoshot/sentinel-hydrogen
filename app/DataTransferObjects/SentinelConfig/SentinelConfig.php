@@ -22,6 +22,7 @@ final readonly class SentinelConfig
      * @param  ReviewConfig|null  $review  Review behavior configuration
      * @param  array<int, GuidelineConfig>  $guidelines  Custom guidelines to include
      * @param  AnnotationsConfig|null  $annotations  Annotation posting configuration
+     * @param  ProviderConfig|null  $provider  AI provider preferences
      */
     public function __construct(
         public int $version,
@@ -30,6 +31,7 @@ final readonly class SentinelConfig
         public ?ReviewConfig $review = null,
         public array $guidelines = [],
         public ?AnnotationsConfig $annotations = null,
+        public ?ProviderConfig $provider = null,
     ) {}
 
     /**
@@ -64,6 +66,9 @@ final readonly class SentinelConfig
             annotations: isset($data['annotations']) && is_array($data['annotations'])
                 ? AnnotationsConfig::fromArray($data['annotations']) // @phpstan-ignore argument.type
                 : null,
+            provider: isset($data['provider']) && is_array($data['provider'])
+                ? ProviderConfig::fromArray($data['provider']) // @phpstan-ignore argument.type
+                : null,
         );
     }
 
@@ -79,6 +84,7 @@ final readonly class SentinelConfig
             review: ReviewConfig::default(),
             guidelines: [],
             annotations: AnnotationsConfig::default(),
+            provider: ProviderConfig::default(),
         );
     }
 
@@ -99,6 +105,7 @@ final readonly class SentinelConfig
                 $this->guidelines
             ),
             'annotations' => $this->annotations?->toArray(),
+            'provider' => $this->provider?->toArray(),
         ];
     }
 
@@ -132,5 +139,13 @@ final readonly class SentinelConfig
     public function getAnnotationsOrDefault(): AnnotationsConfig
     {
         return $this->annotations ?? AnnotationsConfig::default();
+    }
+
+    /**
+     * Get provider config with defaults if not set.
+     */
+    public function getProviderOrDefault(): ProviderConfig
+    {
+        return $this->provider ?? ProviderConfig::default();
     }
 }

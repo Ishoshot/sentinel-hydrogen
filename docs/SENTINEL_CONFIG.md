@@ -14,6 +14,7 @@ This guide explains how to configure Sentinel's behavior for your repository usi
     -   [review](#review)
     -   [guidelines](#guidelines)
     -   [annotations](#annotations)
+    -   [provider](#provider)
 -   [Examples](#examples)
 -   [Troubleshooting](#troubleshooting)
 
@@ -402,6 +403,54 @@ annotations:
 #### Post Threshold
 
 Findings below `post_threshold` are included in the review summary but not posted as inline annotations. This helps reduce noise while keeping important findings visible.
+
+---
+
+### provider
+
+Configure AI provider preferences for code reviews.
+
+```yaml
+provider:
+    preferred: anthropic
+    model: claude-sonnet-4-5-20250929
+    fallback: true
+```
+
+| Property    | Type    | Default | Description                                                          |
+| ----------- | ------- | ------- | -------------------------------------------------------------------- |
+| `preferred` | string  | `null`  | Preferred AI provider: `anthropic`, `openai`                         |
+| `model`     | string  | `null`  | Specific model to use (e.g., `claude-sonnet-4-5-20250929`, `gpt-4o`) |
+| `fallback`  | boolean | `true`  | Whether to fallback to other providers on failure                    |
+
+#### Provider Selection
+
+When `preferred` is set, Sentinel will attempt to use that provider first. If `preferred` is not set (default), Sentinel uses the first available provider with a valid API key.
+
+#### Fallback Behavior
+
+When `fallback: true` (default):
+
+-   If the preferred provider fails (no API key, rate limit, insufficient balance), Sentinel tries other configured providers
+-   Up to 3 fallback attempts are made before giving up
+-   Failures include: missing API key, rate limiting, API errors, insufficient credits
+
+When `fallback: false`:
+
+-   Sentinel fails fast if the preferred provider is unavailable
+-   No alternative providers are attempted
+-   Useful when you strictly want reviews from a specific provider/model
+
+#### Model Selection
+
+The `model` property allows you to specify a particular model version. If not set, Sentinel uses the provider's default model:
+
+| Provider  | Default Model                |
+| --------- | ---------------------------- |
+| Anthropic | `claude-sonnet-4-5-20250929` |
+| OpenAI    | `gpt-4o`                     |
+
+**Note:** API keys are still configured via the Sentinel dashboard, not in this file.
 
 ---
 

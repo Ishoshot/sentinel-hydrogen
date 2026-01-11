@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews;
 
+use App\DataTransferObjects\SentinelConfig\ProviderConfig;
 use App\Enums\AiProvider;
 use App\Exceptions\NoProviderKeyException;
 use App\Models\Repository;
 use App\Services\Context\ContextBag;
 use App\Services\Reviews\Contracts\ProviderKeyResolver;
 use App\Services\Reviews\Contracts\ReviewEngine;
+use Illuminate\Support\Facades\Log;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\Text\Response as TextResponse;
 use RuntimeException;
+use Throwable;
 
 /**
  * AI-powered review engine using PrismPHP for LLM integration.
@@ -40,6 +43,8 @@ final readonly class PrismReviewEngine implements ReviewEngine
 
     private const array VALID_VERDICTS = ['approve', 'request_changes', 'comment'];
 
+    private const int MAX_FALLBACK_ATTEMPTS = 3;
+
     /**
      * Create a new engine instance.
      */
@@ -52,7 +57,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Perform AI-powered code review using ContextBag.
      *
      * Uses BYOK provider keys from repository configuration.
-     * Throws NoProviderKeyException if no keys are configured - there is no fallback.
+     * Supports provider preferences and fallback retry logic.
      *
      * @param  array{repository: Repository, policy_snapshot: array<string, mixed>, context_bag: ContextBag}  $context
      * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
@@ -61,26 +66,89 @@ final readonly class PrismReviewEngine implements ReviewEngine
      */
     public function review(array $context): array
     {
+        /** @var Repository $repository */
+        $repository = $context['repository'];
+
+        /** @var array<string, mixed> $policySnapshot */
+        $policySnapshot = $context['policy_snapshot'];
+
+        $providerConfig = $this->resolveProviderConfig($policySnapshot);
+        $providersToTry = $this->getProvidersToTry($repository, $providerConfig);
+
+        if ($providersToTry === []) {
+            throw NoProviderKeyException::noProvidersConfigured();
+        }
+
+        $attempts = 0;
+        $maxAttempts = $providerConfig->fallback ? min(count($providersToTry), self::MAX_FALLBACK_ATTEMPTS) : 1;
+
+        /** @var Throwable|null $lastException */
+        $lastException = null;
+
+        foreach ($providersToTry as $aiProvider) {
+            if ($attempts >= $maxAttempts) {
+                break;
+            }
+
+            $attempts++;
+
+            try {
+                return $this->executeReview($context, $aiProvider, $providerConfig);
+            } catch (NoProviderKeyException $e) {
+                $lastException = $e;
+                Log::warning('Provider key not available, trying fallback', [
+                    'provider' => $aiProvider->value,
+                    'attempt' => $attempts,
+                    'fallback_enabled' => $providerConfig->fallback,
+                ]);
+
+                if (! $providerConfig->fallback) {
+                    throw $e;
+                }
+            } catch (Throwable $e) {
+                $lastException = $e;
+                Log::warning('Provider failed, trying fallback', [
+                    'provider' => $aiProvider->value,
+                    'attempt' => $attempts,
+                    'error' => $e->getMessage(),
+                    'fallback_enabled' => $providerConfig->fallback,
+                ]);
+
+                if (! $providerConfig->fallback) {
+                    throw $e;
+                }
+            }
+        }
+
+        // All attempts failed - throw the last exception or a default one
+        if ($lastException !== null) {
+            throw $lastException;
+        }
+
+        throw NoProviderKeyException::noProvidersConfigured();
+    }
+
+    /**
+     * Execute a review with a specific provider.
+     *
+     * @param  array{repository: Repository, policy_snapshot: array<string, mixed>, context_bag: ContextBag}  $context
+     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
+     */
+    private function executeReview(array $context, AiProvider $aiProvider, ProviderConfig $providerConfig): array
+    {
         $startTime = microtime(true);
 
         /** @var Repository $repository */
         $repository = $context['repository'];
 
-        // Get BYOK provider and key (NO fallback to system keys)
-        $aiProvider = $this->keyResolver->getFirstAvailableProvider($repository);
-
-        if (! $aiProvider instanceof AiProvider) {
-            throw NoProviderKeyException::noProvidersConfigured();
-        }
-
         $apiKey = $this->keyResolver->resolve($repository, $aiProvider);
 
         if ($apiKey === null) {
-            throw NoProviderKeyException::noProvidersConfigured();
+            throw NoProviderKeyException::forProvider($aiProvider->value);
         }
 
         $provider = $this->mapToProvider($aiProvider);
-        $model = $this->resolveModel($aiProvider);
+        $model = $this->resolveModel($aiProvider, $providerConfig);
 
         $systemPrompt = $this->promptBuilder->buildSystemPrompt($context['policy_snapshot']);
 
@@ -121,6 +189,56 @@ final readonly class PrismReviewEngine implements ReviewEngine
     }
 
     /**
+     * Resolve provider config from policy snapshot.
+     *
+     * @param  array<string, mixed>  $policySnapshot
+     */
+    private function resolveProviderConfig(array $policySnapshot): ProviderConfig
+    {
+        if (isset($policySnapshot['provider']) && is_array($policySnapshot['provider'])) {
+            /** @var array<string, mixed> $providerData */
+            $providerData = $policySnapshot['provider'];
+
+            return ProviderConfig::fromArray($providerData);
+        }
+
+        return ProviderConfig::default();
+    }
+
+    /**
+     * Get ordered list of providers to try based on config and availability.
+     *
+     * @return array<int, AiProvider>
+     */
+    private function getProvidersToTry(Repository $repository, ProviderConfig $providerConfig): array
+    {
+        $availableProviders = $this->keyResolver->getAvailableProviders($repository);
+
+        if ($availableProviders === []) {
+            return [];
+        }
+
+        // If preferred provider is set and available, put it first
+        if ($providerConfig->preferred instanceof AiProvider) {
+            $preferred = $providerConfig->preferred;
+
+            if ($this->keyResolver->hasProvider($repository, $preferred)) {
+                // Move preferred to front, keep others for fallback
+                $others = array_filter($availableProviders, fn (AiProvider $p): bool => $p !== $preferred);
+
+                return [$preferred, ...array_values($others)];
+            }
+
+            // Preferred not available - if no fallback, return empty
+            if (! $providerConfig->fallback) {
+                return [];
+            }
+        }
+
+        return $availableProviders;
+    }
+
+    /**
      * Map AiProvider enum to Prism Provider enum.
      */
     private function mapToProvider(AiProvider $aiProvider): Provider
@@ -132,10 +250,16 @@ final readonly class PrismReviewEngine implements ReviewEngine
     }
 
     /**
-     * Resolve the AI model based on the provider.
+     * Resolve the AI model based on the provider and config.
      */
-    private function resolveModel(AiProvider $aiProvider): string
+    private function resolveModel(AiProvider $aiProvider, ProviderConfig $providerConfig): string
     {
+        // Use custom model from config if set and matches the provider
+        if ($providerConfig->model !== null && $providerConfig->preferred === $aiProvider) {
+            return $providerConfig->model;
+        }
+
+        // Default models per provider
         return match ($aiProvider) {
             AiProvider::Anthropic => 'claude-sonnet-4-5-20250929',
             AiProvider::OpenAI => 'gpt-4o',

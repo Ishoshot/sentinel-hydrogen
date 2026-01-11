@@ -22,4 +22,16 @@ interface ProviderKeyResolver
      * @return AiProvider|null The provider, or null if no keys configured
      */
     public function getFirstAvailableProvider(Repository $repository): ?AiProvider;
+
+    /**
+     * Get all available providers with configured keys.
+     *
+     * @return array<int, AiProvider> List of providers with valid keys
+     */
+    public function getAvailableProviders(Repository $repository): array;
+
+    /**
+     * Check if a provider has a configured key.
+     */
+    public function hasProvider(Repository $repository, AiProvider $provider): bool;
 }

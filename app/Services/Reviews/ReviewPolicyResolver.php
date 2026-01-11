@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Reviews;
 
 use App\DataTransferObjects\SentinelConfig\AnnotationsConfig;
+use App\DataTransferObjects\SentinelConfig\ProviderConfig;
 use App\DataTransferObjects\SentinelConfig\ReviewConfig;
 use App\Models\Repository;
 
@@ -28,8 +29,10 @@ final readonly class ReviewPolicyResolver
         if ($sentinelConfig !== null) {
             $reviewConfig = $sentinelConfig->getReviewOrDefault();
             $annotationsConfig = $sentinelConfig->getAnnotationsOrDefault();
+            $providerConfig = $sentinelConfig->getProviderOrDefault();
             $result = $this->mergeReviewConfig($result, $reviewConfig);
             $result = $this->mergeAnnotationsConfig($result, $annotationsConfig);
+            $result = $this->mergeProviderConfig($result, $providerConfig);
         }
 
         return $result;
@@ -85,6 +88,23 @@ final readonly class ReviewPolicyResolver
             'post_threshold' => $annotationsConfig->postThreshold->value,
             'grouped' => $annotationsConfig->grouped,
             'include_suggestions' => $annotationsConfig->includeSuggestions,
+        ];
+
+        return $policy;
+    }
+
+    /**
+     * Merge ProviderConfig into the policy array.
+     *
+     * @param  array<string, mixed>  $policy
+     * @return array<string, mixed>
+     */
+    private function mergeProviderConfig(array $policy, ProviderConfig $providerConfig): array
+    {
+        $policy['provider'] = [
+            'preferred' => $providerConfig->preferred?->value,
+            'model' => $providerConfig->model,
+            'fallback' => $providerConfig->fallback,
         ];
 
         return $policy;

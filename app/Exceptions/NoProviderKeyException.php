@@ -21,4 +21,12 @@ final class NoProviderKeyException extends Exception
     {
         return new self('No provider keys configured for this repository');
     }
+
+    /**
+     * Create exception for a specific provider not having a key.
+     */
+    public static function forProvider(string $providerName): self
+    {
+        return new self(sprintf('No API key configured for provider: %s', $providerName));
+    }
 }

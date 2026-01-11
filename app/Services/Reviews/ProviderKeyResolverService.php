@@ -54,6 +54,36 @@ final class ProviderKeyResolverService implements ProviderKeyResolver
     }
 
     /**
+     * {@inheritdoc}
+     */
+    public function getAvailableProviders(Repository $repository): array
+    {
+        $keys = $this->loadKeys($repository);
+        $providers = [];
+
+        // Maintain priority order: Anthropic > OpenAI
+        if (isset($keys[AiProvider::Anthropic->value])) {
+            $providers[] = AiProvider::Anthropic;
+        }
+
+        if (isset($keys[AiProvider::OpenAI->value])) {
+            $providers[] = AiProvider::OpenAI;
+        }
+
+        return $providers;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function hasProvider(Repository $repository, AiProvider $provider): bool
+    {
+        $keys = $this->loadKeys($repository);
+
+        return isset($keys[$provider->value]);
+    }
+
+    /**
      * Load and cache provider keys for a repository.
      *
      * @return array<string, string> Provider name => decrypted key mapping

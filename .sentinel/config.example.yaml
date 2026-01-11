@@ -190,3 +190,26 @@ annotations:
   # Include code suggestions when possible
   # Default: true
   include_suggestions: true
+
+# =============================================================================
+# PROVIDER
+# =============================================================================
+# Configure AI provider preferences for code reviews.
+# API keys are still configured via the Sentinel dashboard.
+
+provider:
+  # Preferred AI provider
+  # Options: anthropic, openai
+  # Default: null (uses first available provider with valid API key)
+  preferred: anthropic
+
+  # Specific model to use
+  # Examples: claude-sonnet-4-5-20250929, gpt-4o
+  # Default: null (uses provider's default model)
+  model: claude-sonnet-4-5-20250929
+
+  # Fallback to other providers if preferred fails
+  # If true, tries up to 3 other providers on failure (no API key, rate limit, etc.)
+  # If false, fails fast without trying alternatives
+  # Default: true
+  fallback: true
