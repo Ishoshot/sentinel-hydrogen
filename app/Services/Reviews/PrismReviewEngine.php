@@ -6,6 +6,10 @@ namespace App\Services\Reviews;
 
 use App\DataTransferObjects\SentinelConfig\ProviderConfig;
 use App\Enums\AiProvider;
+use App\Enums\FindingCategory;
+use App\Enums\ReviewVerdict;
+use App\Enums\RiskLevel;
+use App\Enums\SentinelConfigSeverity;
 use App\Exceptions\NoProviderKeyException;
 use App\Models\Repository;
 use App\Services\Context\ContextBag;
@@ -14,8 +18,12 @@ use App\Services\Reviews\Contracts\ReviewEngine;
 use Illuminate\Support\Facades\Log;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
-use Prism\Prism\Text\Response as TextResponse;
-use RuntimeException;
+use Prism\Prism\Schema\ArraySchema;
+use Prism\Prism\Schema\EnumSchema;
+use Prism\Prism\Schema\NumberSchema;
+use Prism\Prism\Schema\ObjectSchema;
+use Prism\Prism\Schema\StringSchema;
+use Prism\Prism\Structured\Response as StructuredResponse;
 use Throwable;
 
 /**
@@ -26,23 +34,6 @@ use Throwable;
  */
 final readonly class PrismReviewEngine implements ReviewEngine
 {
-    private const array VALID_SEVERITIES = ['info', 'low', 'medium', 'high', 'critical'];
-
-    private const array VALID_CATEGORIES = [
-        'security',
-        'correctness',
-        'reliability',
-        'performance',
-        'maintainability',
-        'testing',
-        'style',
-        'documentation',
-    ];
-
-    private const array VALID_RISK_LEVELS = ['low', 'medium', 'high', 'critical'];
-
-    private const array VALID_VERDICTS = ['approve', 'request_changes', 'comment'];
-
     private const int MAX_FALLBACK_ATTEMPTS = 3;
 
     /**
@@ -166,15 +157,16 @@ final readonly class PrismReviewEngine implements ReviewEngine
 
         $temperature = $enableThinking ? 1 : 0.1;
 
-        $response = Prism::text()
+        $response = Prism::structured()
             ->using($provider, $model, ['api_key' => $apiKey])
+            ->withSchema($this->buildReviewSchema())
             ->withSystemPrompt($systemPrompt)
             ->withPrompt($userPrompt)
             ->withMaxTokens(8192)
             ->usingTemperature($temperature)
             ->withProviderOptions($providerOptions)
             ->withClientOptions(['timeout' => 240])
-            ->asText();
+            ->asStructured();
 
         $durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
@@ -185,7 +177,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
             'lines_deleted' => $inputMetrics['lines_deleted'] ?? 0,
         ];
 
-        return $this->parseResponse($response, $metricsForParsing, $model, $provider->value, $durationMs);
+        return $this->parseStructuredResponse($response, $metricsForParsing, $model, $provider->value, $durationMs);
     }
 
     /**
@@ -267,54 +259,70 @@ final readonly class PrismReviewEngine implements ReviewEngine
     }
 
     /**
-     * Parse the AI response and validate against the expected schema.
+     * Build the JSON schema for structured review output.
+     */
+    private function buildReviewSchema(): ObjectSchema
+    {
+        $summarySchema = new ObjectSchema(
+            name: 'summary',
+            description: 'Overall review summary',
+            properties: [
+                new StringSchema('overview', 'Brief overview of the changes'),
+                new EnumSchema('verdict', 'Review verdict', ReviewVerdict::values()),
+                new EnumSchema('risk_level', 'Overall risk level', RiskLevel::values()),
+                new ArraySchema('strengths', 'List of positive aspects', new StringSchema('strength', 'A strength')),
+                new ArraySchema('concerns', 'List of concerns', new StringSchema('concern', 'A concern')),
+                new ArraySchema('recommendations', 'List of recommendations', new StringSchema('recommendation', 'A recommendation')),
+            ],
+            requiredFields: ['overview', 'verdict', 'risk_level'],
+        );
+
+        $findingSchema = new ObjectSchema(
+            name: 'finding',
+            description: 'A single code review finding',
+            properties: [
+                new EnumSchema('severity', 'Severity level', SentinelConfigSeverity::values()),
+                new EnumSchema('category', 'Finding category', FindingCategory::values()),
+                new StringSchema('title', 'Short title of the finding'),
+                new StringSchema('description', 'Detailed description of the issue'),
+                new NumberSchema('confidence', 'Confidence score between 0 and 1'),
+                new StringSchema('impact', 'Why this matters and its potential impact'),
+                new StringSchema('file_path', 'Path to the file'),
+                new NumberSchema('line_start', 'Starting line number'),
+                new NumberSchema('line_end', 'Ending line number'),
+                new StringSchema('current_code', 'The current code that needs to be changed'),
+                new StringSchema('replacement_code', 'The suggested replacement code'),
+                new StringSchema('explanation', 'Explanation of the code change'),
+            ],
+            requiredFields: ['severity', 'category', 'title', 'description', 'confidence'],
+        );
+
+        return new ObjectSchema(
+            name: 'review_response',
+            description: 'Complete code review response',
+            properties: [
+                $summarySchema,
+                new ArraySchema('findings', 'List of findings', $findingSchema),
+            ],
+            requiredFields: ['summary', 'findings'],
+        );
+    }
+
+    /**
+     * Parse the structured AI response.
      *
      * @param  array{files_changed: int, lines_added: int, lines_deleted: int}  $inputMetrics
      * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
      */
-    private function parseResponse(
-        TextResponse $response,
+    private function parseStructuredResponse(
+        StructuredResponse $response,
         array $inputMetrics,
         string $model,
         string $provider,
         int $durationMs
     ): array {
-        $responseText = mb_trim($response->text);
-
-        // DEBUG: Log raw AI response for troubleshooting
-        Log::debug('Raw AI response received', [
-            'provider' => $provider,
-            'model' => $model,
-            'response_length' => mb_strlen($responseText),
-            'response_preview' => mb_substr($responseText, 0, 500),
-            'response_end' => mb_substr($responseText, -200),
-        ]);
-
-        if (str_starts_with($responseText, '```json')) {
-            $responseText = mb_substr($responseText, 7);
-        }
-
-        if (str_starts_with($responseText, '```')) {
-            $responseText = mb_substr($responseText, 3);
-        }
-
-        if (str_ends_with($responseText, '```')) {
-            $responseText = mb_substr($responseText, 0, -3);
-        }
-
-        $responseText = mb_trim($responseText);
-
-        $parsed = json_decode($responseText, true);
-
-        if (! is_array($parsed)) {
-            // DEBUG: Log the cleaned response that failed to parse
-            Log::error('Failed to parse AI response as JSON', [
-                'json_error' => json_last_error_msg(),
-                'cleaned_response' => $responseText,
-            ]);
-
-            throw new RuntimeException('Failed to parse AI response as JSON: '.json_last_error_msg());
-        }
+        /** @var array<string, mixed> $parsed */
+        $parsed = $response->structured;
 
         $rawSummary = $parsed['summary'] ?? [];
         $rawFindings = $parsed['findings'] ?? [];
@@ -357,14 +365,14 @@ final readonly class PrismReviewEngine implements ReviewEngine
             : 'Review completed.';
 
         $verdict = isset($summary['verdict']) && is_string($summary['verdict'])
-            && in_array($summary['verdict'], self::VALID_VERDICTS, true)
+            && in_array($summary['verdict'], ReviewVerdict::values(), true)
             ? $summary['verdict']
-            : 'comment';
+            : ReviewVerdict::Comment->value;
 
         $riskLevel = isset($summary['risk_level']) && is_string($summary['risk_level'])
-            && in_array($summary['risk_level'], self::VALID_RISK_LEVELS, true)
+            && in_array($summary['risk_level'], RiskLevel::values(), true)
             ? $summary['risk_level']
-            : 'low';
+            : RiskLevel::Low->value;
 
         $strengths = [];
         if (isset($summary['strengths']) && is_array($summary['strengths'])) {
@@ -447,13 +455,13 @@ final readonly class PrismReviewEngine implements ReviewEngine
             return null;
         }
 
-        $severity = in_array($finding['severity'], self::VALID_SEVERITIES, true)
+        $severity = in_array($finding['severity'], SentinelConfigSeverity::values(), true)
             ? $finding['severity']
-            : 'info';
+            : SentinelConfigSeverity::Info->value;
 
-        $category = in_array($finding['category'], self::VALID_CATEGORIES, true)
+        $category = in_array($finding['category'], FindingCategory::values(), true)
             ? $finding['category']
-            : 'maintainability';
+            : FindingCategory::Maintainability->value;
 
         $confidence = isset($finding['confidence']) && is_numeric($finding['confidence'])
             ? max(0.0, min(1.0, (float) $finding['confidence']))

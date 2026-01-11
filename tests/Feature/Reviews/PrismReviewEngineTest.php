@@ -13,7 +13,6 @@ use App\Services\Context\ContextBag;
 use App\Services\Reviews\PrismReviewEngine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Prism\Prism\Facades\Prism;
-use Prism\Prism\Testing\TextResponseFake;
 use Prism\Prism\ValueObjects\Usage;
 
 uses(RefreshDatabase::class);
@@ -63,10 +62,15 @@ function buildTestContext(?Repository $repository = null): array
     ];
 }
 
-function createFakeResponse(string $text, int $promptTokens = 50, int $completionTokens = 30): TextResponseFake
+/**
+ * Create a fake structured response from an array.
+ *
+ * @param  array<string, mixed>  $structured
+ */
+function createFakeStructuredResponse(array $structured, int $promptTokens = 50, int $completionTokens = 30): \Prism\Prism\Testing\StructuredResponseFake
 {
-    return TextResponseFake::make()
-        ->withText($text)
+    return \Prism\Prism\Testing\StructuredResponseFake::make()
+        ->withStructured($structured)
         ->withUsage(new Usage($promptTokens, $completionTokens));
 }
 
@@ -97,7 +101,7 @@ it('parses a valid AI response and returns structured review data', function ():
         ),
     ];
 
-    $jsonResponse = json_encode([
+    $responseData = [
         'summary' => [
             'overview' => 'Review completed successfully.',
             'risk_level' => 'low',
@@ -109,15 +113,15 @@ it('parses a valid AI response and returns structured review data', function ():
                 'category' => 'maintainability',
                 'title' => 'Missing tests',
                 'description' => 'This code lacks test coverage.',
-                'rationale' => 'Tests help ensure correctness.',
+                'impact' => 'Tests help ensure correctness.',
                 'confidence' => 0.85,
                 'file_path' => 'src/Test.php',
                 'line_start' => 5,
             ],
         ],
-    ], JSON_THROW_ON_ERROR);
+    ];
 
-    Prism::fake([createFakeResponse($jsonResponse, 100, 50)]);
+    Prism::fake([createFakeStructuredResponse($responseData, 100, 50)]);
 
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
@@ -136,7 +140,7 @@ it('parses a valid AI response and returns structured review data', function ():
 it('normalizes invalid severity to info', function (): void {
     $context = buildTestContext();
 
-    $jsonResponse = json_encode([
+    $responseData = [
         'summary' => ['overview' => 'Done.', 'risk_level' => 'low', 'recommendations' => []],
         'findings' => [
             [
@@ -144,13 +148,13 @@ it('normalizes invalid severity to info', function (): void {
                 'category' => 'security',
                 'title' => 'Test finding',
                 'description' => 'Test description',
-                'rationale' => 'Test rationale',
+                'impact' => 'Test rationale',
                 'confidence' => 0.5,
             ],
         ],
-    ], JSON_THROW_ON_ERROR);
+    ];
 
-    Prism::fake([createFakeResponse($jsonResponse)]);
+    Prism::fake([createFakeStructuredResponse($responseData)]);
 
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
@@ -158,17 +162,15 @@ it('normalizes invalid severity to info', function (): void {
     expect($result['findings'][0]['severity'])->toBe('info');
 });
 
-it('handles response wrapped in markdown code blocks', function (): void {
+it('handles structured response and returns correct data', function (): void {
     $context = buildTestContext();
 
-    $jsonContent = json_encode([
+    $responseData = [
         'summary' => ['overview' => 'Review done.', 'risk_level' => 'low', 'recommendations' => []],
         'findings' => [],
-    ], JSON_THROW_ON_ERROR);
+    ];
 
-    $wrappedResponse = "```json\n{$jsonContent}\n```";
-
-    Prism::fake([createFakeResponse($wrappedResponse, 40, 20)]);
+    Prism::fake([createFakeStructuredResponse($responseData, 40, 20)]);
 
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
@@ -178,24 +180,31 @@ it('handles response wrapped in markdown code blocks', function (): void {
         ->and($result['findings'])->toBeEmpty();
 });
 
-it('throws exception for invalid JSON response', function (): void {
+it('handles empty findings array gracefully', function (): void {
     $context = buildTestContext();
 
-    Prism::fake([createFakeResponse('not valid json', 20, 10)]);
+    $responseData = [
+        'summary' => ['overview' => 'No issues found.', 'risk_level' => 'low', 'recommendations' => []],
+        'findings' => [],
+    ];
+
+    Prism::fake([createFakeStructuredResponse($responseData, 20, 10)]);
 
     $engine = app(PrismReviewEngine::class);
-    $engine->review($context);
-})->throws(RuntimeException::class, 'Failed to parse AI response as JSON');
+    $result = $engine->review($context);
+
+    expect($result['findings'])->toBeEmpty();
+});
 
 it('normalizes empty summary with defaults', function (): void {
     $context = buildTestContext();
 
-    $jsonResponse = json_encode([
+    $responseData = [
         'summary' => [],
         'findings' => [],
-    ], JSON_THROW_ON_ERROR);
+    ];
 
-    Prism::fake([createFakeResponse($jsonResponse, 30, 15)]);
+    Prism::fake([createFakeStructuredResponse($responseData, 30, 15)]);
 
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
@@ -208,7 +217,7 @@ it('normalizes empty summary with defaults', function (): void {
 it('normalizes invalid category to maintainability', function (): void {
     $context = buildTestContext();
 
-    $jsonResponse = json_encode([
+    $responseData = [
         'summary' => ['overview' => 'Done.', 'risk_level' => 'low', 'recommendations' => []],
         'findings' => [
             [
@@ -216,13 +225,13 @@ it('normalizes invalid category to maintainability', function (): void {
                 'category' => 'unknown_category',
                 'title' => 'Test finding',
                 'description' => 'Test description',
-                'rationale' => 'Test rationale',
+                'impact' => 'Test rationale',
                 'confidence' => 0.5,
             ],
         ],
-    ], JSON_THROW_ON_ERROR);
+    ];
 
-    Prism::fake([createFakeResponse($jsonResponse)]);
+    Prism::fake([createFakeStructuredResponse($responseData)]);
 
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
@@ -233,7 +242,7 @@ it('normalizes invalid category to maintainability', function (): void {
 it('clamps confidence value between 0 and 1', function (): void {
     $context = buildTestContext();
 
-    $jsonResponse = json_encode([
+    $responseData = [
         'summary' => ['overview' => 'Done.', 'risk_level' => 'low', 'recommendations' => []],
         'findings' => [
             [
@@ -241,7 +250,7 @@ it('clamps confidence value between 0 and 1', function (): void {
                 'category' => 'security',
                 'title' => 'High confidence finding',
                 'description' => 'Test description',
-                'rationale' => 'Test rationale',
+                'impact' => 'Test rationale',
                 'confidence' => 1.5,
             ],
             [
@@ -249,13 +258,13 @@ it('clamps confidence value between 0 and 1', function (): void {
                 'category' => 'style',
                 'title' => 'Low confidence finding',
                 'description' => 'Test description',
-                'rationale' => 'Test rationale',
+                'impact' => 'Test rationale',
                 'confidence' => -0.5,
             ],
         ],
-    ], JSON_THROW_ON_ERROR);
+    ];
 
-    Prism::fake([createFakeResponse($jsonResponse)]);
+    Prism::fake([createFakeStructuredResponse($responseData)]);
 
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
