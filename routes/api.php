@@ -9,6 +9,7 @@ use App\Http\Controllers\GitHub\RepositoryController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\ListWorkspaceRunsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProviderKeyController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\TeamMemberController;
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
@@ -88,6 +89,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::get('/repositories/{repository}', [RepositoryController::class, 'show'])->name('repositories.show');
             Route::patch('/repositories/{repository}', [RepositoryController::class, 'update'])->name('repositories.update');
             Route::get('/repositories/{repository}/runs', [RunController::class, 'index'])->name('runs.index');
+
+            // Provider Keys (BYOK)
+            Route::get('/repositories/{repository}/provider-keys', [ProviderKeyController::class, 'index'])
+                ->name('provider-keys.index');
+            Route::post('/repositories/{repository}/provider-keys', [ProviderKeyController::class, 'store'])
+                ->name('provider-keys.store');
+            Route::delete('/repositories/{repository}/provider-keys/{providerKey}', [ProviderKeyController::class, 'destroy'])
+                ->name('provider-keys.destroy');
 
             // Workspace-level runs
             Route::get('/runs', ListWorkspaceRunsController::class)->name('runs.workspace');

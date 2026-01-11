@@ -26,9 +26,10 @@ use App\Services\Context\Filters\SensitiveDataFilter;
 use App\Services\Context\Filters\TokenLimitFilter;
 use App\Services\Context\Filters\VendorPathFilter;
 use App\Services\GitHub\GitHubApiService;
+use App\Services\Reviews\Contracts\ProviderKeyResolver;
 use App\Services\Reviews\Contracts\ReviewEngine;
-use App\Services\Reviews\DefaultReviewEngine;
 use App\Services\Reviews\PrismReviewEngine;
+use App\Services\Reviews\ProviderKeyResolverService;
 use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use App\Services\SentinelConfig\SentinelConfigParserService;
 use Illuminate\Support\ServiceProvider;
@@ -74,16 +75,11 @@ final class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(ContextEngineContract::class, ContextEngine::class);
 
-        $this->app->bind(ReviewEngine::class, function (): ReviewEngine {
-            $anthropicKey = config('prism.providers.anthropic.api_key', '');
-            $openAiKey = config('prism.providers.openai.api_key', '');
+        // Register BYOK Provider Key Resolver (scoped per request for caching)
+        $this->app->scoped(ProviderKeyResolver::class, ProviderKeyResolverService::class);
 
-            if ($anthropicKey !== '' || $openAiKey !== '') {
-                return app(PrismReviewEngine::class);
-            }
-
-            return app(DefaultReviewEngine::class);
-        });
+        // Register Review Engine - uses BYOK keys, no fallback to system keys
+        $this->app->bind(ReviewEngine::class, PrismReviewEngine::class);
 
         // Register Sentinel Config Parser
         $this->app->bind(SentinelConfigParser::class, SentinelConfigParserService::class);
