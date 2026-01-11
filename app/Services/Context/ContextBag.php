@@ -83,7 +83,7 @@ final class ContextBag
 
         // Guidelines
         foreach ($this->guidelines as $guideline) {
-            $totalChars += mb_strlen($guideline['content'] ?? '');
+            $totalChars += mb_strlen($guideline['content']);
         }
 
         return (int) ceil($totalChars * self::TOKENS_PER_CHAR);

@@ -41,7 +41,7 @@ final class ConfiguredPathFilter implements ContextFilter
     {
         $pathsConfig = $this->getPathsConfig($bag);
 
-        if ($pathsConfig === null) {
+        if (! $pathsConfig instanceof PathsConfig) {
             return;
         }
 
@@ -113,6 +113,7 @@ final class ConfiguredPathFilter implements ContextFilter
             return null;
         }
 
+        /** @var array<string, mixed> $pathsData */
         return PathsConfig::fromArray($pathsData);
     }
 

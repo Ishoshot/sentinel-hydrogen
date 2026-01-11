@@ -165,6 +165,7 @@ final readonly class GuidelinesCollector implements ContextCollector
             return [];
         }
 
+        /** @var array<string, mixed> $sentinelConfigData */
         $sentinelConfig = SentinelConfig::fromArray($sentinelConfigData);
 
         return $sentinelConfig->guidelines;
