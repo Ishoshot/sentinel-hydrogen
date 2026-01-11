@@ -5,6 +5,7 @@ This guide explains how to configure Sentinel's behavior for your repository usi
 ## Table of Contents
 
 - [Overview](#overview)
+- [API Keys Setup](#api-keys-setup)
 - [Quick Start](#quick-start)
 - [Configuration Reference](#configuration-reference)
   - [version](#version)
@@ -46,6 +47,42 @@ If your configuration file has errors:
 
 ---
 
+## API Keys Setup
+
+**Important:** API keys are NOT configured in the `.sentinel/config.yaml` file.
+
+For security reasons, API keys are managed through the Sentinel dashboard:
+
+1. Go to **Repository Settings** in the Sentinel dashboard
+2. Navigate to the **API Keys** section
+3. Click **Add API Key**
+4. Select your provider (Anthropic or OpenAI)
+5. Enter your API key
+6. Click **Save**
+
+### Why Dashboard Instead of Config File?
+
+- **Security**: API keys in config files would be committed to version control
+- **Encryption**: Keys stored via dashboard are encrypted at rest
+- **No exposure**: Keys are never visible after being saved
+- **Instant revocation**: Delete keys immediately without a commit/push
+
+### Supported Providers
+
+| Provider | Description |
+|----------|-------------|
+| **Anthropic** | Claude models - Recommended for best code understanding |
+| **OpenAI** | GPT-4 models - Good alternative option |
+
+### No API Key Configured?
+
+If no API key is configured for a repository:
+- Reviews will be skipped with reason `no_provider_keys`
+- A warning appears in repository settings
+- No error is thrown - configure a key to enable reviews
+
+---
+
 ## Quick Start
 
 ### Minimal Configuration
@@ -56,7 +93,7 @@ Create `.sentinel/config.yaml`:
 version: 1
 ```
 
-This uses all defaults. Sentinel will review PRs targeting `main` or `master`.
+That's it! With an API key configured via the dashboard, Sentinel will review PRs targeting `main` or `master` using all default settings.
 
 ### Common Configuration
 
@@ -303,7 +340,7 @@ guidelines:
 
 #### Limits
 
-- Maximum **5 guideline files** per repository
+- Maximum **10 guideline files** per repository
 - Maximum **50KB per file** (content is truncated if larger)
 
 #### How Guidelines Are Used
@@ -538,9 +575,17 @@ Common errors:
 
 If reviews aren't happening:
 1. Check if auto-review is enabled for the repository
-2. Check if PR matches `target_branches`
-3. Check if PR is being skipped (labels, authors, source branch)
-4. Check for configuration errors in dashboard
+2. **Check if API key is configured** (most common issue - go to Repository Settings > API Keys)
+3. Check if PR matches `target_branches`
+4. Check if PR is being skipped (labels, authors, source branch)
+5. Check for configuration errors in dashboard
+
+### Reviews Skipped (no_provider_keys)
+
+If reviews are being skipped with reason `no_provider_keys`:
+1. Go to **Repository Settings > API Keys** in the Sentinel dashboard
+2. Add an API key for Anthropic or OpenAI
+3. Your key is encrypted and never shown again after saving
 
 ### Findings Not Appearing
 
