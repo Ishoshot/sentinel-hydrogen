@@ -111,6 +111,55 @@ final class SentinelMessageService
     }
 
     /**
+     * Build a comment explaining that review was skipped due to missing API keys.
+     */
+    public function buildNoProviderKeysComment(): string
+    {
+        $branding = $this->getRandomBranding();
+
+        return <<<MARKDOWN
+        ⚠️ **Review Skipped - No API Key Configured**
+
+        Sentinel cannot perform a code review because no AI provider API key has been configured for this repository.
+
+        **To enable reviews:**
+        1. Go to your repository settings in the Sentinel dashboard
+        2. Navigate to **API Keys**
+        3. Add your Anthropic or OpenAI API key
+
+        Your API key is encrypted and never exposed after saving.
+
+        ---
+        <sub>{$branding}</sub>
+        MARKDOWN;
+    }
+
+    /**
+     * Build a comment explaining that the review run failed.
+     */
+    public function buildRunFailedComment(string $errorType): string
+    {
+        $branding = $this->getRandomBranding();
+
+        return <<<MARKDOWN
+        ❌ **Review Failed**
+
+        Sentinel encountered an error while reviewing this pull request.
+
+        **Error Type:** `{$errorType}`
+
+        This has been logged and will be investigated. You can try:
+        - Pushing a new commit to trigger a new review
+        - Checking your repository settings in the Sentinel dashboard
+
+        If the issue persists, please contact support.
+
+        ---
+        <sub>{$branding}</sub>
+        MARKDOWN;
+    }
+
+    /**
      * Load messages from JSON file with caching.
      *
      * @return array{greetings: array<int, array{emoji: string, message: string}>, branding: array<int, string>}

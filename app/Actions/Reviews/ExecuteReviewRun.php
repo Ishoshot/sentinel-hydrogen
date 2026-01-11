@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\Reviews;
 
 use App\Actions\Activities\LogActivity;
+use App\Actions\GitHub\PostSkipReasonComment;
 use App\Enums\ActivityType;
 use App\Enums\RunStatus;
+use App\Enums\SkipReason;
 use App\Exceptions\NoProviderKeyException;
 use App\Jobs\Reviews\PostRunAnnotations;
 use App\Models\Finding;
@@ -29,6 +31,7 @@ final readonly class ExecuteReviewRun
         private ContextEngineContract $contextEngine,
         private ReviewEngine $reviewEngine,
         private LogActivity $logActivity,
+        private PostSkipReasonComment $postSkipReasonComment,
     ) {}
 
     /**
@@ -183,6 +186,8 @@ final readonly class ExecuteReviewRun
 
         $this->logRunSkipped($run, $exception);
 
+        $this->postSkipReasonComment->handle($run, SkipReason::NoProviderKeys);
+
         return $run;
     }
 
@@ -213,6 +218,27 @@ final readonly class ExecuteReviewRun
         ]);
 
         $this->logRunFailed($run, $exception);
+
+        $this->postSkipReasonComment->handle($run, SkipReason::RunFailed, $this->getSimpleErrorType($exception));
+    }
+
+    /**
+     * Get a simple, user-friendly error type from an exception.
+     */
+    private function getSimpleErrorType(Throwable $exception): string
+    {
+        $className = $exception::class;
+        $shortName = class_basename($className);
+
+        return match (true) {
+            str_contains($shortName, 'Timeout') => 'Request Timeout',
+            str_contains($shortName, 'Connection') => 'Connection Error',
+            str_contains($shortName, 'RateLimit') => 'Rate Limit Exceeded',
+            str_contains($shortName, 'Authentication') => 'Authentication Error',
+            str_contains($shortName, 'Authorization') => 'Authorization Error',
+            str_contains($shortName, 'Validation') => 'Validation Error',
+            default => 'Internal Error',
+        };
     }
 
     /**
