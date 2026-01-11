@@ -58,7 +58,9 @@ final class ListWorkspaceRunsRequest extends FormRequest
      */
     public function perPage(): int
     {
-        return (int) $this->validated('per_page', 20);
+        $perPage = $this->validated('per_page');
+
+        return is_numeric($perPage) ? (int) $perPage : 20;
     }
 
     /**
@@ -66,7 +68,9 @@ final class ListWorkspaceRunsRequest extends FormRequest
      */
     public function sortBy(): string
     {
-        return $this->validated('sort_by', 'created_at');
+        $sortBy = $this->validated('sort_by');
+
+        return is_string($sortBy) ? $sortBy : 'created_at';
     }
 
     /**
@@ -74,6 +78,8 @@ final class ListWorkspaceRunsRequest extends FormRequest
      */
     public function sortOrder(): string
     {
-        return $this->validated('sort_order', 'desc');
+        $sortOrder = $this->validated('sort_order');
+
+        return is_string($sortOrder) ? $sortOrder : 'desc';
     }
 }
