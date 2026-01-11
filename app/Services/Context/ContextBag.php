@@ -24,6 +24,7 @@ final class ContextBag
      * @param  array<int, array{author: string, body: string, created_at: string}>  $prComments
      * @param  array{readme?: string|null, contributing?: string|null}  $repositoryContext
      * @param  array<int, array{run_id: int, summary: string, findings_count: int, created_at: string}>  $reviewHistory
+     * @param  array<int, array{path: string, description: string|null, content: string}>  $guidelines
      * @param  array<string, mixed>  $metadata
      */
     public function __construct(
@@ -34,6 +35,7 @@ final class ContextBag
         public array $prComments = [],
         public array $repositoryContext = [],
         public array $reviewHistory = [],
+        public array $guidelines = [],
         public array $metadata = [],
     ) {}
 
@@ -79,6 +81,11 @@ final class ContextBag
             $totalChars += mb_strlen($review['summary']);
         }
 
+        // Guidelines
+        foreach ($this->guidelines as $guideline) {
+            $totalChars += mb_strlen($guideline['content'] ?? '');
+        }
+
         return (int) ceil($totalChars * self::TOKENS_PER_CHAR);
     }
 
@@ -105,6 +112,7 @@ final class ContextBag
             'pr_comments' => $this->prComments,
             'repository_context' => $this->repositoryContext,
             'review_history' => $this->reviewHistory,
+            'guidelines' => $this->guidelines,
             'metadata' => $this->metadata,
         ];
     }

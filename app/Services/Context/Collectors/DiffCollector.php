@@ -116,6 +116,16 @@ final readonly class DiffCollector implements ContextCollector
         $bag->files = $this->normalizeFiles($files);
         $bag->metrics = $this->calculateMetrics($bag->files);
 
+        // Store sentinel config for downstream filters
+        $repository->loadMissing('settings');
+        $settings = $repository->settings;
+        $sentinelConfig = $settings?->getConfigOrDefault();
+
+        if ($sentinelConfig !== null) {
+            $bag->metadata['sentinel_config'] = $sentinelConfig->toArray();
+            $bag->metadata['paths_config'] = $sentinelConfig->getPathsOrDefault()->toArray();
+        }
+
         Log::info('DiffCollector: Collected PR data', [
             'repository' => $fullName,
             'pr_number' => $pullRequestNumber,
