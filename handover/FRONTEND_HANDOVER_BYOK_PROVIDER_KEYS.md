@@ -491,8 +491,11 @@ When a run fails due to missing provider key, the run metadata shows:
 
 ```json
 {
-    "status": "failed",
-    "error_message": "No provider keys configured for this repository"
+    "status": "skipped",
+    "metadata": {
+        "skip_reason": "no_provider_keys",
+        "skip_message": "No provider keys configured for this repository"
+    }
 }
 ```
 

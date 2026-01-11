@@ -522,10 +522,7 @@ final readonly class PostRunAnnotations
 
         // Only include suggestions if configured
         if ($includeSuggestions) {
-            $suggestion = isset($metadata['suggestion']) && is_string($metadata['suggestion']) ? $metadata['suggestion'] : null;
-            if ($suggestion !== null && $suggestion !== '') {
-                $body .= "\n**Suggestion:** {$suggestion}\n";
-            }
+            $body .= $this->formatCodeSuggestion($metadata);
         }
 
         $rationale = isset($metadata['rationale']) && is_string($metadata['rationale']) ? $metadata['rationale'] : null;
@@ -540,6 +537,55 @@ final readonly class PostRunAnnotations
         }
 
         return $body;
+    }
+
+    /**
+     * Format code suggestion block for GitHub.
+     *
+     * Uses GitHub's suggestion syntax for one-click apply when replacement_code is available.
+     * Falls back to text suggestion if only suggestion field is present.
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    private function formatCodeSuggestion(array $metadata): string
+    {
+        $replacementCode = isset($metadata['replacement_code']) && is_string($metadata['replacement_code'])
+            ? $metadata['replacement_code']
+            : null;
+
+        $explanation = isset($metadata['explanation']) && is_string($metadata['explanation'])
+            ? $metadata['explanation']
+            : null;
+
+        // If we have replacement code, use GitHub's suggestion block
+        if ($replacementCode !== null && $replacementCode !== '') {
+            $body = "\n";
+
+            if ($explanation !== null && $explanation !== '') {
+                $body .= "**Why:** {$explanation}\n\n";
+            }
+
+            // GitHub suggestion block - allows one-click apply
+            $body .= "```suggestion\n";
+            $body .= $replacementCode;
+            // Ensure the suggestion ends with a newline
+            if (! str_ends_with($replacementCode, "\n")) {
+                $body .= "\n";
+            }
+
+            return $body."```\n";
+        }
+
+        // Fallback to text suggestion if no code replacement
+        $suggestion = isset($metadata['suggestion']) && is_string($metadata['suggestion'])
+            ? $metadata['suggestion']
+            : null;
+
+        if ($suggestion !== null && $suggestion !== '') {
+            return "\n**Suggestion:** {$suggestion}\n";
+        }
+
+        return '';
     }
 
     /**
