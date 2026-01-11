@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\GitHub;
 
+use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Actions\Reviews\CreatePullRequestRun;
 use App\Actions\Reviews\SyncPullRequestRunMetadata;
@@ -12,6 +13,7 @@ use App\Jobs\Reviews\ExecuteReviewRun;
 use App\Models\Installation;
 use App\Models\Repository;
 use App\Services\GitHub\GitHubWebhookService;
+use App\Services\SentinelConfig\TriggerRuleEvaluator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -36,7 +38,9 @@ final class ProcessPullRequestWebhook implements ShouldQueue
         GitHubWebhookService $webhookService,
         CreatePullRequestRun $createPullRequestRun,
         SyncPullRequestRunMetadata $syncMetadata,
-        PostsGreetingComment $postGreeting
+        PostsGreetingComment $postGreeting,
+        PostsConfigErrorComment $postConfigError,
+        TriggerRuleEvaluator $triggerEvaluator
     ): void {
         $data = $webhookService->parsePullRequestPayload($this->payload);
 
@@ -93,6 +97,61 @@ final class ProcessPullRequestWebhook implements ShouldQueue
             ]);
 
             return;
+        }
+
+        // Check for config errors before proceeding with review
+        $repository->loadMissing('settings');
+        $settings = $repository->settings;
+
+        if ($settings !== null && $settings->hasConfigError()) {
+            Log::warning('Repository has config error, skipping review', [
+                'repository' => $data['repository_full_name'],
+                'config_error' => $settings->config_error,
+            ]);
+
+            // Post error comment to PR
+            $postConfigError->handle(
+                $repository,
+                $data['pull_request_number'],
+                $settings->config_error ?? 'Unknown configuration error'
+            );
+
+            // Create a skipped run with error details
+            $skipReason = sprintf('Configuration error: %s', $settings->config_error ?? 'Unknown error');
+            $createPullRequestRun->handle($repository, $data, null, $skipReason);
+
+            return;
+        }
+
+        // Evaluate trigger rules
+        $sentinelConfig = $settings?->getConfigOrDefault();
+        $triggersConfig = $sentinelConfig?->getTriggersOrDefault();
+
+        if ($triggersConfig !== null) {
+            $labelNames = array_map(
+                fn (array $label): string => $label['name'],
+                $data['labels']
+            );
+
+            $triggerResult = $triggerEvaluator->evaluate($triggersConfig, [
+                'base_branch' => $data['base_branch'],
+                'head_branch' => $data['head_branch'],
+                'author_login' => $data['author']['login'],
+                'labels' => $labelNames,
+            ]);
+
+            if (! $triggerResult['should_trigger']) {
+                Log::info('Review skipped due to trigger rules', [
+                    'repository' => $data['repository_full_name'],
+                    'pr_number' => $data['pull_request_number'],
+                    'reason' => $triggerResult['reason'],
+                ]);
+
+                // Create skipped run silently (no PR comment for trigger rules)
+                $createPullRequestRun->handle($repository, $data, null, $triggerResult['reason']);
+
+                return;
+            }
         }
 
         // Post greeting comment immediately for low latency feedback
