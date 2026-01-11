@@ -65,6 +65,14 @@ final class Repository extends Model
     }
 
     /**
+     * @return HasMany<ProviderKey, $this>
+     */
+    public function providerKeys(): HasMany
+    {
+        return $this->hasMany(ProviderKey::class);
+    }
+
+    /**
      * Get the owner part of the full_name (e.g., "owner" from "owner/repo").
      */
     public function getOwnerAttribute(): string
