@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews;
 
+use App\Enums\AiProvider;
+use App\Exceptions\NoProviderKeyException;
+use App\Models\Repository;
 use App\Services\Context\ContextBag;
+use App\Services\Reviews\Contracts\ProviderKeyResolver;
 use App\Services\Reviews\Contracts\ReviewEngine;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
@@ -13,6 +17,9 @@ use RuntimeException;
 
 /**
  * AI-powered review engine using PrismPHP for LLM integration.
+ *
+ * Uses BYOK (Bring Your Own Key) provider keys from repository configuration.
+ * System keys are NOT used for customer reviews - BYOK is mandatory.
  */
 final readonly class PrismReviewEngine implements ReviewEngine
 {
@@ -36,20 +43,44 @@ final readonly class PrismReviewEngine implements ReviewEngine
     /**
      * Create a new engine instance.
      */
-    public function __construct(private ReviewPromptBuilder $promptBuilder) {}
+    public function __construct(
+        private ReviewPromptBuilder $promptBuilder,
+        private ProviderKeyResolver $keyResolver,
+    ) {}
 
     /**
      * Perform AI-powered code review using ContextBag.
      *
-     * @param  array{policy_snapshot: array<string, mixed>, context_bag: ContextBag}  $context
+     * Uses BYOK provider keys from repository configuration.
+     * Throws NoProviderKeyException if no keys are configured - there is no fallback.
+     *
+     * @param  array{repository: Repository, policy_snapshot: array<string, mixed>, context_bag: ContextBag}  $context
      * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
+     *
+     * @throws NoProviderKeyException When no BYOK provider keys are configured for the repository
      */
     public function review(array $context): array
     {
         $startTime = microtime(true);
 
-        $provider = $this->resolveProvider();
-        $model = $this->resolveModel();
+        /** @var Repository $repository */
+        $repository = $context['repository'];
+
+        // Get BYOK provider and key (NO fallback to system keys)
+        $aiProvider = $this->keyResolver->getFirstAvailableProvider($repository);
+
+        if (! $aiProvider instanceof AiProvider) {
+            throw NoProviderKeyException::noProvidersConfigured();
+        }
+
+        $apiKey = $this->keyResolver->resolve($repository, $aiProvider);
+
+        if ($apiKey === null) {
+            throw NoProviderKeyException::noProvidersConfigured();
+        }
+
+        $provider = $this->mapToProvider($aiProvider);
+        $model = $this->resolveModel($aiProvider);
 
         $systemPrompt = $this->promptBuilder->buildSystemPrompt($context['policy_snapshot']);
 
@@ -57,7 +88,8 @@ final readonly class PrismReviewEngine implements ReviewEngine
         $userPrompt = $this->promptBuilder->buildUserPromptFromBag($bag);
         $inputMetrics = $bag->metrics;
 
-        $enableThinking = config('prism.providers.anthropic.default_thinking_budget', 2048) > 0;
+        $enableThinking = $aiProvider === AiProvider::Anthropic
+            && config('prism.providers.anthropic.default_thinking_budget', 2048) > 0;
         $providerOptions = ['use_tool_calling' => true];
 
         if ($enableThinking) {
@@ -67,7 +99,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
         $temperature = $enableThinking ? 1 : 0.1;
 
         $response = Prism::text()
-            ->using($provider, $model)
+            ->using($provider, $model, ['api_key' => $apiKey])
             ->withSystemPrompt($systemPrompt)
             ->withPrompt($userPrompt)
             ->withMaxTokens(8192)
@@ -89,36 +121,24 @@ final readonly class PrismReviewEngine implements ReviewEngine
     }
 
     /**
-     * Resolve the AI provider based on available API keys.
+     * Map AiProvider enum to Prism Provider enum.
      */
-    private function resolveProvider(): Provider
+    private function mapToProvider(AiProvider $aiProvider): Provider
     {
-        $providerKey = config('prism.providers.anthropic.api_key', '');
-
-        if ($providerKey !== '') {
-            return Provider::Anthropic;
-        }
-
-        $openAiKey = config('prism.providers.openai.api_key', '');
-
-        if ($openAiKey !== '') {
-            return Provider::OpenAI;
-        }
-
-        return Provider::Anthropic;
+        return match ($aiProvider) {
+            AiProvider::Anthropic => Provider::Anthropic,
+            AiProvider::OpenAI => Provider::OpenAI,
+        };
     }
 
     /**
      * Resolve the AI model based on the provider.
      */
-    private function resolveModel(): string
+    private function resolveModel(AiProvider $aiProvider): string
     {
-        $provider = $this->resolveProvider();
-
-        return match ($provider) {
-            Provider::Anthropic => 'claude-opus-4-20250514',
-            Provider::OpenAI => 'gpt-4o',
-            default => 'claude-opus-4-20250514',
+        return match ($aiProvider) {
+            AiProvider::Anthropic => 'claude-sonnet-4-5-20250929',
+            AiProvider::OpenAI => 'gpt-4o',
         };
     }
 

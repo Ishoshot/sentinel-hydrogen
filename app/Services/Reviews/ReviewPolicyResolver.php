@@ -41,27 +41,22 @@ final readonly class ReviewPolicyResolver
     private function mergeReviewConfig(array $policy, ReviewConfig $reviewConfig): array
     {
         // Map min_severity to severity_thresholds.comment
+        $existingThresholds = $policy['severity_thresholds'] ?? [];
         $policy['severity_thresholds'] = array_merge(
-            $policy['severity_thresholds'] ?? [],
+            is_array($existingThresholds) ? $existingThresholds : [],
             ['comment' => $reviewConfig->minSeverity->value]
         );
 
         // Map max_findings to comment_limits.max_inline_comments
+        $existingLimits = $policy['comment_limits'] ?? [];
         $policy['comment_limits'] = array_merge(
-            $policy['comment_limits'] ?? [],
+            is_array($existingLimits) ? $existingLimits : [],
             ['max_inline_comments' => $reviewConfig->maxFindings]
         );
 
-        // Add enabled categories to enabled_rules
-        $enabledCategories = $reviewConfig->categories->getEnabled();
-
-        if ($enabledCategories !== []) {
-            $existingRules = $policy['enabled_rules'] ?? [];
-            $policy['enabled_rules'] = array_unique(array_merge(
-                is_array($existingRules) ? $existingRules : [],
-                $enabledCategories
-            ));
-        }
+        // Replace enabled_rules with user's enabled categories
+        // This allows users to disable default categories (e.g., setting performance: false)
+        $policy['enabled_rules'] = $reviewConfig->categories->getEnabled();
 
         // Add tone, language, and focus for prompt customization
         $policy['tone'] = $reviewConfig->tone->value;
