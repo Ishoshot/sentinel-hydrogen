@@ -75,22 +75,22 @@ final class ListWorkspaceRunsController
             });
         }
 
-        if (isset($validated['from_date'])) {
+        if (isset($validated['from_date']) && is_string($validated['from_date'])) {
             $query->whereDate('created_at', '>=', $validated['from_date']);
         }
 
-        if (isset($validated['to_date'])) {
+        if (isset($validated['to_date']) && is_string($validated['to_date'])) {
             $query->whereDate('created_at', '<=', $validated['to_date']);
         }
 
-        if (isset($validated['search'])) {
+        if (isset($validated['search']) && is_string($validated['search'])) {
             $search = $validated['search'];
             $query->where(function (Builder $q) use ($search): void {
-                $q->where('metadata->pull_request_title', 'like', "%{$search}%")
-                    ->orWhere('metadata->sender_login', 'like', "%{$search}%")
+                $q->where('metadata->pull_request_title', 'like', sprintf('%%%s%%', $search))
+                    ->orWhere('metadata->sender_login', 'like', sprintf('%%%s%%', $search))
                     ->orWhereHas('repository', function (Builder $repoQuery) use ($search): void {
-                        $repoQuery->where('name', 'like', "%{$search}%")
-                            ->orWhere('full_name', 'like', "%{$search}%");
+                        $repoQuery->where('name', 'like', sprintf('%%%s%%', $search))
+                            ->orWhere('full_name', 'like', sprintf('%%%s%%', $search));
                     });
             });
         }
