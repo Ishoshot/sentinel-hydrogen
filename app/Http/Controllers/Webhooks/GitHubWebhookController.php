@@ -8,6 +8,7 @@ use App\Enums\GitHubWebhookEvent;
 use App\Jobs\GitHub\ProcessInstallationRepositoriesWebhook;
 use App\Jobs\GitHub\ProcessInstallationWebhook;
 use App\Jobs\GitHub\ProcessPullRequestWebhook;
+use App\Jobs\GitHub\ProcessPushWebhook;
 use App\Services\GitHub\GitHubWebhookService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -78,6 +79,7 @@ final readonly class GitHubWebhookController
             GitHubWebhookEvent::Installation => ProcessInstallationWebhook::dispatch($data),
             GitHubWebhookEvent::InstallationRepositories => ProcessInstallationRepositoriesWebhook::dispatch($data),
             GitHubWebhookEvent::PullRequest => ProcessPullRequestWebhook::dispatch($data),
+            GitHubWebhookEvent::Push => ProcessPushWebhook::dispatch($data),
             default => null,
         };
 

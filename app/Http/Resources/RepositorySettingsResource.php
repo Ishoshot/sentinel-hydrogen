@@ -21,6 +21,14 @@ final class RepositorySettingsResource extends JsonResource
             'id' => $this->id,
             'auto_review_enabled' => $this->auto_review_enabled,
             'review_rules' => $this->review_rules,
+
+            // Sentinel config from .sentinel/config.yaml
+            'sentinel_config' => $this->sentinel_config,
+            'config_synced_at' => $this->config_synced_at?->toISOString(),
+            'config_error' => $this->config_error,
+            'has_sentinel_config' => $this->sentinel_config !== null,
+            'has_config_error' => $this->hasConfigError(),
+
             'updated_at' => $this->updated_at?->toISOString(),
         ];
     }
