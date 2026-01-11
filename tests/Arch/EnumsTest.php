@@ -14,6 +14,7 @@ arch('enums are used in appropriate locations')
     ->toOnlyBeUsedIn([
         'App\Actions',
         'App\Console\Commands',
+        'App\DataTransferObjects',
         'App\Http',
         'App\Jobs',
         'App\Models',
