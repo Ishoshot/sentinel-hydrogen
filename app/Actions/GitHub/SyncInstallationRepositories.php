@@ -32,10 +32,10 @@ final readonly class SyncInstallationRepositories
             $installation->installation_id
         );
 
-        /** @var array<int, Repository> $syncedRepositories */
-        $syncedRepositories = [];
+        /** @var array<int> $syncedRepositoryIds */
+        $syncedRepositoryIds = [];
 
-        $result = DB::transaction(function () use ($installation, $githubRepos, &$syncedRepositories): array {
+        $result = DB::transaction(function () use ($installation, $githubRepos, &$syncedRepositoryIds): array {
             $existingRepoIds = $installation->repositories()->pluck('github_id')->toArray();
             $githubRepoIds = array_column($githubRepos, 'id');
 
@@ -73,7 +73,7 @@ final readonly class SyncInstallationRepositories
                     $updated++;
                 }
 
-                $syncedRepositories[] = $repository;
+                $syncedRepositoryIds[] = $repository->id;
             }
 
             // Remove repositories that are no longer accessible
@@ -90,9 +90,14 @@ final readonly class SyncInstallationRepositories
             ];
         });
 
+        // Batch load repositories with settings to avoid N+1 queries
+        $syncedRepositories = Repository::query()
+            ->whereIn('id', $syncedRepositoryIds)
+            ->with('settings')
+            ->get();
+
         // Sync Sentinel configs for all repositories (outside transaction)
         foreach ($syncedRepositories as $repository) {
-            $repository->refresh(); // Ensure settings relation is loaded
             $this->syncSentinelConfig->handle($repository);
         }
 
@@ -107,10 +112,10 @@ final readonly class SyncInstallationRepositories
      */
     public function addRepositories(Installation $installation, array $repositories): int
     {
-        /** @var array<int, Repository> $addedRepositories */
-        $addedRepositories = [];
+        /** @var array<int> $addedRepositoryIds */
+        $addedRepositoryIds = [];
 
-        $added = DB::transaction(function () use ($installation, $repositories, &$addedRepositories): int {
+        $added = DB::transaction(function () use ($installation, $repositories, &$addedRepositoryIds): int {
             $count = 0;
 
             foreach ($repositories as $repoData) {
@@ -139,17 +144,24 @@ final readonly class SyncInstallationRepositories
                         'review_rules' => null,
                     ]);
 
-                    $addedRepositories[] = $repository;
+                    $addedRepositoryIds[] = $repository->id;
                 }
             }
 
             return $count;
         });
 
-        // Sync Sentinel configs for newly added repositories (outside transaction)
-        foreach ($addedRepositories as $repository) {
-            $repository->refresh();
-            $this->syncSentinelConfig->handle($repository);
+        // Batch load repositories with settings to avoid N+1 queries
+        if ($addedRepositoryIds !== []) {
+            $addedRepositories = Repository::query()
+                ->whereIn('id', $addedRepositoryIds)
+                ->with('settings')
+                ->get();
+
+            // Sync Sentinel configs for newly added repositories (outside transaction)
+            foreach ($addedRepositories as $repository) {
+                $this->syncSentinelConfig->handle($repository);
+            }
         }
 
         return $added;

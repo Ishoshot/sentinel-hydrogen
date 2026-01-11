@@ -15,7 +15,8 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function __construct(
         private GitHubManager $github,
-        private GitHubAppService $appService
+        private GitHubAppService $appService,
+        private GitHubRateLimiter $rateLimiter,
     ) {}
 
     /**
@@ -29,7 +30,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         $this->authenticateWithJwt();
 
         /** @var array<string, mixed> $installation */
-        $installation = $this->github->connection()->apps()->getInstallation($installationId);
+        $installation = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->apps()->getInstallation($installationId),
+            "getInstallation({$installationId})"
+        );
 
         return $installation;
     }
@@ -50,9 +54,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
 
         do {
             /** @var array{repositories?: array<int, array<string, mixed>>} $response */
-            $response = $this->github->connection()
-                ->apps()
-                ->listRepositories($page);
+            $response = $this->rateLimiter->handle(
+                fn (): array => $this->github->connection()->apps()->listRepositories($page),
+                "listRepositories(installation={$installationId}, page={$page})"
+            );
 
             /** @var array<int, array<string, mixed>> $repos */
             $repos = $response['repositories'] ?? [];
@@ -73,7 +78,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         $this->authenticateWithInstallationToken($installationId);
 
         /** @var array<string, mixed> $repository */
-        $repository = $this->github->connection()->repo()->show($owner, $repo);
+        $repository = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->repo()->show($owner, $repo),
+            "getRepository({$owner}/{$repo})"
+        );
 
         return $repository;
     }
@@ -88,7 +96,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         $this->authenticateWithInstallationToken($installationId);
 
         /** @var array<string, mixed> $pullRequest */
-        $pullRequest = $this->github->connection()->pullRequest()->show($owner, $repo, $number);
+        $pullRequest = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->pullRequest()->show($owner, $repo, $number),
+            "getPullRequest({$owner}/{$repo}#{$number})"
+        );
 
         return $pullRequest;
     }
@@ -103,7 +114,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         $this->authenticateWithInstallationToken($installationId);
 
         /** @var array<int, array<string, mixed>> $files */
-        $files = $this->github->connection()->pullRequest()->files($owner, $repo, $number);
+        $files = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->pullRequest()->files($owner, $repo, $number),
+            "getPullRequestFiles({$owner}/{$repo}#{$number})"
+        );
 
         return $files;
     }
@@ -118,7 +132,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         $this->authenticateWithInstallationToken($installationId);
 
         /** @var array<string, mixed>|string $contents */
-        $contents = $this->github->connection()->repo()->contents()->show($owner, $repo, $path, $ref);
+        $contents = $this->rateLimiter->handle(
+            fn (): array|string => $this->github->connection()->repo()->contents()->show($owner, $repo, $path, $ref),
+            "getFileContents({$owner}/{$repo}/{$path})"
+        );
 
         return $contents;
     }
@@ -159,7 +176,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         }
 
         /** @var array<string, mixed> $review */
-        $review = $this->github->connection()->pullRequest()->reviews()->create($owner, $repo, $number, $params);
+        $review = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->pullRequest()->reviews()->create($owner, $repo, $number, $params),
+            "createPullRequestReview({$owner}/{$repo}#{$number})"
+        );
 
         return $review;
     }
@@ -179,7 +199,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         $this->authenticateWithInstallationToken($installationId);
 
         /** @var array<string, mixed> $comment */
-        $comment = $this->github->connection()->issue()->comments()->create($owner, $repo, $number, ['body' => $body]);
+        $comment = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->issue()->comments()->create($owner, $repo, $number, ['body' => $body]),
+            "createPullRequestComment({$owner}/{$repo}#{$number})"
+        );
 
         return $comment;
     }
@@ -199,7 +222,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         $this->authenticateWithInstallationToken($installationId);
 
         /** @var array<string, mixed> $comment */
-        $comment = $this->github->connection()->issue()->comments()->update($owner, $repo, $commentId, ['body' => $body]);
+        $comment = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->issue()->comments()->update($owner, $repo, $commentId, ['body' => $body]),
+            "updatePullRequestComment({$owner}/{$repo}#{$commentId})"
+        );
 
         return $comment;
     }
@@ -214,7 +240,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         $this->authenticateWithInstallationToken($installationId);
 
         /** @var array<string, mixed> $issue */
-        $issue = $this->github->connection()->issue()->show($owner, $repo, $number);
+        $issue = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->issue()->show($owner, $repo, $number),
+            "getIssue({$owner}/{$repo}#{$number})"
+        );
 
         return $issue;
     }
@@ -229,7 +258,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         $this->authenticateWithInstallationToken($installationId);
 
         /** @var array<int, array<string, mixed>> $comments */
-        $comments = $this->github->connection()->issue()->comments()->all($owner, $repo, $number);
+        $comments = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->issue()->comments()->all($owner, $repo, $number),
+            "getIssueComments({$owner}/{$repo}#{$number})"
+        );
 
         return $comments;
     }
