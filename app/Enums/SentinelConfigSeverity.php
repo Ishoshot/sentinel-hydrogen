@@ -16,7 +16,7 @@ enum SentinelConfigSeverity: string
     case Info = 'info';
 
     /**
-     * @return array<string>
+     * @return array<int, string>
      */
     public static function values(): array
     {
