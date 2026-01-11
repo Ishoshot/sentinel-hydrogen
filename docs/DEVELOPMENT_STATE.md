@@ -463,8 +463,53 @@ annotations (id, finding_id, workspace_id, provider_id, external_id, type, creat
 - `App\Services\Reviews\ReviewPolicyResolver` - Merges default policy with repository rules
 
 #### Prompt Templates
-- `resources/views/prompts/review-system.blade.php` - AI system prompt (persona, JSON output spec)
-- `resources/views/prompts/review-user.blade.php` - AI user prompt (PR details, files)
+
+**Main Prompts:**
+- `resources/views/prompts/review-system.blade.php` - AI system prompt (expert persona, domain integration, JSON output spec)
+- `resources/views/prompts/review-user.blade.php` - AI user prompt (PR details, files, guidelines)
+
+**Domain Expert Sub-Prompts** (conditionally included based on `enabled_rules`):
+- `resources/views/prompts/domains/security.blade.php` - Security specialist (OWASP Top 10, injection, auth, crypto)
+- `resources/views/prompts/domains/performance.blade.php` - Performance optimization (N+1, complexity, memory, caching)
+- `resources/views/prompts/domains/code-quality.blade.php` - Code quality expert (SOLID, DRY, error handling, type safety)
+- `resources/views/prompts/domains/testing.blade.php` - QA specialist (coverage, isolation, edge cases)
+- `resources/views/prompts/domains/documentation.blade.php` - Documentation reviewer (API docs, comments, README)
+
+**Review Persona:**
+The AI adopts a "principal-level code reviewer" persona with:
+- Clear review philosophy (thorough not pedantic, solutions not problems, accurate severity)
+- Domain-specific expertise loaded based on repository's enabled rules
+- Configurable tone (direct, constructive, educational, minimal)
+- Support for non-English feedback via `language` setting
+
+**Enhanced JSON Output Format:**
+```json
+{
+  "summary": {
+    "overview": "Comprehensive multi-paragraph analysis...",
+    "verdict": "approve | request_changes | comment",
+    "risk_level": "low | medium | high | critical",
+    "strengths": ["Specific positive aspects..."],
+    "concerns": ["Main concerns or risks..."],
+    "recommendations": ["Actionable next steps..."]
+  },
+  "findings": [{
+    "severity": "critical | high | medium | low | info",
+    "category": "security | correctness | reliability | performance | maintainability | testing | documentation",
+    "title": "Clear, specific title",
+    "description": "Detailed explanation",
+    "impact": "What could go wrong if not fixed",
+    "confidence": 0.95,
+    "file_path": "path/to/file.ext",
+    "line_start": 42,
+    "line_end": 48,
+    "current_code": "The problematic code snippet",
+    "replacement_code": "The fixed code - copy-paste ready",
+    "explanation": "Why the replacement is better",
+    "references": ["CWE-89", "OWASP-A03:2021"]
+  }]
+}
+```
 
 #### Configuration
 - `config/reviews.php` - Default review policy (enabled_rules, severity_thresholds, comment_limits, ignored_paths)
@@ -661,6 +706,32 @@ Since `head_sha` changes with each commit, **each new commit to a PR creates a n
 
 **Future Enhancement**: Consider canceling/skipping pending runs when newer commits arrive to avoid reviewing stale code.
 
+### Infrastructure: GitHub API Rate Limiting
+
+#### GitHubRateLimiter Service
+`App\Services\GitHub\GitHubRateLimiter` - Handles GitHub API rate limiting with exponential backoff and retry logic.
+
+**Features:**
+- Automatic retry on rate limit errors (primary, secondary, abuse detection)
+- Exponential backoff with jitter (base delay: 1s, max: 60s)
+- Max 3 retries before throwing exception
+- Detects rate limits via:
+  - HTTP 403 with `X-RateLimit-Remaining: 0`
+  - HTTP 429 (secondary rate limit)
+  - `retry-after` header respect
+  - Abuse detection messages
+
+**Usage:**
+All `GitHubApiService` methods are wrapped with the rate limiter:
+```php
+$this->rateLimiter->handle(
+    fn () => $this->github->connection()->repo()->show($owner, $repo),
+    "getRepository({$owner}/{$repo})"
+);
+```
+
+**Tests:** `tests/Feature/Services/GitHub/GitHubRateLimiterTest.php` (17 tests)
+
 ### Infrastructure: Queue System (Redis + Horizon)
 
 #### Overview
@@ -800,6 +871,7 @@ Handover documents for the frontend agent are located in `handover/`:
 - `handover/FRONTEND_HANDOVER_REVIEW_SYSTEM_CORE.md` - Phase 4 (Runs & Findings Data Model)
 - `handover/FRONTEND_HANDOVER_REVIEW_EXECUTION_PIPELINE.md` - Phase 4 (Execution Pipeline)
 - `handover/FRONTEND_HANDOVER_REPOSITORY_CONFIGURATION.md` - Phase 5 (Repository Configuration)
+- `handover/FRONTEND_HANDOVER_ENHANCED_REVIEW_OUTPUT.md` - Enhanced summary & code suggestions
 
 These documents contain:
 - Full API endpoint documentation with request/response examples
@@ -990,6 +1062,6 @@ For setting up OAuth and GitHub App credentials, see:
 
 *Last Updated: 2026-01-11*
 *Phases Completed: Identity & Workspace Foundation, Source Control Integration (GitHub), Review System Core, Context Engine, Repository Configuration (Complete)*
-*Infrastructure: Queue System (Redis + Horizon)*
-*Tests: 456 passing*
+*Infrastructure: Queue System (Redis + Horizon), GitHub API Rate Limiting*
+*Tests: 480 passing*
 *Next Phase: Plans & Billing (Phase 6)*

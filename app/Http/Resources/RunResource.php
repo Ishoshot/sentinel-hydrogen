@@ -70,7 +70,7 @@ final class RunResource extends JsonResource
     /**
      * Format the review summary from metadata.
      *
-     * @return array{overview: string, risk_level: string, recommendations: array<int, string>}|null
+     * @return array{overview: string, verdict: string, risk_level: string, strengths: array<int, string>, concerns: array<int, string>, recommendations: array<int, string>}|null
      */
     private function formatSummary(): ?array
     {
@@ -86,19 +86,34 @@ final class RunResource extends JsonResource
             return null;
         }
 
-        $recommendations = [];
-        if (is_array($summary['recommendations'] ?? null)) {
-            foreach ($summary['recommendations'] as $rec) {
-                if (is_string($rec)) {
-                    $recommendations[] = $rec;
-                }
+        return [
+            'overview' => is_string($summary['overview'] ?? null) ? $summary['overview'] : '',
+            'verdict' => is_string($summary['verdict'] ?? null) ? $summary['verdict'] : 'comment',
+            'risk_level' => is_string($summary['risk_level'] ?? null) ? $summary['risk_level'] : 'low',
+            'strengths' => $this->filterStringArray($summary['strengths'] ?? []),
+            'concerns' => $this->filterStringArray($summary['concerns'] ?? []),
+            'recommendations' => $this->filterStringArray($summary['recommendations'] ?? []),
+        ];
+    }
+
+    /**
+     * Filter an array to only include string values.
+     *
+     * @return array<int, string>
+     */
+    private function filterStringArray(mixed $items): array
+    {
+        if (! is_array($items)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($items as $item) {
+            if (is_string($item)) {
+                $result[] = $item;
             }
         }
 
-        return [
-            'overview' => is_string($summary['overview'] ?? null) ? $summary['overview'] : '',
-            'risk_level' => is_string($summary['risk_level'] ?? null) ? $summary['risk_level'] : 'low',
-            'recommendations' => $recommendations,
-        ];
+        return $result;
     }
 }

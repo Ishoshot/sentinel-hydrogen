@@ -112,11 +112,22 @@ final readonly class ExecuteReviewRun
     }
 
     /**
-     * @param  array{severity: string, category: string, title: string, description: string, rationale: string, confidence: float, file_path?: string, line_start?: int, line_end?: int, suggestion?: string, patch?: string, references?: array<int, string>, tags?: array<int, string>}  $findingData
+     * @param  array<string, mixed>  $findingData
      */
     private function createFinding(Run $run, array $findingData): void
     {
-        $metadata = Arr::only($findingData, ['suggestion', 'patch', 'references', 'tags', 'rationale']);
+        $metadata = Arr::only($findingData, [
+            // Legacy fields
+            'suggestion',
+            'patch',
+            'references',
+            'tags',
+            'rationale',
+            // New enhanced fields
+            'current_code',
+            'replacement_code',
+            'explanation',
+        ]);
 
         if ($metadata === []) {
             $metadata = null;

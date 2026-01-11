@@ -31,6 +31,8 @@ final readonly class PrismReviewEngine implements ReviewEngine
 
     private const array VALID_RISK_LEVELS = ['low', 'medium', 'high', 'critical'];
 
+    private const array VALID_VERDICTS = ['approve', 'request_changes', 'comment'];
+
     /**
      * Create a new engine instance.
      */
@@ -40,7 +42,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Perform AI-powered code review using ContextBag.
      *
      * @param  array{policy_snapshot: array<string, mixed>, context_bag: ContextBag}  $context
-     * @return array{summary: array{overview: string, risk_level: string, recommendations: array<int, string>}, findings: array<int, array{severity: string, category: string, title: string, description: string, rationale: string, confidence: float, file_path?: string, line_start?: int, line_end?: int, suggestion?: string, patch?: string, references?: array<int, string>, tags?: array<int, string>}>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
+     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
      */
     public function review(array $context): array
     {
@@ -59,7 +61,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
             ->using($provider, $model)
             ->withSystemPrompt($systemPrompt)
             ->withPrompt($userPrompt)
-            ->withMaxTokens(4096)
+            ->withMaxTokens(8192)
             ->usingTemperature(0.1)
             ->asText();
 
@@ -113,7 +115,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Parse the AI response and validate against the expected schema.
      *
      * @param  array{files_changed: int, lines_added: int, lines_deleted: int}  $inputMetrics
-     * @return array{summary: array{overview: string, risk_level: string, recommendations: array<int, string>}, findings: array<int, array{severity: string, category: string, title: string, description: string, rationale: string, confidence: float, file_path?: string, line_start?: int, line_end?: int, suggestion?: string, patch?: string, references?: array<int, string>, tags?: array<int, string>}>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
+     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
      */
     private function parseResponse(
         TextResponse $response,
@@ -176,7 +178,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Normalize and validate the summary structure.
      *
      * @param  array<string, mixed>  $summary
-     * @return array{overview: string, risk_level: string, recommendations: array<int, string>}
+     * @return array{overview: string, verdict: string, risk_level: string, strengths: array<int, string>, concerns: array<int, string>, recommendations: array<int, string>}
      */
     private function normalizeSummary(array $summary): array
     {
@@ -184,10 +186,33 @@ final readonly class PrismReviewEngine implements ReviewEngine
             ? $summary['overview']
             : 'Review completed.';
 
+        $verdict = isset($summary['verdict']) && is_string($summary['verdict'])
+            && in_array($summary['verdict'], self::VALID_VERDICTS, true)
+            ? $summary['verdict']
+            : 'comment';
+
         $riskLevel = isset($summary['risk_level']) && is_string($summary['risk_level'])
             && in_array($summary['risk_level'], self::VALID_RISK_LEVELS, true)
             ? $summary['risk_level']
             : 'low';
+
+        $strengths = [];
+        if (isset($summary['strengths']) && is_array($summary['strengths'])) {
+            foreach ($summary['strengths'] as $strength) {
+                if (is_string($strength)) {
+                    $strengths[] = $strength;
+                }
+            }
+        }
+
+        $concerns = [];
+        if (isset($summary['concerns']) && is_array($summary['concerns'])) {
+            foreach ($summary['concerns'] as $concern) {
+                if (is_string($concern)) {
+                    $concerns[] = $concern;
+                }
+            }
+        }
 
         $recommendations = [];
         if (isset($summary['recommendations']) && is_array($summary['recommendations'])) {
@@ -200,7 +225,10 @@ final readonly class PrismReviewEngine implements ReviewEngine
 
         return [
             'overview' => $overview,
+            'verdict' => $verdict,
             'risk_level' => $riskLevel,
+            'strengths' => $strengths,
+            'concerns' => $concerns,
             'recommendations' => $recommendations,
         ];
     }
@@ -209,7 +237,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Normalize and validate the findings array.
      *
      * @param  array<int, mixed>  $findings
-     * @return array<int, array{severity: string, category: string, title: string, description: string, rationale: string, confidence: float, file_path?: string, line_start?: int, line_end?: int, suggestion?: string, patch?: string, references?: array<int, string>, tags?: array<int, string>}>
+     * @return array<int, array<string, mixed>>
      */
     private function normalizeFindings(array $findings): array
     {
@@ -235,7 +263,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Normalize a single finding.
      *
      * @param  array<string, mixed>  $finding
-     * @return array{severity: string, category: string, title: string, description: string, rationale: string, confidence: float, file_path?: string, line_start?: int, line_end?: int, suggestion?: string, patch?: string, references?: array<int, string>, tags?: array<int, string>}|null
+     * @return array<string, mixed>|null
      */
     private function normalizeFinding(array $finding): ?array
     {
@@ -261,9 +289,13 @@ final readonly class PrismReviewEngine implements ReviewEngine
             ? max(0.0, min(1.0, (float) $finding['confidence']))
             : 0.5;
 
-        $rationale = isset($finding['rationale']) && is_string($finding['rationale'])
-            ? $finding['rationale']
-            : '';
+        // Support both 'impact' (new) and 'rationale' (legacy) for backward compatibility
+        $rationale = '';
+        if (isset($finding['impact']) && is_string($finding['impact'])) {
+            $rationale = $finding['impact'];
+        } elseif (isset($finding['rationale']) && is_string($finding['rationale'])) {
+            $rationale = $finding['rationale'];
+        }
 
         $result = [
             'severity' => $severity,
@@ -274,6 +306,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
             'confidence' => $confidence,
         ];
 
+        // Location fields
         if (isset($finding['file_path']) && is_string($finding['file_path'])) {
             $result['file_path'] = $finding['file_path'];
         }
@@ -286,14 +319,30 @@ final readonly class PrismReviewEngine implements ReviewEngine
             $result['line_end'] = $finding['line_end'];
         }
 
+        // Code replacement fields (new enhanced structure)
+        if (isset($finding['current_code']) && is_string($finding['current_code'])) {
+            $result['current_code'] = $finding['current_code'];
+        }
+
+        if (isset($finding['replacement_code']) && is_string($finding['replacement_code'])) {
+            $result['replacement_code'] = $finding['replacement_code'];
+        }
+
+        if (isset($finding['explanation']) && is_string($finding['explanation'])) {
+            $result['explanation'] = $finding['explanation'];
+        }
+
+        // Legacy suggestion field (for backward compatibility)
         if (isset($finding['suggestion']) && is_string($finding['suggestion'])) {
             $result['suggestion'] = $finding['suggestion'];
         }
 
+        // Legacy patch field (for backward compatibility)
         if (isset($finding['patch']) && is_string($finding['patch'])) {
             $result['patch'] = $finding['patch'];
         }
 
+        // References
         if (isset($finding['references']) && is_array($finding['references'])) {
             $references = array_filter($finding['references'], is_string(...));
             if ($references !== []) {
@@ -301,6 +350,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
             }
         }
 
+        // Tags (legacy, for backward compatibility)
         if (isset($finding['tags']) && is_array($finding['tags'])) {
             $tags = array_filter($finding['tags'], is_string(...));
             if ($tags !== []) {
