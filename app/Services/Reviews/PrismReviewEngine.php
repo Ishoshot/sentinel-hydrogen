@@ -57,13 +57,22 @@ final readonly class PrismReviewEngine implements ReviewEngine
         $userPrompt = $this->promptBuilder->buildUserPromptFromBag($bag);
         $inputMetrics = $bag->metrics;
 
+        $enableThinking = config('prism.providers.anthropic.default_thinking_budget', 2048) > 0;
+        $providerOptions = ['use_tool_calling' => true];
+
+        if ($enableThinking) {
+            $providerOptions['thinking'] = ['enabled' => true];
+        }
+
+        $temperature = $enableThinking ? 1 : 0.1;
+
         $response = Prism::text()
             ->using($provider, $model)
             ->withSystemPrompt($systemPrompt)
             ->withPrompt($userPrompt)
             ->withMaxTokens(8192)
-            ->usingTemperature(0.1)
-            ->withProviderOptions(['thinking' => ['enabled' => true], 'use_tool_calling' => true])
+            ->usingTemperature($temperature)
+            ->withProviderOptions($providerOptions)
             ->withClientOptions(['timeout' => 240])
             ->asText();
 
