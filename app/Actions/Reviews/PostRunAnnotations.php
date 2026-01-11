@@ -218,7 +218,7 @@ final readonly class PostRunAnnotations
         return sprintf(
             '%s/workspaces/%s/runs/%s',
             mb_rtrim($frontendUrl, '/'),
-            $run->workspace_id,
+            $run->workspace?->slug,
             $run->id
         );
     }

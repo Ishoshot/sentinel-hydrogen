@@ -25,8 +25,9 @@ final readonly class CreatePullRequestRun
      *
      * @param  array{action: string, installation_id: int, repository_id: int, repository_full_name: string, pull_request_number: int, pull_request_title: string, pull_request_body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, author: array{login: string, avatar_url: string|null}, is_draft: bool, assignees: array<int, array{login: string, avatar_url: string|null}>, reviewers: array<int, array{login: string, avatar_url: string|null}>, labels: array<int, array{name: string, color: string}>}  $payload
      * @param  int|null  $greetingCommentId  The GitHub comment ID for the greeting comment
+     * @param  string|null  $skipReason  If provided, creates a Skipped run with this reason
      */
-    public function handle(Repository $repository, array $payload, ?int $greetingCommentId = null): Run
+    public function handle(Repository $repository, array $payload, ?int $greetingCommentId = null, ?string $skipReason = null): Run
     {
         $externalReference = sprintf(
             'github:pull_request:%s:%s',
@@ -57,6 +58,12 @@ final readonly class CreatePullRequestRun
             $metadata['github_comment_id'] = $greetingCommentId;
         }
 
+        if ($skipReason !== null) {
+            $metadata['skip_reason'] = $skipReason;
+        }
+
+        $status = $skipReason !== null ? RunStatus::Skipped : RunStatus::Queued;
+
         $run = Run::query()->firstOrCreate(
             [
                 'workspace_id' => $repository->workspace_id,
@@ -64,15 +71,16 @@ final readonly class CreatePullRequestRun
                 'external_reference' => $externalReference,
             ],
             [
-                'status' => RunStatus::Queued,
+                'status' => $status,
                 'started_at' => now(),
+                'completed_at' => $skipReason !== null ? now() : null,
                 'metadata' => $metadata,
                 'created_at' => now(),
             ]
         );
 
         if ($run->wasRecentlyCreated) {
-            $this->logRunCreated($repository, $run, $payload);
+            $this->logRunCreated($repository, $run, $payload, $skipReason);
         }
 
         return $run;
@@ -83,7 +91,7 @@ final readonly class CreatePullRequestRun
      *
      * @param  array{action: string, installation_id: int, repository_id: int, repository_full_name: string, pull_request_number: int, pull_request_title: string, pull_request_body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, author: array{login: string, avatar_url: string|null}, is_draft: bool, assignees: array<int, array{login: string, avatar_url: string|null}>, reviewers: array<int, array{login: string, avatar_url: string|null}>, labels: array<int, array{name: string, color: string}>}  $payload
      */
-    private function logRunCreated(Repository $repository, Run $run, array $payload): void
+    private function logRunCreated(Repository $repository, Run $run, array $payload, ?string $skipReason = null): void
     {
         $repository->loadMissing('workspace');
         $workspace = $repository->workspace;
@@ -92,22 +100,28 @@ final readonly class CreatePullRequestRun
             return;
         }
 
+        $description = $skipReason !== null
+            ? sprintf('Review skipped for PR #%d in %s: %s', $payload['pull_request_number'], $payload['repository_full_name'], $skipReason)
+            : sprintf('Review queued for PR #%d in %s', $payload['pull_request_number'], $payload['repository_full_name']);
+
+        $activityMetadata = [
+            'pull_request_number' => $payload['pull_request_number'],
+            'pull_request_title' => $payload['pull_request_title'],
+            'head_sha' => $payload['head_sha'],
+            'sender' => $payload['sender_login'],
+            'action' => $payload['action'],
+        ];
+
+        if ($skipReason !== null) {
+            $activityMetadata['skip_reason'] = $skipReason;
+        }
+
         $this->logActivity->handle(
             workspace: $workspace,
             type: ActivityType::RunCreated,
-            description: sprintf(
-                'Review queued for PR #%d in %s',
-                $payload['pull_request_number'],
-                $payload['repository_full_name']
-            ),
+            description: $description,
             subject: $run,
-            metadata: [
-                'pull_request_number' => $payload['pull_request_number'],
-                'pull_request_title' => $payload['pull_request_title'],
-                'head_sha' => $payload['head_sha'],
-                'sender' => $payload['sender_login'],
-                'action' => $payload['action'],
-            ],
+            metadata: $activityMetadata,
         );
     }
 }
