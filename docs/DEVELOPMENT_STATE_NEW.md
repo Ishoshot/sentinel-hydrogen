@@ -93,9 +93,11 @@ Implement subscription tiers, usage metering, and limit enforcement.
 
 **7F: Billing Integration (Stripe)**
 
--   Not in initial scope - manual plan assignment via admin panel
--   Future: Stripe Checkout for plan upgrades
--   Future: Webhook handler for Stripe events
+-   Stripe Checkout for plan upgrades
+-   Webhook handler for Stripe events (subscription created, updated, cancelled, payment failed)
+-   Customer portal for managing billing
+-   Handle plan changes (upgrade/downgrade) via webhooks
+-   Prorate billing on mid-cycle changes
 
 **7G: Frontend API**
 
@@ -110,7 +112,7 @@ Implement subscription tiers, usage metering, and limit enforcement.
     -   `GET /api/plans` - List available plans
     -   `GET /api/workspaces/{workspace}/subscription` - Current subscription
     -   `GET /api/workspaces/{workspace}/usage` - Usage stats for period
-    -   `POST /api/workspaces/{workspace}/subscription/upgrade` - Upgrade plan (future)
+    -   `POST /api/workspaces/{workspace}/subscription/upgrade` - Upgrade plan
 
 **7H: Tests**
 
