@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\GitHub\ConnectionController;
 use App\Http\Controllers\GitHub\RepositoryController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\ListWorkspaceRunsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\TeamMemberController;
@@ -87,6 +88,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::get('/repositories/{repository}', [RepositoryController::class, 'show'])->name('repositories.show');
             Route::patch('/repositories/{repository}', [RepositoryController::class, 'update'])->name('repositories.update');
             Route::get('/repositories/{repository}/runs', [RunController::class, 'index'])->name('runs.index');
+
+            // Workspace-level runs
+            Route::get('/runs', ListWorkspaceRunsController::class)->name('runs.workspace');
             Route::get('/runs/{run}', [RunController::class, 'show'])->name('runs.show');
 
             // Activities
