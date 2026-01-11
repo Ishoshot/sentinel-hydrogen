@@ -4,7 +4,10 @@
 # This file configures how Sentinel reviews pull requests for this repository.
 # Place this file at: .sentinel/config.yaml
 #
-# All sections are optional. Omit any section to use Sentinel's defaults.
+# NOTE: API keys are configured via the Sentinel dashboard, not this file.
+# Go to Repository Settings > API Keys to add your provider keys.
+#
+# All sections below are optional - omit them to use Sentinel's defaults.
 # For full documentation, see: docs/SENTINEL_CONFIG.md
 
 # Schema version (required)
