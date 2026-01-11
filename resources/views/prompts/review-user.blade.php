@@ -70,6 +70,27 @@ This PR has been reviewed {{ count($review_history) }} time(s) before by Sentine
 
 @endif
 
+@if(isset($guidelines) && count($guidelines) > 0)
+## Team Guidelines
+
+The repository maintainers have provided the following guidelines for code review:
+
+@foreach($guidelines as $guideline)
+### {{ basename($guideline['path']) }}@if($guideline['description']) - {{ $guideline['description'] }}@endif
+
+
+<details>
+<summary>Click to expand {{ basename($guideline['path']) }}</summary>
+
+{{ $guideline['content'] }}
+
+</details>
+
+@endforeach
+
+**Important:** Apply these team-specific guidelines when reviewing the code. Flag violations as appropriate based on their severity.
+
+@endif
 @if(isset($repository_context) && (($repository_context['readme'] ?? null) || ($repository_context['contributing'] ?? null)))
 ## Repository Context
 

@@ -25,6 +25,49 @@ Maximum Inline Comments: {{ $policy['comment_limits']['max_inline_comments'] }}
 Ignored Paths: {{ implode(', ', $policy['ignored_paths']) }}
 @endif
 
+@if(isset($policy['tone']))
+## Feedback Tone
+
+Provide feedback in a {{ $policy['tone'] }} tone:
+@switch($policy['tone'])
+    @case('direct')
+- Be direct and uncompromising about code quality standards
+- Point out all issues clearly without softening language
+- Focus on what must be fixed for the code to be acceptable
+        @break
+    @case('constructive')
+- Balance criticism with actionable improvement suggestions
+- Acknowledge good practices alongside issues
+- Frame feedback as opportunities for improvement
+        @break
+    @case('educational')
+- Explain the reasoning behind suggestions in detail
+- Include learning resources and best practice references
+- Help developers understand the "why" behind each finding
+        @break
+    @case('minimal')
+- Keep feedback concise and to the point
+- Only highlight the most critical issues
+- Avoid unnecessary explanations or suggestions
+        @break
+@endswitch
+@endif
+
+@if(isset($policy['language']) && $policy['language'] !== 'en')
+## Response Language
+
+Provide all review feedback in {{ $policy['language'] }} language. This includes the summary overview, recommendations, finding titles, descriptions, and suggestions.
+@endif
+
+@if(isset($policy['focus']) && count($policy['focus']) > 0)
+## Custom Focus Areas
+
+In addition to standard code review categories, pay special attention to these focus areas requested by the repository maintainers:
+@foreach($policy['focus'] as $focusArea)
+- {{ $focusArea }}
+@endforeach
+@endif
+
 ## Output Format
 
 You MUST respond with valid JSON matching this exact structure:
