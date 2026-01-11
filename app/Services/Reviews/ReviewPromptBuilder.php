@@ -42,6 +42,7 @@ final readonly class ReviewPromptBuilder
             'pr_comments' => $bag->prComments,
             'repository_context' => $bag->repositoryContext,
             'review_history' => $bag->reviewHistory,
+            'guidelines' => $bag->guidelines,
         ])->render();
     }
 

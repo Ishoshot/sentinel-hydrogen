@@ -86,6 +86,31 @@ final class SentinelMessageService
     }
 
     /**
+     * Build a config error comment for a PR.
+     */
+    public function buildConfigErrorComment(string $error): string
+    {
+        $branding = $this->getRandomBranding();
+
+        return <<<MARKDOWN
+        ⚠️ **Sentinel Configuration Error**
+
+        Your `.sentinel/config.yaml` file contains an error:
+
+        ```
+        {$error}
+        ```
+
+        Review has been skipped until this is resolved. Please fix the configuration and push again.
+
+        📖 [Configuration documentation](https://docs.useSentinel.com/configuration)
+
+        ---
+        <sub>{$branding}</sub>
+        MARKDOWN;
+    }
+
+    /**
      * Load messages from JSON file with caching.
      *
      * @return array{greetings: array<int, array{emoji: string, message: string}>, branding: array<int, string>}
