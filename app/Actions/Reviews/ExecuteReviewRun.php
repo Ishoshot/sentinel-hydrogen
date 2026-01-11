@@ -7,6 +7,7 @@ namespace App\Actions\Reviews;
 use App\Actions\Activities\LogActivity;
 use App\Enums\ActivityType;
 use App\Enums\RunStatus;
+use App\Exceptions\NoProviderKeyException;
 use App\Jobs\Reviews\PostRunAnnotations;
 use App\Models\Finding;
 use App\Models\Run;
@@ -64,11 +65,15 @@ final readonly class ExecuteReviewRun
             ]);
 
             $context = [
+                'repository' => $repository,
                 'policy_snapshot' => $policySnapshot,
                 'context_bag' => $contextBag,
             ];
 
             $result = $this->reviewEngine->review($context);
+        } catch (NoProviderKeyException $exception) {
+            // Skip review gracefully - no BYOK keys configured
+            return $this->markSkipped($run, $policySnapshot, $exception);
         } catch (Throwable $throwable) {
             $this->markFailed($run, $policySnapshot, $throwable);
 
@@ -150,6 +155,38 @@ final readonly class ExecuteReviewRun
     }
 
     /**
+     * Mark the run as skipped (e.g., no BYOK keys configured).
+     *
+     * This is not an error condition - it simply means the repository
+     * has not configured any AI provider keys for reviews.
+     *
+     * @param  array<string, mixed>  $policySnapshot
+     */
+    private function markSkipped(Run $run, array $policySnapshot, NoProviderKeyException $exception): Run
+    {
+        $metadata = $run->metadata ?? [];
+        $metadata['skip_reason'] = 'no_provider_keys';
+        $metadata['skip_message'] = $exception->getMessage();
+
+        $run->forceFill([
+            'status' => RunStatus::Skipped,
+            'completed_at' => now(),
+            'policy_snapshot' => $policySnapshot,
+            'metadata' => $metadata,
+        ])->save();
+
+        Log::info('Review run skipped - no BYOK provider keys configured', [
+            'run_id' => $run->id,
+            'workspace_id' => $run->workspace_id,
+            'repository_id' => $run->repository_id,
+        ]);
+
+        $this->logRunSkipped($run, $exception);
+
+        return $run;
+    }
+
+    /**
      * Mark the run as failed and log the error.
      *
      * @param  array<string, mixed>  $policySnapshot
@@ -181,7 +218,7 @@ final readonly class ExecuteReviewRun
     /**
      * Log activity for a completed run.
      *
-     * @param  array{summary: array{overview: string, risk_level: string, recommendations: array<int, string>}, findings: array<int, mixed>, metrics: array<string, mixed>}  $result
+     * @param  array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array<string, mixed>}  $result
      */
     private function logRunCompleted(Run $run, array $result): void
     {
@@ -241,6 +278,39 @@ final readonly class ExecuteReviewRun
             metadata: [
                 'error_type' => $exception::class,
                 'error_message' => $exception->getMessage(),
+                'pull_request_number' => $pullRequestNumber,
+            ],
+        );
+    }
+
+    /**
+     * Log activity for a skipped run.
+     */
+    private function logRunSkipped(Run $run, NoProviderKeyException $exception): void
+    {
+        $run->loadMissing('workspace');
+        $workspace = $run->workspace;
+
+        if ($workspace === null) {
+            return;
+        }
+
+        $metadata = $run->metadata ?? [];
+        $pullRequestNumber = is_int($metadata['pull_request_number'] ?? null) ? $metadata['pull_request_number'] : 0;
+        $repositoryFullName = is_string($metadata['repository_full_name'] ?? null) ? $metadata['repository_full_name'] : 'unknown';
+
+        $this->logActivity->handle(
+            workspace: $workspace,
+            type: ActivityType::RunSkipped,
+            description: sprintf(
+                'Review skipped for PR #%d in %s - no provider keys configured',
+                $pullRequestNumber,
+                $repositoryFullName
+            ),
+            subject: $run,
+            metadata: [
+                'skip_reason' => 'no_provider_keys',
+                'skip_message' => $exception->getMessage(),
                 'pull_request_number' => $pullRequestNumber,
             ],
         );

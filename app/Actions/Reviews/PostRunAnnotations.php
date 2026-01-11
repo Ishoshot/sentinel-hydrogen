@@ -8,6 +8,7 @@ use App\Actions\Activities\LogActivity;
 use App\Enums\ActivityType;
 use App\Enums\AnnotationType;
 use App\Enums\ProviderType;
+use App\Enums\SentinelConfigSeverity;
 use App\Models\Annotation;
 use App\Models\Finding;
 use App\Models\Provider;
@@ -22,14 +23,6 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class PostRunAnnotations
 {
-    private const array SEVERITY_ORDER = [
-        'info' => 1,
-        'low' => 2,
-        'medium' => 3,
-        'high' => 4,
-        'critical' => 5,
-    ];
-
     /**
      * Create a new action instance.
      */
@@ -158,17 +151,23 @@ final readonly class PostRunAnnotations
         $severityThreshold = is_string($severityThresholds['comment'] ?? null) ? $severityThresholds['comment'] : 'medium';
         $maxComments = is_int($commentLimits['max_inline_comments'] ?? null) ? $commentLimits['max_inline_comments'] : 10;
 
-        $minSeverity = self::SEVERITY_ORDER[$severityThreshold] ?? 3;
+        $minSeverityEnum = SentinelConfigSeverity::tryFrom($severityThreshold) ?? SentinelConfigSeverity::Medium;
+        $minPriority = $minSeverityEnum->priority();
 
         return $run->findings
-            ->filter(function (Finding $finding) use ($minSeverity): bool {
-                $findingSeverity = self::SEVERITY_ORDER[$finding->severity] ?? 0;
+            ->filter(function (Finding $finding) use ($minPriority): bool {
+                $findingSeverityEnum = SentinelConfigSeverity::tryFrom($finding->severity);
+                $findingPriority = $findingSeverityEnum?->priority() ?? 0;
 
-                return $findingSeverity >= $minSeverity
+                return $findingPriority >= $minPriority
                     && $finding->file_path !== null
                     && $finding->line_start !== null;
             })
-            ->sortByDesc(fn (Finding $finding): int => self::SEVERITY_ORDER[$finding->severity] ?? 0)
+            ->sortByDesc(function (Finding $finding): int {
+                $severityEnum = SentinelConfigSeverity::tryFrom($finding->severity);
+
+                return $severityEnum?->priority() ?? 0;
+            })
             ->take($maxComments);
     }
 
