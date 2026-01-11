@@ -281,6 +281,15 @@ final readonly class PrismReviewEngine implements ReviewEngine
     ): array {
         $responseText = mb_trim($response->text);
 
+        // DEBUG: Log raw AI response for troubleshooting
+        Log::debug('Raw AI response received', [
+            'provider' => $provider,
+            'model' => $model,
+            'response_length' => mb_strlen($responseText),
+            'response_preview' => mb_substr($responseText, 0, 500),
+            'response_end' => mb_substr($responseText, -200),
+        ]);
+
         if (str_starts_with($responseText, '```json')) {
             $responseText = mb_substr($responseText, 7);
         }
@@ -298,6 +307,12 @@ final readonly class PrismReviewEngine implements ReviewEngine
         $parsed = json_decode($responseText, true);
 
         if (! is_array($parsed)) {
+            // DEBUG: Log the cleaned response that failed to parse
+            Log::error('Failed to parse AI response as JSON', [
+                'json_error' => json_last_error_msg(),
+                'cleaned_response' => $responseText,
+            ]);
+
             throw new RuntimeException('Failed to parse AI response as JSON: '.json_last_error_msg());
         }
 
