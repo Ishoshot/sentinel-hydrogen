@@ -337,10 +337,8 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
             sprintf('createCheckRun(%s/%s@%s)', $owner, $repo, mb_substr($headSha, 0, 7))
         );
 
-        /** @var array<string, mixed> $result */
-        $result = is_array($checkRun) ? $checkRun : [];
-
-        return $result;
+        /** @var array<string, mixed> $checkRun */
+        return $checkRun;
     }
 
     /**

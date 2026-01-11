@@ -282,7 +282,7 @@ final readonly class PostRunAnnotations
             }
         }
 
-        return is_array($response) ? $response : [];
+        return $response;
     }
 
     /**
@@ -316,7 +316,7 @@ final readonly class PostRunAnnotations
             'message' => strip_tags($comment['body']),
         ], $inlineComments);
 
-        $response = $this->gitHubApiService->createCheckRun(
+        return $this->gitHubApiService->createCheckRun(
             $installationId,
             $owner,
             $repo,
@@ -327,8 +327,6 @@ final readonly class PostRunAnnotations
             $reviewBody,
             $annotations
         );
-
-        return is_array($response) ? $response : [];
     }
 
     /**
