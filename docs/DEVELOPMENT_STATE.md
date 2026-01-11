@@ -140,7 +140,93 @@
 - [x] Annotation posting to GitHub
 - [x] Activity logging for review events
 
-### Phase 5: Plans & Billing
+### Phase 5: Repository Configuration
+**Status: COMPLETE**
+
+Per-repository configuration via `.sentinel/config.yaml` files.
+
+- [x] **Phase 5A: Core Infrastructure** - COMPLETE
+  - [x] Enums: `SentinelConfigSeverity`, `SentinelConfigTone`, `AnnotationStyle`
+  - [x] Exceptions: `ConfigParseException`, `ConfigValidationException`
+  - [x] DTOs: `SentinelConfig`, `TriggersConfig`, `PathsConfig`, `ReviewConfig`, `CategoriesConfig`, `GuidelineConfig`, `AnnotationsConfig`
+  - [x] Services: `SentinelConfigSchema`, `SentinelConfigParser` contract, `SentinelConfigParserService`
+  - [x] Migration: Added `sentinel_config`, `config_synced_at`, `config_error` to `repository_settings`
+  - [x] Tests: 93 tests covering DTOs, schema validation, parser integration
+- [x] **Phase 5B: Config Sync** - COMPLETE
+  - [x] `GitHubApiServiceContract` interface for mockable GitHub API service
+  - [x] `FetchesSentinelConfig` contract for mockable fetch action
+  - [x] `FetchSentinelConfig` action to fetch config from GitHub API
+  - [x] `SyncRepositorySentinelConfig` action to parse, validate, and store config
+  - [x] Updated `SyncInstallationRepositories` to sync config on repository discovery
+  - [x] `ProcessPushWebhook` job to re-sync config when `.sentinel/` files change on default branch
+  - [x] Updated `GitHubWebhookController` to handle push webhooks
+  - [x] DTO accessor methods on `RepositorySettings` model (`getSentinelConfigDto`, `getConfigOrDefault`, `hasConfigError`)
+  - [x] Tests: `FetchSentinelConfigTest`, `SyncRepositorySentinelConfigTest` (107 tests)
+- [x] **Phase 5C: Error Handling** - COMPLETE
+  - [x] `PostsConfigErrorComment` contract for mockable error comment posting
+  - [x] `PostConfigErrorComment` action to post config error comments to PRs
+  - [x] `SentinelMessageService::buildConfigErrorComment()` for error message formatting
+  - [x] Updated `ProcessPullRequestWebhook` to check `hasConfigError()` and skip reviews
+  - [x] Updated `CreatePullRequestRun` to support `skipReason` parameter for skipped runs
+  - [x] Skipped runs have `status: Skipped`, `completed_at` set, and `skip_reason` in metadata
+  - [x] Activity logging reflects skipped runs with reason
+  - [x] Tests: Config error handling in `RunCreationTest`, `PostConfigErrorCommentTest`
+- [x] **Phase 5D: Trigger Rules Integration** - COMPLETE
+  - [x] `TriggerRuleEvaluator` service for evaluating trigger rules from config
+  - [x] Glob pattern matching for branch names (`release/*`, `feature/*`, etc.)
+  - [x] Target branch filtering (only review PRs to specified branches)
+  - [x] Skip source branches (skip PRs from `dependabot/*`, etc.)
+  - [x] Skip labels (skip PRs with `no-review`, `wip` labels)
+  - [x] Skip authors (skip PRs from bots like `dependabot[bot]`)
+  - [x] Updated `ProcessPullRequestWebhook` to evaluate trigger rules before review
+  - [x] Skipped runs created silently (no PR comment) with reason in metadata
+  - [x] Tests: `TriggerRuleEvaluatorTest` (18 unit tests), trigger integration tests in `RunCreationTest`
+- [x] **Phase 5E: Path Rules Integration** - COMPLETE
+  - [x] `ConfiguredPathFilter` context filter for applying repository-specific path rules
+  - [x] Ignore patterns support (remove matching files from context)
+  - [x] Include patterns support (allowlist mode - keep only matching files)
+  - [x] Sensitive patterns support (mark files for extra scrutiny)
+  - [x] Glob pattern matching (`*`, `**`, `?` wildcards)
+  - [x] Updated `DiffCollector` to store `PathsConfig` in context bag metadata
+  - [x] Registered filter in `AppServiceProvider` at order 15 (after VendorPathFilter, before BinaryFileFilter)
+  - [x] Metrics recalculation after filtering
+  - [x] Tests: `ConfiguredPathFilterTest` (17 tests)
+- [x] **Phase 5F: Review Settings Integration** - COMPLETE
+  - [x] Updated `ReviewPolicyResolver` to merge `ReviewConfig` from SentinelConfig
+  - [x] `min_severity` → `severity_thresholds.comment` mapping
+  - [x] `max_findings` → `comment_limits.max_inline_comments` mapping
+  - [x] `categories` → `enabled_rules` (enabled categories added to rules)
+  - [x] `tone` added to policy for prompt customization
+  - [x] `language` added to policy for non-English feedback
+  - [x] `focus` added to policy for custom focus areas
+  - [x] Updated `resources/views/prompts/review-system.blade.php` with:
+    - Feedback tone section (direct, constructive, educational, minimal)
+    - Response language section (ISO 639-1 codes)
+    - Custom focus areas section
+  - [x] Tests: `ReviewPolicyResolverTest` (13 tests)
+- [x] **Phase 5G: Guidelines Collector** - COMPLETE
+  - [x] `GuidelinesCollector` context collector for fetching team guideline files
+  - [x] Fetches `.md`, `.mdx`, `.blade.php` files from GitHub API
+  - [x] Max 5 files, max 50KB per file limits enforced
+  - [x] Content truncation with friendly message for oversized files
+  - [x] Base64 decoding support for GitHub API responses
+  - [x] Added guidelines to ContextBag DTO with token estimation
+  - [x] Updated `review-user.blade.php` to display Team Guidelines section
+  - [x] Registered collector in AppServiceProvider at priority 45
+  - [x] Tests: `GuidelinesCollectorTest` (23 tests)
+- [x] **Phase 5H: Frontend Display** - COMPLETE
+  - [x] Updated `RepositorySettingsResource` with Sentinel config fields
+  - [x] Added `sentinel_config`, `config_synced_at`, `config_error` to API response
+  - [x] Added `has_sentinel_config`, `has_config_error` boolean helpers
+  - [x] Tests: Repository API tests for config display (3 tests)
+  - [x] Created frontend handover document: `FRONTEND_HANDOVER_REPOSITORY_CONFIGURATION.md`
+- [x] **Phase 5I: Documentation** - COMPLETE
+  - [x] Created `.sentinel/config.example.yaml` with all options documented
+  - [x] Created `docs/SENTINEL_CONFIG.md` comprehensive user guide
+  - [x] Full schema reference with examples
+  - [x] Troubleshooting section
+
+### Phase 6: Plans & Billing
 **Status: NOT STARTED**
 
 - [ ] Plan model with limits
@@ -149,7 +235,7 @@
 - [ ] Limit enforcement
 - [ ] BYOK provider key management
 
-### Phase 6: Dashboards & Analytics
+### Phase 7: Dashboards & Analytics
 **Status: NOT STARTED**
 
 - [ ] Workspace dashboard
@@ -431,6 +517,7 @@ GET /api/workspaces/{workspace}/runs/{run}
 - `tests/Feature/Reviews/ExecuteReviewRunTest.php` - Execution pipeline with mocked services
 - `tests/Feature/Reviews/PrismReviewEngineTest.php` - AI engine response parsing and normalization
 - `tests/Feature/Reviews/PostRunAnnotationsTest.php` - Annotation filtering and posting logic
+- `tests/Feature/Reviews/ReviewPolicyResolverTest.php` - Policy resolution with SentinelConfig merge (13 tests)
 
 ### Context Engine (Phase 4.5 - Complete)
 
@@ -462,11 +549,13 @@ The Context Engine provides intelligent context gathering for AI reviews. It rep
 | `PullRequestCommentCollector` | 70 | GitHub API | PR discussion comments |
 | `ReviewHistoryCollector` | 60 | Database | Previous Sentinel reviews on same PR |
 | `RepositoryContextCollector` | 50 | GitHub API | README.md, CONTRIBUTING.md |
+| `GuidelinesCollector` | 45 | GitHub API | Team guidelines from .sentinel/config.yaml |
 
 #### Context Filters (by order, lowest first)
 | Filter | Order | Purpose |
 |--------|-------|---------|
 | `VendorPathFilter` | 10 | Remove vendor/, node_modules/, etc. |
+| `ConfiguredPathFilter` | 15 | Apply repository-specific path rules from .sentinel/config.yaml |
 | `BinaryFileFilter` | 20 | Skip binary files, images, fonts |
 | `SensitiveDataFilter` | 30 | Redact API keys, secrets, .env files |
 | `RelevanceFilter` | 40 | Prioritize important files (app/ > docs/) |
@@ -482,6 +571,7 @@ final class ContextBag {
     public array $prComments = [];       // PR discussion
     public array $repositoryContext = []; // README, CONTRIBUTING
     public array $reviewHistory = [];    // Previous Sentinel reviews
+    public array $guidelines = [];       // Team guidelines from config
     public array $metadata = [];         // Additional data
 }
 ```
@@ -513,13 +603,15 @@ $this->app->singleton(ContextEngine::class, function (): ContextEngine {
     $engine->registerCollector(app(PullRequestCommentCollector::class)); // 70
     $engine->registerCollector(app(ReviewHistoryCollector::class));     // 60
     $engine->registerCollector(app(RepositoryContextCollector::class)); // 50
+    $engine->registerCollector(app(GuidelinesCollector::class));        // 45
 
     // Filters (lowest order first)
-    $engine->registerFilter(app(VendorPathFilter::class));   // 10
-    $engine->registerFilter(app(BinaryFileFilter::class));   // 20
-    $engine->registerFilter(app(SensitiveDataFilter::class)); // 30
-    $engine->registerFilter(app(RelevanceFilter::class));    // 40
-    $engine->registerFilter(app(TokenLimitFilter::class));   // 100
+    $engine->registerFilter(app(VendorPathFilter::class));      // 10
+    $engine->registerFilter(app(ConfiguredPathFilter::class));  // 15
+    $engine->registerFilter(app(BinaryFileFilter::class));      // 20
+    $engine->registerFilter(app(SensitiveDataFilter::class));   // 30
+    $engine->registerFilter(app(RelevanceFilter::class));       // 40
+    $engine->registerFilter(app(TokenLimitFilter::class));      // 100
 
     return $engine;
 });
@@ -542,7 +634,9 @@ $this->app->singleton(ContextEngine::class, function (): ContextEngine {
 - `tests/Feature/Context/PullRequestCommentCollectorTest.php` - Comment collection
 - `tests/Feature/Context/ReviewHistoryCollectorTest.php` - History lookup
 - `tests/Feature/Context/RepositoryContextCollectorTest.php` - README/CONTRIBUTING fetch
+- `tests/Feature/Context/GuidelinesCollectorTest.php` - Team guidelines fetch (23 tests)
 - `tests/Feature/Context/VendorPathFilterTest.php` - Path filtering
+- `tests/Feature/Context/ConfiguredPathFilterTest.php` - Repository-specific path rules (17 tests)
 - `tests/Feature/Context/BinaryFileFilterTest.php` - Binary detection
 - `tests/Feature/Context/SensitiveDataFilterTest.php` - Secret redaction
 - `tests/Feature/Context/RelevanceFilterTest.php` - File prioritization
@@ -705,6 +799,7 @@ Handover documents for the frontend agent are located in `handover/`:
 - `handover/FRONTEND_HANDOVER_GITHUB_INTEGRATION.md` - Phase 2 (GitHub Integration)
 - `handover/FRONTEND_HANDOVER_REVIEW_SYSTEM_CORE.md` - Phase 4 (Runs & Findings Data Model)
 - `handover/FRONTEND_HANDOVER_REVIEW_EXECUTION_PIPELINE.md` - Phase 4 (Execution Pipeline)
+- `handover/FRONTEND_HANDOVER_REPOSITORY_CONFIGURATION.md` - Phase 5 (Repository Configuration)
 
 These documents contain:
 - Full API endpoint documentation with request/response examples
@@ -729,6 +824,7 @@ These documents contain:
 | `docs/backend/CODING_STANDARDS.md` | Code conventions |
 | `docs/backend/TESTING_STRATEGY.md` | Test guidelines |
 | `docs/backend/OTHERS.md` | API conventions |
+| `docs/SENTINEL_CONFIG.md` | Repository configuration guide |
 
 ---
 
@@ -811,39 +907,43 @@ These documents contain:
    - Branch pattern matching (wildcards: `release/*`)
    - Skip logic with reason logging
 
-   **Phase E: Path Rules Integration**
-   - Create `ConfiguredPathFilter` context filter
-   - Apply ignore patterns before diff collection
+   **Phase E: Path Rules Integration** ✅ COMPLETE
+   - Created `ConfiguredPathFilter` context filter
+   - Apply ignore patterns to remove files from context
    - Apply include patterns (allowlist mode)
    - Mark sensitive paths for extra handling
+   - Glob pattern matching (`*`, `**`, `?`)
 
-   **Phase F: Review Settings Integration**
-   - Update `ReviewPolicyResolver` to merge with sentinel config
+   **Phase F: Review Settings Integration** ✅ COMPLETE
+   - Updated `ReviewPolicyResolver` to merge with sentinel config
    - Apply `min_severity` threshold
    - Apply `max_findings` limit
    - Apply `categories` filter
-   - Apply `tone` to AI prompt
+   - Apply `tone` to AI prompt (direct, constructive, educational, minimal)
+   - Apply `language` for non-English feedback
    - Apply `focus` areas to prompt
 
-   **Phase G: Guidelines Collector**
-   - Create `GuidelinesCollector` context collector
-   - Fetch referenced files via GitHub API
-   - Validate file types (.md, .mdx, .blade.php only)
-   - Limits: Max 5 files, max 50KB per file
-   - Add to AI review context
+   **Phase G: Guidelines Collector** ✅ COMPLETE
+   - Created `GuidelinesCollector` context collector
+   - Fetches referenced files via GitHub API (GitHubApiServiceContract)
+   - Validated file types (.md, .mdx, .blade.php only)
+   - Limits enforced: Max 5 files, max 50KB per file
+   - Added to ContextBag with token estimation
+   - Updated review-user prompt template with Team Guidelines section
 
-   **Phase H: Frontend Display**
-   - Add `sentinel_config` to `RepositoryResource`
-   - Show sync status and last synced time
-   - Display validation errors if any
-   - Read-only config viewer (no editing from UI)
+   **Phase H: Frontend Display** ✅ COMPLETE
+   - Added `sentinel_config`, `config_synced_at`, `config_error` to `RepositorySettingsResource`
+   - Added helper booleans: `has_sentinel_config`, `has_config_error`
+   - Created comprehensive frontend handover document with UI mockups
+   - Tests verify config fields are included in API responses
 
-   **Phase I: Documentation**
-   - Create `.sentinel/config.example.yaml` template with ALL options
-   - Add documentation in `docs/SENTINEL_CONFIG.md`
-   - User guide for configuration options
+   **Phase I: Documentation** ✅ COMPLETE
+   - Created `.sentinel/config.example.yaml` with all options documented
+   - Created `docs/SENTINEL_CONFIG.md` comprehensive user guide
+   - Full configuration reference with examples
+   - Troubleshooting guide
 
-2. **Plans & Billing (Phase 6)**
+2. **Plans & Billing (Phase 6)** ← NEXT
    - Create Plan model with limits
    - Implement subscription management
    - Add usage metering
@@ -888,7 +988,8 @@ For setting up OAuth and GitHub App credentials, see:
 
 ---
 
-*Last Updated: 2026-01-10*
-*Phases Completed: Identity & Workspace Foundation, Source Control Integration (GitHub), Review System Core, Context Engine*
+*Last Updated: 2026-01-11*
+*Phases Completed: Identity & Workspace Foundation, Source Control Integration (GitHub), Review System Core, Context Engine, Repository Configuration (Complete)*
 *Infrastructure: Queue System (Redis + Horizon)*
-*Next Phase: Repository Configuration (Phase 5)*
+*Tests: 456 passing*
+*Next Phase: Plans & Billing (Phase 6)*
