@@ -63,6 +63,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
             ->withPrompt($userPrompt)
             ->withMaxTokens(8192)
             ->usingTemperature(0.1)
+            ->withProviderOptions(['thinking' => ['enabled' => true], 'use_tool_calling' => true])
             ->withClientOptions(['timeout' => 240])
             ->asText();
 
@@ -106,9 +107,9 @@ final readonly class PrismReviewEngine implements ReviewEngine
         $provider = $this->resolveProvider();
 
         return match ($provider) {
-            Provider::Anthropic => 'claude-sonnet-4-20250514',
+            Provider::Anthropic => 'claude-opus-4-20250514',
             Provider::OpenAI => 'gpt-4o',
-            default => 'claude-sonnet-4-20250514',
+            default => 'claude-opus-4-20250514',
         };
     }
 
