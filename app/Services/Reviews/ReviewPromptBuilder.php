@@ -34,6 +34,8 @@ final readonly class ReviewPromptBuilder
      */
     public function buildUserPromptFromBag(ContextBag $bag): string
     {
+        $sensitiveFiles = $bag->metadata['sensitive_files'] ?? [];
+
         return view('prompts.review-user', [
             'pull_request' => $bag->pullRequest,
             'files' => $bag->files,
@@ -43,6 +45,7 @@ final readonly class ReviewPromptBuilder
             'repository_context' => $bag->repositoryContext,
             'review_history' => $bag->reviewHistory,
             'guidelines' => $bag->guidelines,
+            'sensitive_files' => is_array($sensitiveFiles) ? $sensitiveFiles : [],
         ])->render();
     }
 

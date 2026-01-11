@@ -18,6 +18,8 @@ final readonly class CategoriesConfig
         public bool $performance = true,
         public bool $maintainability = true,
         public bool $style = false,
+        public bool $testing = false,
+        public bool $documentation = false,
     ) {}
 
     /**
@@ -33,6 +35,8 @@ final readonly class CategoriesConfig
             performance: (bool) ($data['performance'] ?? true),
             maintainability: (bool) ($data['maintainability'] ?? true),
             style: (bool) ($data['style'] ?? false),
+            testing: (bool) ($data['testing'] ?? false),
+            documentation: (bool) ($data['documentation'] ?? false),
         );
     }
 
@@ -65,6 +69,14 @@ final readonly class CategoriesConfig
             $enabled[] = 'style';
         }
 
+        if ($this->testing) {
+            $enabled[] = 'testing';
+        }
+
+        if ($this->documentation) {
+            $enabled[] = 'documentation';
+        }
+
         return $enabled;
     }
 
@@ -81,6 +93,8 @@ final readonly class CategoriesConfig
             'performance' => $this->performance,
             'maintainability' => $this->maintainability,
             'style' => $this->style,
+            'testing' => $this->testing,
+            'documentation' => $this->documentation,
         ];
     }
 }

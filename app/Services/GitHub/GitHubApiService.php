@@ -288,6 +288,62 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
     }
 
     /**
+     * Create a check run on a commit.
+     *
+     * @param  array<int, array{path: string, start_line: int, end_line: int, annotation_level: string, message: string}>  $annotations
+     * @return array<string, mixed>
+     */
+    public function createCheckRun(
+        int $installationId,
+        string $owner,
+        string $repo,
+        string $name,
+        string $headSha,
+        string $status = 'completed',
+        ?string $conclusion = null,
+        ?string $summary = null,
+        array $annotations = []
+    ): array {
+        $this->authenticateWithInstallationToken($installationId);
+
+        $params = [
+            'name' => $name,
+            'head_sha' => $headSha,
+            'status' => $status,
+        ];
+
+        if ($status === 'completed' && $conclusion !== null) {
+            $params['conclusion'] = $conclusion;
+        }
+
+        if ($summary !== null) {
+            $params['output'] = [
+                'title' => $name,
+                'summary' => $summary,
+            ];
+
+            if ($annotations !== []) {
+                $params['output']['annotations'] = $annotations;
+            }
+        }
+
+        $checkRun = $this->rateLimiter->handle(
+            function () use ($owner, $repo, $params): mixed {
+                /** @var \Github\Api\Repo $repoApi */
+                $repoApi = $this->github->connection()->api('repo');
+
+                return $repoApi->checkRuns()->create($owner, $repo, $params);
+            },
+            sprintf('createCheckRun(%s/%s@%s)', $owner, $repo, mb_substr($headSha, 0, 7))
+        );
+
+        /** @var array<string, mixed> $result */
+        $result = is_array($checkRun) ? $checkRun : [];
+
+        return $result;
+    }
+
+    /**
      * Authenticate with JWT (for app-level operations).
      */
     private function authenticateWithJwt(): void

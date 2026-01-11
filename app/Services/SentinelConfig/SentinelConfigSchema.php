@@ -87,6 +87,8 @@ final class SentinelConfigSchema
             'review.categories.performance' => ['sometimes', 'boolean'],
             'review.categories.maintainability' => ['sometimes', 'boolean'],
             'review.categories.style' => ['sometimes', 'boolean'],
+            'review.categories.testing' => ['sometimes', 'boolean'],
+            'review.categories.documentation' => ['sometimes', 'boolean'],
             'review.tone' => ['sometimes', Rule::in(SentinelConfigTone::values())],
             'review.language' => ['sometimes', 'string', 'size:2'],
             'review.focus' => ['sometimes', 'array', 'max:'.self::MAX_FOCUS_ITEMS],

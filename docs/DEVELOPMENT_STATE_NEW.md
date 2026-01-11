@@ -36,11 +36,11 @@ Implement subscription tiers, usage metering, and limit enforcement.
 -   Create `Plan` model with tier-based limits
 -   Seed default plans (Free, Team, Business, Enterprise)
 -   Plan attributes:
-    -   `tier` (enum: free, team, business, enterprise)
+    -   `tier` (enum: free, team, business, enterprise). use string in the database so when i add more tiers in the future, i don't have to have to alter the table
     -   `monthly_runs_limit`
     -   `team_size_limit`
     -   `features` (JSONB: array of enabled features)
-    -   `price_monthly` (cents)
+    -   `price_monthly` (cents) - Install the brick money package, add a custom cast to this field.
 
 **7B: Subscription Management**
 
@@ -88,6 +88,8 @@ Implement subscription tiers, usage metering, and limit enforcement.
 -   Check feature access before operations:
     -   BYOK: Check `plan.features.byok_enabled` before storing provider key
     -   Guidelines: Check `plan.features.custom_guidelines` before syncing
+    -   Team Size Limit: Check `plan.features.team_size_limit` before inviting new members
+    -   Events Queue: We have a queue resolver, factor this into the resolver, `plan.features.priority_queue` before running reviews
 
 **7F: Billing Integration (Stripe)**
 

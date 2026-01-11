@@ -106,13 +106,15 @@ review:
   max_findings: 25
 
   # Enable/disable review categories
-  # Default: security, correctness, performance, maintainability enabled; style disabled
+  # Default: security, correctness, performance, maintainability enabled; others disabled
   categories:
     security: true        # SQL injection, XSS, auth issues, etc.
     correctness: true     # Logic errors, incorrect behavior
     performance: true     # N+1 queries, inefficient algorithms
     maintainability: true # Code organization, complexity, readability
     style: false          # Code style, formatting (often covered by linters)
+    testing: false        # Test coverage, test quality, missing tests
+    documentation: false  # Missing docs, outdated comments, API documentation
 
   # Feedback tone
   # Options: constructive, direct, educational, minimal

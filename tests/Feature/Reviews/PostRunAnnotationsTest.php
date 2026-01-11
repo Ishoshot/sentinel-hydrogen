@@ -124,7 +124,13 @@ it('filters findings below severity threshold', function (): void {
     $method->setAccessible(true);
 
     $run->loadMissing('findings');
-    $eligibleFindings = $method->invoke($action, $run);
+    $config = [
+        'style' => 'review',
+        'post_threshold' => 'critical',
+        'grouped' => true,
+        'include_suggestions' => true,
+    ];
+    $eligibleFindings = $method->invoke($action, $run, $config);
 
     // Only critical findings should be eligible (none in this case)
     expect($eligibleFindings)->toHaveCount(0);
@@ -167,7 +173,13 @@ it('respects max inline comments limit in filtering', function (): void {
     $method->setAccessible(true);
 
     $run->loadMissing('findings');
-    $eligibleFindings = $method->invoke($action, $run);
+    $config = [
+        'style' => 'review',
+        'post_threshold' => 'low',
+        'grouped' => true,
+        'include_suggestions' => true,
+    ];
+    $eligibleFindings = $method->invoke($action, $run, $config);
 
     // Should be limited to 2 findings (highest severity first)
     expect($eligibleFindings)->toHaveCount(2);
@@ -218,7 +230,13 @@ it('excludes findings without file path from filtering', function (): void {
     $method->setAccessible(true);
 
     $run->loadMissing('findings');
-    $eligibleFindings = $method->invoke($action, $run);
+    $config = [
+        'style' => 'review',
+        'post_threshold' => 'low',
+        'grouped' => true,
+        'include_suggestions' => true,
+    ];
+    $eligibleFindings = $method->invoke($action, $run, $config);
 
     // Only the finding with file_path should be eligible
     expect($eligibleFindings)->toHaveCount(1)
@@ -266,7 +284,13 @@ it('excludes findings without line start from filtering', function (): void {
     $method->setAccessible(true);
 
     $run->loadMissing('findings');
-    $eligibleFindings = $method->invoke($action, $run);
+    $config = [
+        'style' => 'review',
+        'post_threshold' => 'low',
+        'grouped' => true,
+        'include_suggestions' => true,
+    ];
+    $eligibleFindings = $method->invoke($action, $run, $config);
 
     expect($eligibleFindings)->toHaveCount(1)
         ->and($eligibleFindings->first()->file_path)->toBe('src/WithLine.php');

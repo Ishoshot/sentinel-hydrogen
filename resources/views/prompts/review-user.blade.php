@@ -118,6 +118,18 @@ The repository maintainers have provided the following guidelines for code revie
 @endif
 @endif
 
+@if(isset($sensitive_files) && count($sensitive_files) > 0)
+## Security-Sensitive Files
+
+The following files in this PR are flagged as security-sensitive and require extra scrutiny:
+
+@foreach($sensitive_files as $file)
+- `{{ $file }}`
+@endforeach
+
+**Important:** Apply stricter security checks to these files. Look for authentication bypasses, authorization flaws, credential exposure, injection vulnerabilities, and other security issues with heightened vigilance.
+
+@endif
 ## Change Statistics
 
 - **Files Changed:** {{ $metrics['files_changed'] }}

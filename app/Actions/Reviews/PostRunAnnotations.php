@@ -6,6 +6,7 @@ namespace App\Actions\Reviews;
 
 use App\Actions\Activities\LogActivity;
 use App\Enums\ActivityType;
+use App\Enums\AnnotationStyle;
 use App\Enums\AnnotationType;
 use App\Enums\ProviderType;
 use App\Enums\SentinelConfigSeverity;
@@ -17,6 +18,7 @@ use App\Services\GitHub\GitHubApiService;
 use App\Services\SentinelMessageService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Posts review annotations to GitHub as PR review comments.
@@ -61,30 +63,32 @@ final readonly class PostRunAnnotations
         [$owner, $repo] = explode('/', $fullName, 2);
         $installationId = $installation->installation_id;
 
-        $eligibleFindings = $this->filterEligibleFindings($run);
+        $annotationsConfig = $this->getAnnotationsConfig($run);
+        $eligibleFindings = $this->filterEligibleFindings($run, $annotationsConfig);
 
         if ($eligibleFindings->isEmpty()) {
-            $this->postSummaryOnly($run, $installationId, $owner, $repo, $pullRequestNumber);
+            $this->postSummaryOnly($run, $installationId, $owner, $repo, $pullRequestNumber, $annotationsConfig);
 
             return 0;
         }
 
         $reviewBody = $this->buildReviewSummary($run);
-        $inlineComments = $this->buildInlineComments($eligibleFindings);
+        $inlineComments = $this->buildInlineComments($eligibleFindings, $annotationsConfig);
 
         // Get the commit SHA for line-based comments
         $commitId = is_string($metadata['head_sha'] ?? null) ? $metadata['head_sha'] : null;
 
         /** @var array<string, mixed> $reviewResponse */
-        $reviewResponse = $this->gitHubApiService->createPullRequestReview(
+        $reviewResponse = $this->postAnnotations(
+            $run,
             $installationId,
             $owner,
             $repo,
             $pullRequestNumber,
             $reviewBody,
-            'COMMENT',
             $inlineComments,
-            $commitId
+            $commitId,
+            $annotationsConfig
         );
 
         DB::transaction(function () use ($run, $eligibleFindings, $reviewResponse): void {
@@ -114,41 +118,281 @@ final readonly class PostRunAnnotations
     }
 
     /**
+     * Get annotations configuration from the run's policy snapshot.
+     *
+     * @return array{style: string, post_threshold: string, grouped: bool, include_suggestions: bool}
+     */
+    private function getAnnotationsConfig(Run $run): array
+    {
+        $policy = $run->policy_snapshot ?? [];
+        $annotations = is_array($policy['annotations'] ?? null) ? $policy['annotations'] : [];
+
+        return [
+            'style' => is_string($annotations['style'] ?? null) ? $annotations['style'] : 'review',
+            'post_threshold' => is_string($annotations['post_threshold'] ?? null) ? $annotations['post_threshold'] : 'medium',
+            'grouped' => (bool) ($annotations['grouped'] ?? true),
+            'include_suggestions' => (bool) ($annotations['include_suggestions'] ?? true),
+        ];
+    }
+
+    /**
+     * Post annotations based on the configured style.
+     *
+     * @param  array<int, array{path: string, line: int, side: string, body: string}>  $inlineComments
+     * @param  array{style: string, post_threshold: string, grouped: bool, include_suggestions: bool}  $config
+     * @return array<string, mixed>
+     */
+    private function postAnnotations(
+        Run $run,
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $pullRequestNumber,
+        string $reviewBody,
+        array $inlineComments,
+        ?string $commitId,
+        array $config
+    ): array {
+        $style = AnnotationStyle::tryFrom($config['style']) ?? AnnotationStyle::Review;
+
+        return match ($style) {
+            AnnotationStyle::Review => $this->postAsReview(
+                $installationId, $owner, $repo, $pullRequestNumber, $reviewBody, $inlineComments, $commitId, $config['grouped']
+            ),
+            AnnotationStyle::Comment => $this->postAsComments(
+                $installationId, $owner, $repo, $pullRequestNumber, $reviewBody, $inlineComments, $config['grouped']
+            ),
+            AnnotationStyle::Check => $this->postAsCheckRun(
+                $run, $installationId, $owner, $repo, $reviewBody, $inlineComments, $commitId
+            ),
+        };
+    }
+
+    /**
+     * Post annotations as a GitHub PR review (default).
+     *
+     * @param  array<int, array{path: string, line: int, side: string, body: string}>  $inlineComments
+     * @return array<string, mixed>
+     */
+    private function postAsReview(
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $pullRequestNumber,
+        string $reviewBody,
+        array $inlineComments,
+        ?string $commitId,
+        bool $grouped
+    ): array {
+        if ($grouped) {
+            /** @var array<string, mixed> $response */
+            $response = $this->gitHubApiService->createPullRequestReview(
+                $installationId,
+                $owner,
+                $repo,
+                $pullRequestNumber,
+                $reviewBody,
+                'COMMENT',
+                $inlineComments,
+                $commitId
+            );
+
+            return $response;
+        }
+
+        // Post summary first, then individual review comments
+        /** @var array<string, mixed> $response */
+        $response = $this->gitHubApiService->createPullRequestReview(
+            $installationId,
+            $owner,
+            $repo,
+            $pullRequestNumber,
+            $reviewBody,
+            'COMMENT',
+            [],
+            $commitId
+        );
+
+        // Post individual comments as separate single-comment reviews
+        foreach ($inlineComments as $comment) {
+            $this->gitHubApiService->createPullRequestReview(
+                $installationId,
+                $owner,
+                $repo,
+                $pullRequestNumber,
+                '',
+                'COMMENT',
+                [$comment],
+                $commitId
+            );
+        }
+
+        return $response;
+    }
+
+    /**
+     * Post annotations as individual PR comments (issue comments).
+     *
+     * @param  array<int, array{path: string, line: int, side: string, body: string}>  $inlineComments
+     * @return array<string, mixed>
+     */
+    private function postAsComments(
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $pullRequestNumber,
+        string $reviewBody,
+        array $inlineComments,
+        bool $grouped
+    ): array {
+        // Post summary as a PR comment
+        $response = $this->gitHubApiService->createPullRequestComment(
+            $installationId,
+            $owner,
+            $repo,
+            $pullRequestNumber,
+            $reviewBody
+        );
+
+        if ($grouped) {
+            // Post all findings in a single comment
+            $findingsBody = "## Detailed Findings\n\n";
+            foreach ($inlineComments as $comment) {
+                $findingsBody .= sprintf("### `%s` (line %d)\n\n%s\n\n---\n\n", $comment['path'], $comment['line'], $comment['body']);
+            }
+
+            $this->gitHubApiService->createPullRequestComment(
+                $installationId,
+                $owner,
+                $repo,
+                $pullRequestNumber,
+                $findingsBody
+            );
+        } else {
+            // Post each finding as a separate comment
+            foreach ($inlineComments as $comment) {
+                $commentBody = sprintf("**File:** `%s` (line %d)\n\n%s", $comment['path'], $comment['line'], $comment['body']);
+                $this->gitHubApiService->createPullRequestComment(
+                    $installationId,
+                    $owner,
+                    $repo,
+                    $pullRequestNumber,
+                    $commentBody
+                );
+            }
+        }
+
+        return is_array($response) ? $response : [];
+    }
+
+    /**
+     * Post annotations as a GitHub Check Run.
+     *
+     * @param  array<int, array{path: string, line: int, side: string, body: string}>  $inlineComments
+     * @return array<string, mixed>
+     */
+    private function postAsCheckRun(
+        Run $run,
+        int $installationId,
+        string $owner,
+        string $repo,
+        string $reviewBody,
+        array $inlineComments,
+        ?string $commitId
+    ): array {
+        if ($commitId === null) {
+            Log::warning('PostRunAnnotations: Cannot create check run without commit SHA', [
+                'run_id' => $run->id,
+            ]);
+
+            return [];
+        }
+
+        $annotations = array_map(fn (array $comment): array => [
+            'path' => $comment['path'],
+            'start_line' => $comment['line'],
+            'end_line' => $comment['line'],
+            'annotation_level' => 'warning',
+            'message' => strip_tags($comment['body']),
+        ], $inlineComments);
+
+        $response = $this->gitHubApiService->createCheckRun(
+            $installationId,
+            $owner,
+            $repo,
+            'Sentinel Code Review',
+            $commitId,
+            'completed',
+            $inlineComments !== [] ? 'neutral' : 'success',
+            $reviewBody,
+            $annotations
+        );
+
+        return is_array($response) ? $response : [];
+    }
+
+    /**
      * Post a summary-only review when there are no eligible findings.
+     *
+     * @param  array{style: string, post_threshold: string, grouped: bool, include_suggestions: bool}  $config
      */
     private function postSummaryOnly(
         Run $run,
         int $installationId,
         string $owner,
         string $repo,
-        int $pullRequestNumber
+        int $pullRequestNumber,
+        array $config
     ): void {
         $summary = $this->buildReviewSummary($run);
+        $style = AnnotationStyle::tryFrom($config['style']) ?? AnnotationStyle::Review;
+        $metadata = $run->metadata ?? [];
+        $commitId = is_string($metadata['head_sha'] ?? null) ? $metadata['head_sha'] : null;
 
-        $this->gitHubApiService->createPullRequestReview(
-            $installationId,
-            $owner,
-            $repo,
-            $pullRequestNumber,
-            $summary,
-            'COMMENT',
-            []
-        );
+        match ($style) {
+            AnnotationStyle::Review => $this->gitHubApiService->createPullRequestReview(
+                $installationId,
+                $owner,
+                $repo,
+                $pullRequestNumber,
+                $summary,
+                'COMMENT',
+                []
+            ),
+            AnnotationStyle::Comment => $this->gitHubApiService->createPullRequestComment(
+                $installationId,
+                $owner,
+                $repo,
+                $pullRequestNumber,
+                $summary
+            ),
+            AnnotationStyle::Check => $commitId !== null ? $this->gitHubApiService->createCheckRun(
+                $installationId,
+                $owner,
+                $repo,
+                'Sentinel Code Review',
+                $commitId,
+                'completed',
+                'success',
+                $summary,
+                []
+            ) : null,
+        };
     }
 
     /**
      * Filter findings that are eligible for posting as comments.
      *
+     * @param  array{style: string, post_threshold: string, grouped: bool, include_suggestions: bool}  $config
      * @return Collection<int, Finding>
      */
-    private function filterEligibleFindings(Run $run): Collection
+    private function filterEligibleFindings(Run $run, array $config): Collection
     {
         $policy = $run->policy_snapshot ?? [];
-
-        $severityThresholds = is_array($policy['severity_thresholds'] ?? null) ? $policy['severity_thresholds'] : [];
         $commentLimits = is_array($policy['comment_limits'] ?? null) ? $policy['comment_limits'] : [];
 
-        $severityThreshold = is_string($severityThresholds['comment'] ?? null) ? $severityThresholds['comment'] : 'medium';
+        // Use annotations.post_threshold for filtering which findings to post as annotations
+        $severityThreshold = $config['post_threshold'];
         $maxComments = is_int($commentLimits['max_inline_comments'] ?? null) ? $commentLimits['max_inline_comments'] : 10;
 
         $minSeverityEnum = SentinelConfigSeverity::tryFrom($severityThreshold) ?? SentinelConfigSeverity::Medium;
@@ -230,11 +474,13 @@ final readonly class PostRunAnnotations
      * - `side`: "RIGHT" for the new version of the file
      *
      * @param  Collection<int, Finding>  $findings
+     * @param  array{style: string, post_threshold: string, grouped: bool, include_suggestions: bool}  $config
      * @return array<int, array{path: string, line: int, side: string, body: string}>
      */
-    private function buildInlineComments(Collection $findings): array
+    private function buildInlineComments(Collection $findings, array $config): array
     {
         $comments = [];
+        $includeSuggestions = $config['include_suggestions'];
 
         foreach ($findings as $finding) {
             if ($finding->file_path === null) {
@@ -249,7 +495,7 @@ final readonly class PostRunAnnotations
                 'path' => $finding->file_path,
                 'line' => $finding->line_start,
                 'side' => 'RIGHT', // Comment on the new version of the file
-                'body' => $this->formatFindingComment($finding),
+                'body' => $this->formatFindingComment($finding, $includeSuggestions),
             ];
         }
 
@@ -259,7 +505,7 @@ final readonly class PostRunAnnotations
     /**
      * Format a single finding as a comment body.
      */
-    private function formatFindingComment(Finding $finding): string
+    private function formatFindingComment(Finding $finding, bool $includeSuggestions = true): string
     {
         /** @var array<string, mixed> $metadata */
         $metadata = $finding->metadata ?? [];
@@ -276,9 +522,12 @@ final readonly class PostRunAnnotations
         $body .= "### {$finding->title}\n\n";
         $body .= $finding->description.PHP_EOL;
 
-        $suggestion = isset($metadata['suggestion']) && is_string($metadata['suggestion']) ? $metadata['suggestion'] : null;
-        if ($suggestion !== null && $suggestion !== '') {
-            $body .= "\n**Suggestion:** {$suggestion}\n";
+        // Only include suggestions if configured
+        if ($includeSuggestions) {
+            $suggestion = isset($metadata['suggestion']) && is_string($metadata['suggestion']) ? $metadata['suggestion'] : null;
+            if ($suggestion !== null && $suggestion !== '') {
+                $body .= "\n**Suggestion:** {$suggestion}\n";
+            }
         }
 
         $rationale = isset($metadata['rationale']) && is_string($metadata['rationale']) ? $metadata['rationale'] : null;

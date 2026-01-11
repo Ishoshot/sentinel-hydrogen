@@ -124,4 +124,27 @@ interface GitHubApiServiceContract
      * Get an authenticated GitHub client for an installation.
      */
     public function getClientForInstallation(Installation $installation): GitHubManager;
+
+    /**
+     * Create a check run on a commit.
+     *
+     * @param  string  $name  The name of the check run
+     * @param  string  $headSha  The SHA of the commit to check
+     * @param  string  $status  The status: queued, in_progress, completed
+     * @param  string|null  $conclusion  The conclusion: success, failure, neutral, cancelled, timed_out, action_required, skipped
+     * @param  string|null  $summary  A summary of the check run
+     * @param  array<int, array{path: string, start_line: int, end_line: int, annotation_level: string, message: string}>  $annotations
+     * @return array<string, mixed> The check run response
+     */
+    public function createCheckRun(
+        int $installationId,
+        string $owner,
+        string $repo,
+        string $name,
+        string $headSha,
+        string $status = 'completed',
+        ?string $conclusion = null,
+        ?string $summary = null,
+        array $annotations = []
+    ): array;
 }

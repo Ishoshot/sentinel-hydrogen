@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews;
 
+use App\DataTransferObjects\SentinelConfig\AnnotationsConfig;
 use App\DataTransferObjects\SentinelConfig\ReviewConfig;
 use App\Models\Repository;
 
@@ -26,7 +27,9 @@ final readonly class ReviewPolicyResolver
 
         if ($sentinelConfig !== null) {
             $reviewConfig = $sentinelConfig->getReviewOrDefault();
+            $annotationsConfig = $sentinelConfig->getAnnotationsOrDefault();
             $result = $this->mergeReviewConfig($result, $reviewConfig);
+            $result = $this->mergeAnnotationsConfig($result, $annotationsConfig);
         }
 
         return $result;
@@ -65,6 +68,24 @@ final readonly class ReviewPolicyResolver
         if ($reviewConfig->focus !== []) {
             $policy['focus'] = $reviewConfig->focus;
         }
+
+        return $policy;
+    }
+
+    /**
+     * Merge AnnotationsConfig into the policy array.
+     *
+     * @param  array<string, mixed>  $policy
+     * @return array<string, mixed>
+     */
+    private function mergeAnnotationsConfig(array $policy, AnnotationsConfig $annotationsConfig): array
+    {
+        $policy['annotations'] = [
+            'style' => $annotationsConfig->style->value,
+            'post_threshold' => $annotationsConfig->postThreshold->value,
+            'grouped' => $annotationsConfig->grouped,
+            'include_suggestions' => $annotationsConfig->includeSuggestions,
+        ];
 
         return $policy;
     }
