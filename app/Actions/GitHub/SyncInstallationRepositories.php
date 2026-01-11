@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
+use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
 use App\Models\Installation;
 use App\Models\Repository;
 use App\Models\RepositorySettings;
@@ -16,7 +17,8 @@ final readonly class SyncInstallationRepositories
      * Create a new action instance.
      */
     public function __construct(
-        private GitHubApiService $gitHubApiService
+        private GitHubApiService $gitHubApiService,
+        private SyncRepositorySentinelConfig $syncSentinelConfig,
     ) {}
 
     /**
@@ -30,7 +32,10 @@ final readonly class SyncInstallationRepositories
             $installation->installation_id
         );
 
-        return DB::transaction(function () use ($installation, $githubRepos): array {
+        /** @var array<int, Repository> $syncedRepositories */
+        $syncedRepositories = [];
+
+        $result = DB::transaction(function () use ($installation, $githubRepos, &$syncedRepositories): array {
             $existingRepoIds = $installation->repositories()->pluck('github_id')->toArray();
             $githubRepoIds = array_column($githubRepos, 'id');
 
@@ -67,6 +72,8 @@ final readonly class SyncInstallationRepositories
                 } else {
                     $updated++;
                 }
+
+                $syncedRepositories[] = $repository;
             }
 
             // Remove repositories that are no longer accessible
@@ -82,6 +89,14 @@ final readonly class SyncInstallationRepositories
                 'removed' => $removed,
             ];
         });
+
+        // Sync Sentinel configs for all repositories (outside transaction)
+        foreach ($syncedRepositories as $repository) {
+            $repository->refresh(); // Ensure settings relation is loaded
+            $this->syncSentinelConfig->handle($repository);
+        }
+
+        return $result;
     }
 
     /**
@@ -92,8 +107,11 @@ final readonly class SyncInstallationRepositories
      */
     public function addRepositories(Installation $installation, array $repositories): int
     {
-        return DB::transaction(function () use ($installation, $repositories): int {
-            $added = 0;
+        /** @var array<int, Repository> $addedRepositories */
+        $addedRepositories = [];
+
+        $added = DB::transaction(function () use ($installation, $repositories, &$addedRepositories): int {
+            $count = 0;
 
             foreach ($repositories as $repoData) {
                 $repository = Repository::firstOrCreate(
@@ -111,7 +129,7 @@ final readonly class SyncInstallationRepositories
                 );
 
                 if ($repository->wasRecentlyCreated) {
-                    $added++;
+                    $count++;
 
                     // Create default repository settings
                     RepositorySettings::create([
@@ -120,11 +138,21 @@ final readonly class SyncInstallationRepositories
                         'auto_review_enabled' => true,
                         'review_rules' => null,
                     ]);
+
+                    $addedRepositories[] = $repository;
                 }
             }
 
-            return $added;
+            return $count;
         });
+
+        // Sync Sentinel configs for newly added repositories (outside transaction)
+        foreach ($addedRepositories as $repository) {
+            $repository->refresh();
+            $this->syncSentinelConfig->handle($repository);
+        }
+
+        return $added;
     }
 
     /**
