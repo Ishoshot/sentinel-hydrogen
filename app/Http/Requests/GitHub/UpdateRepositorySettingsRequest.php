@@ -36,7 +36,6 @@ final class UpdateRepositorySettingsRequest extends FormRequest
     {
         return [
             'auto_review_enabled' => ['sometimes', 'boolean'],
-            'review_rules' => ['sometimes', 'nullable', 'array'],
         ];
     }
 
@@ -47,7 +46,6 @@ final class UpdateRepositorySettingsRequest extends FormRequest
     {
         return [
             'auto_review_enabled.boolean' => 'The auto review setting must be a boolean value.',
-            'review_rules.array' => 'The review rules must be an array.',
         ];
     }
 }

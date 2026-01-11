@@ -18,20 +18,10 @@ final readonly class ReviewPolicyResolver
     {
         $repository->loadMissing('settings');
 
-        /** @var array<string, mixed> $defaultPolicy */
-        $defaultPolicy = config('reviews.default_policy', []);
+        /** @var array<string, mixed> $result */
+        $result = config('reviews.default_policy', []);
 
         $settings = $repository->settings;
-        $repositoryRules = $settings !== null ? $settings->review_rules : [];
-
-        if (! is_array($repositoryRules)) {
-            $repositoryRules = [];
-        }
-
-        /** @var array<string, mixed> $result */
-        $result = array_replace_recursive($defaultPolicy, $repositoryRules);
-
-        // Merge SentinelConfig review settings
         $sentinelConfig = $settings?->getConfigOrDefault();
 
         if ($sentinelConfig !== null) {

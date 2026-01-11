@@ -20,7 +20,6 @@ final class RepositorySettingsResource extends JsonResource
         return [
             'id' => $this->id,
             'auto_review_enabled' => $this->auto_review_enabled,
-            'review_rules' => $this->review_rules,
 
             // Sentinel config from .sentinel/config.yaml
             'sentinel_config' => $this->sentinel_config,

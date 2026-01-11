@@ -22,7 +22,7 @@ final readonly class UpdateRepositorySettings
     /**
      * Update repository settings.
      *
-     * @param  array{auto_review_enabled?: bool, review_rules?: array<string, mixed>|null}  $data
+     * @param  array{auto_review_enabled?: bool}  $data
      */
     public function handle(Repository $repository, array $data, ?User $actor = null): RepositorySettings
     {
@@ -33,7 +33,6 @@ final readonly class UpdateRepositorySettings
                 'repository_id' => $repository->id,
                 'workspace_id' => $repository->workspace_id,
                 'auto_review_enabled' => $data['auto_review_enabled'] ?? true,
-                'review_rules' => $data['review_rules'] ?? null,
             ]);
         } else {
             $settings->update($data);

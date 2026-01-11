@@ -45,29 +45,6 @@ it('returns default policy when repository has no settings', function (): void {
         ->and($policy['comment_limits']['max_inline_comments'])->toBe(10);
 });
 
-it('merges repository review_rules with default policy', function (): void {
-    $repository = createRepositoryWithProvider();
-
-    // Create settings without sentinel_config to test review_rules merging
-    RepositorySettings::factory()->create([
-        'repository_id' => $repository->id,
-        'workspace_id' => $repository->workspace_id,
-        'review_rules' => [
-            'comment_limits' => ['max_inline_comments' => 20],
-            'custom_key' => 'custom_value',
-        ],
-        'sentinel_config' => null, // No sentinel config
-    ]);
-
-    $resolver = new ReviewPolicyResolver();
-    $policy = $resolver->resolve($repository);
-
-    // Default sentinel config will be applied (25 max findings)
-    // But then we verify custom_key was merged
-    expect($policy['custom_key'])->toBe('custom_value')
-        ->and($policy['policy_version'])->toBe(1);
-});
-
 it('merges sentinel config review settings into policy', function (): void {
     $repository = createRepositoryWithProvider();
 
@@ -135,7 +112,7 @@ it('uses default review config when sentinel config is empty', function (): void
         ->and($policy['language'])->toBe('en');
 });
 
-it('preserves existing enabled_rules when merging categories', function (): void {
+it('merges enabled categories with default enabled_rules', function (): void {
     $repository = createRepositoryWithProvider();
 
     $sentinelConfig = new SentinelConfig(
@@ -154,17 +131,15 @@ it('preserves existing enabled_rules when merging categories', function (): void
     RepositorySettings::factory()->create([
         'repository_id' => $repository->id,
         'workspace_id' => $repository->workspace_id,
-        'review_rules' => [
-            'enabled_rules' => ['summary_only', 'custom_rule'],
-        ],
         'sentinel_config' => $sentinelConfig->toArray(),
     ]);
 
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
+    // Default enabled_rules from config/reviews.php is ['summary_only']
+    // Categories should be merged with default rules
     expect($policy['enabled_rules'])->toContain('summary_only')
-        ->and($policy['enabled_rules'])->toContain('custom_rule')
         ->and($policy['enabled_rules'])->toContain('security')
         ->and($policy['enabled_rules'])->toContain('style');
 });

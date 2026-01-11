@@ -2,6 +2,78 @@
 
 > **This is a handover document for the frontend agent.**
 
+---
+
+## Breaking Change: `review_rules` Deprecated
+
+**Action Required:** Remove all frontend support for `review_rules`.
+
+### What Changed
+
+The `review_rules` field has been **removed from the API**. Previously, review policy could be configured two ways:
+
+1. `review_rules` (database, UI-editable) - **REMOVED**
+2. `sentinel_config` (from `.sentinel/config.yaml`) - **This is now the only way**
+
+### Why
+
+- `sentinel_config` is more powerful and covers all the same settings
+- Source-control-native configuration aligns with Sentinel's philosophy
+- Having two systems was confusing and created merge order complexity
+
+### Frontend Changes Required
+
+1. **Remove `review_rules` from TypeScript interfaces** - It's no longer in API responses
+2. **Remove any UI for editing review rules** - No forms, modals, or inputs for `review_rules`
+3. **Remove any display of `review_rules`** - Don't show it anywhere
+4. **Keep `auto_review_enabled`** - This toggle remains (it's an app-level kill switch)
+
+### API Changes
+
+**Before (old):**
+```json
+{
+  "settings": {
+    "id": 1,
+    "auto_review_enabled": true,
+    "review_rules": { "max_findings": 20 },
+    "sentinel_config": { ... }
+  }
+}
+```
+
+**After (new):**
+```json
+{
+  "settings": {
+    "id": 1,
+    "auto_review_enabled": true,
+    "sentinel_config": { ... }
+  }
+}
+```
+
+### Update Request Validation
+
+**Before:**
+```typescript
+// PATCH /api/workspaces/{id}/repositories/{id}
+{
+  "auto_review_enabled": true,
+  "review_rules": { ... }  // REMOVED - will be ignored
+}
+```
+
+**After:**
+```typescript
+// PATCH /api/workspaces/{id}/repositories/{id}
+{
+  "auto_review_enabled": true  // Only this field is accepted
+}
+```
+
+---
+
 ## Context
 
 The backend for Sentinel (Laravel 12 API) has implemented **Repository Configuration** (Phase 5). This feature allows teams to customize Sentinel's behavior per-repository via a `.sentinel/config.yaml` file in their codebase.
