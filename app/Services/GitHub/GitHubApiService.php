@@ -32,7 +32,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         /** @var array<string, mixed> $installation */
         $installation = $this->rateLimiter->handle(
             fn (): array => $this->github->connection()->apps()->getInstallation($installationId),
-            "getInstallation({$installationId})"
+            sprintf('getInstallation(%d)', $installationId)
         );
 
         return $installation;
@@ -56,7 +56,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
             /** @var array{repositories?: array<int, array<string, mixed>>} $response */
             $response = $this->rateLimiter->handle(
                 fn (): array => $this->github->connection()->apps()->listRepositories($page),
-                "listRepositories(installation={$installationId}, page={$page})"
+                sprintf('listRepositories(installation=%d, page=%d)', $installationId, $page)
             );
 
             /** @var array<int, array<string, mixed>> $repos */
@@ -80,7 +80,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         /** @var array<string, mixed> $repository */
         $repository = $this->rateLimiter->handle(
             fn (): array => $this->github->connection()->repo()->show($owner, $repo),
-            "getRepository({$owner}/{$repo})"
+            sprintf('getRepository(%s/%s)', $owner, $repo)
         );
 
         return $repository;
@@ -97,8 +97,8 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
 
         /** @var array<string, mixed> $pullRequest */
         $pullRequest = $this->rateLimiter->handle(
-            fn (): array => $this->github->connection()->pullRequest()->show($owner, $repo, $number),
-            "getPullRequest({$owner}/{$repo}#{$number})"
+            fn (): mixed => $this->github->connection()->pullRequest()->show($owner, $repo, $number),
+            sprintf('getPullRequest(%s/%s#%d)', $owner, $repo, $number)
         );
 
         return $pullRequest;
@@ -115,8 +115,8 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
 
         /** @var array<int, array<string, mixed>> $files */
         $files = $this->rateLimiter->handle(
-            fn (): array => $this->github->connection()->pullRequest()->files($owner, $repo, $number),
-            "getPullRequestFiles({$owner}/{$repo}#{$number})"
+            fn (): mixed => $this->github->connection()->pullRequest()->files($owner, $repo, $number),
+            sprintf('getPullRequestFiles(%s/%s#%d)', $owner, $repo, $number)
         );
 
         return $files;
@@ -134,7 +134,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         /** @var array<string, mixed>|string $contents */
         $contents = $this->rateLimiter->handle(
             fn (): array|string => $this->github->connection()->repo()->contents()->show($owner, $repo, $path, $ref),
-            "getFileContents({$owner}/{$repo}/{$path})"
+            sprintf('getFileContents(%s/%s/%s)', $owner, $repo, $path)
         );
 
         return $contents;
@@ -178,7 +178,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         /** @var array<string, mixed> $review */
         $review = $this->rateLimiter->handle(
             fn (): array => $this->github->connection()->pullRequest()->reviews()->create($owner, $repo, $number, $params),
-            "createPullRequestReview({$owner}/{$repo}#{$number})"
+            sprintf('createPullRequestReview(%s/%s#%d)', $owner, $repo, $number)
         );
 
         return $review;
@@ -201,7 +201,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         /** @var array<string, mixed> $comment */
         $comment = $this->rateLimiter->handle(
             fn (): array => $this->github->connection()->issue()->comments()->create($owner, $repo, $number, ['body' => $body]),
-            "createPullRequestComment({$owner}/{$repo}#{$number})"
+            sprintf('createPullRequestComment(%s/%s#%d)', $owner, $repo, $number)
         );
 
         return $comment;
@@ -224,7 +224,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         /** @var array<string, mixed> $comment */
         $comment = $this->rateLimiter->handle(
             fn (): array => $this->github->connection()->issue()->comments()->update($owner, $repo, $commentId, ['body' => $body]),
-            "updatePullRequestComment({$owner}/{$repo}#{$commentId})"
+            sprintf('updatePullRequestComment(%s/%s#%d)', $owner, $repo, $commentId)
         );
 
         return $comment;
@@ -242,7 +242,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         /** @var array<string, mixed> $issue */
         $issue = $this->rateLimiter->handle(
             fn (): array => $this->github->connection()->issue()->show($owner, $repo, $number),
-            "getIssue({$owner}/{$repo}#{$number})"
+            sprintf('getIssue(%s/%s#%d)', $owner, $repo, $number)
         );
 
         return $issue;
@@ -260,7 +260,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         /** @var array<int, array<string, mixed>> $comments */
         $comments = $this->rateLimiter->handle(
             fn (): array => $this->github->connection()->issue()->comments()->all($owner, $repo, $number),
-            "getIssueComments({$owner}/{$repo}#{$number})"
+            sprintf('getIssueComments(%s/%s#%d)', $owner, $repo, $number)
         );
 
         return $comments;

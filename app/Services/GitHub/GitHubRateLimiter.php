@@ -63,7 +63,7 @@ final class GitHubRateLimiter
             $cooldownKey = self::CACHE_PREFIX.'cooldown';
             $cooldownUntil = Cache::get($cooldownKey);
 
-            if ($cooldownUntil !== null && $cooldownUntil > time()) {
+            if (is_int($cooldownUntil) && $cooldownUntil > time()) {
                 $waitTime = $cooldownUntil - time();
                 Log::debug('GitHub rate limit cooldown active', [
                     'operation' => $operation,
@@ -114,7 +114,9 @@ final class GitHubRateLimiter
     {
         $key = self::CACHE_PREFIX.'hits:'.date('Y-m-d:H');
 
-        return (int) Cache::get($key, 0);
+        $count = Cache::get($key, 0);
+
+        return is_int($count) ? $count : 0;
     }
 
     /**
@@ -124,7 +126,7 @@ final class GitHubRateLimiter
     {
         $cooldownUntil = Cache::get(self::CACHE_PREFIX.'cooldown');
 
-        return $cooldownUntil !== null && $cooldownUntil > time();
+        return is_int($cooldownUntil) && $cooldownUntil > time();
     }
 
     /**
@@ -134,7 +136,7 @@ final class GitHubRateLimiter
     {
         $cooldownUntil = Cache::get(self::CACHE_PREFIX.'cooldown');
 
-        if ($cooldownUntil === null || $cooldownUntil <= time()) {
+        if (! is_int($cooldownUntil) || $cooldownUntil <= time()) {
             return 0;
         }
 
@@ -164,11 +166,7 @@ final class GitHubRateLimiter
         }
 
         // HTTP 429 Too Many Requests
-        if (str_contains($message, '429')) {
-            return true;
-        }
-
-        return false;
+        return str_contains($message, '429');
     }
 
     /**
@@ -240,6 +238,7 @@ final class GitHubRateLimiter
     {
         $key = self::CACHE_PREFIX.'hits:'.date('Y-m-d:H');
         $count = Cache::get($key, 0);
-        Cache::put($key, $count + 1, 3600);
+        $currentCount = is_int($count) ? $count : 0;
+        Cache::put($key, $currentCount + 1, 3600);
     }
 }
