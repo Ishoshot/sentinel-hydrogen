@@ -227,3 +227,106 @@ it('validates repository settings update', function (): void {
     $response->assertUnprocessable()
         ->assertJsonValidationErrors(['auto_review_enabled']);
 });
+
+it('includes sentinel config fields in repository settings response', function (): void {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
+    $workspace->teamMembers()->create([
+        'user_id' => $user->id,
+        'team_id' => $workspace->team->id,
+        'role' => 'owner',
+        'joined_at' => now(),
+    ]);
+
+    $provider = Provider::where('type', ProviderType::GitHub)->first();
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->active()->create();
+    $installation = Installation::factory()->forConnection($connection)->create();
+    $repository = Repository::factory()->forInstallation($installation)->create();
+    RepositorySettings::factory()->forRepository($repository)->create([
+        'sentinel_config' => [
+            'version' => '1.0',
+            'review' => ['min_severity' => 'medium'],
+        ],
+        'config_synced_at' => now(),
+        'config_error' => null,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson(route('repositories.show', [$workspace, $repository]));
+
+    $response->assertOk()
+        ->assertJsonPath('data.settings.has_sentinel_config', true)
+        ->assertJsonPath('data.settings.has_config_error', false)
+        ->assertJsonPath('data.settings.sentinel_config.version', '1.0')
+        ->assertJsonPath('data.settings.sentinel_config.review.min_severity', 'medium')
+        ->assertJsonStructure([
+            'data' => [
+                'settings' => [
+                    'sentinel_config',
+                    'config_synced_at',
+                    'config_error',
+                    'has_sentinel_config',
+                    'has_config_error',
+                ],
+            ],
+        ]);
+});
+
+it('shows config error when sentinel config is invalid', function (): void {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
+    $workspace->teamMembers()->create([
+        'user_id' => $user->id,
+        'team_id' => $workspace->team->id,
+        'role' => 'owner',
+        'joined_at' => now(),
+    ]);
+
+    $provider = Provider::where('type', ProviderType::GitHub)->first();
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->active()->create();
+    $installation = Installation::factory()->forConnection($connection)->create();
+    $repository = Repository::factory()->forInstallation($installation)->create();
+    RepositorySettings::factory()->forRepository($repository)->create([
+        'sentinel_config' => null,
+        'config_synced_at' => now(),
+        'config_error' => 'Invalid YAML syntax at line 5',
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson(route('repositories.show', [$workspace, $repository]));
+
+    $response->assertOk()
+        ->assertJsonPath('data.settings.has_sentinel_config', false)
+        ->assertJsonPath('data.settings.has_config_error', true)
+        ->assertJsonPath('data.settings.config_error', 'Invalid YAML syntax at line 5');
+});
+
+it('shows null sentinel config when not synced', function (): void {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
+    $workspace->teamMembers()->create([
+        'user_id' => $user->id,
+        'team_id' => $workspace->team->id,
+        'role' => 'owner',
+        'joined_at' => now(),
+    ]);
+
+    $provider = Provider::where('type', ProviderType::GitHub)->first();
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->active()->create();
+    $installation = Installation::factory()->forConnection($connection)->create();
+    $repository = Repository::factory()->forInstallation($installation)->create();
+    RepositorySettings::factory()->forRepository($repository)->create([
+        'sentinel_config' => null,
+        'config_synced_at' => null,
+        'config_error' => null,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson(route('repositories.show', [$workspace, $repository]));
+
+    $response->assertOk()
+        ->assertJsonPath('data.settings.has_sentinel_config', false)
+        ->assertJsonPath('data.settings.has_config_error', false)
+        ->assertJsonPath('data.settings.sentinel_config', null)
+        ->assertJsonPath('data.settings.config_synced_at', null);
+});
