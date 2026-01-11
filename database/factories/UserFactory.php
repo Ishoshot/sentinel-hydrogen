@@ -50,4 +50,25 @@ final class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * Indicate that the user was created via OAuth (no password).
+     */
+    public function oauth(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'password' => null,
+            'avatar_url' => fake()->imageUrl(200, 200, 'people'),
+        ]);
+    }
+
+    /**
+     * Indicate that the user has an avatar.
+     */
+    public function withAvatar(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'avatar_url' => fake()->imageUrl(200, 200, 'people'),
+        ]);
+    }
 }

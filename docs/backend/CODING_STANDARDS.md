@@ -99,6 +99,36 @@ Rules:
 -   Actions may dispatch jobs and domain events
 -   Actions MUST depend on contracts/interfaces, never concrete implementations
 
+### Method Naming Convention
+
+The primary public method in an Action MUST be named `handle`.
+
+```php
+// Correct
+final class CreateWorkspace
+{
+    public function handle(User $owner, string $name): Workspace
+    {
+        // ...
+    }
+}
+
+// Incorrect - do not use "execute"
+final class CreateWorkspace
+{
+    public function execute(User $owner, string $name): Workspace
+    {
+        // ...
+    }
+}
+```
+
+This convention:
+
+-   Aligns with Laravel's job and listener patterns
+-   Provides consistency across all Actions
+-   Makes Actions immediately recognizable
+
 Actions are the **primary unit for testing business flows**.
 
 ---

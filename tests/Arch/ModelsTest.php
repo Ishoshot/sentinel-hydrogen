@@ -7,17 +7,21 @@ arch('models')
     ->toHaveMethod('casts')
     ->toExtend('Illuminate\Database\Eloquent\Model')
     ->toOnlyBeUsedIn([
+        'App\Actions',
         'App\Console',
+        'App\Contracts',
         'App\Http',
         'App\Jobs',
+        'App\Notifications',
         'App\Observers',
         'App\Mail',
         'App\Models',
+        'App\Policies',
         'App\Providers',
         'App\Rules',
         'App\Services',
         'Database\Factories',
-        'Database\Seeders\DatabaseSeeder',
+        'Database\Seeders',
     ]);
 
 arch('ensure factories', function () {

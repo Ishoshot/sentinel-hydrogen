@@ -6,6 +6,7 @@ arch('exceptions')
     ->expect('App\Exceptions')
     ->toImplement('Throwable')
     ->toOnlyBeUsedIn([
+        'App\Actions',
         'App\Console\Commands',
         'App\Http\Controllers',
         'App\Services',

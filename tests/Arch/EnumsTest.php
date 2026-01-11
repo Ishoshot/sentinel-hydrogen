@@ -7,9 +7,19 @@ arch('enums')
     ->toBeEnums()
     ->toExtendNothing()
     ->toUseNothing()
-    ->toHaveMethod('toArray')
+    ->ignoring('App\Enums\Queue'); // Queue enum uses other enums for comparison
+
+arch('enums are used in appropriate locations')
+    ->expect('App\Enums')
     ->toOnlyBeUsedIn([
+        'App\Actions',
         'App\Console\Commands',
-        'App\Http\Requests',
+        'App\DataTransferObjects',
+        'App\Http',
+        'App\Jobs',
         'App\Models',
+        'App\Policies',
+        'App\Providers',
+        'App\Services',
+        'Database\Factories',
     ]);
