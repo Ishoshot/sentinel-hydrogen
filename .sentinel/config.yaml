@@ -1,0 +1,179 @@
+# Sentinel Configuration File
+# ===========================
+#
+# This file configures how Sentinel reviews pull requests for this repository.
+# Place this file at: .sentinel/config.yaml
+#
+# NOTE: API keys are configured via the Sentinel dashboard, not this file.
+# Go to Repository Settings > API Keys to add your provider keys.
+#
+# All sections below are optional - omit them to use Sentinel's defaults.
+# For full documentation, see: docs/SENTINEL_CONFIG.md
+
+# Schema version (required)
+version: 1
+
+# =============================================================================
+# TRIGGERS
+# =============================================================================
+# Control when Sentinel reviews pull requests.
+# By default, Sentinel reviews PRs targeting main/master branches.
+
+triggers:
+  # Only review PRs targeting these branches (supports glob patterns)
+  # Default: [main, master]
+  target_branches:
+    - "*"
+
+  # Skip PRs from these source branches (supports glob patterns)
+  # Default: [] (none)
+  skip_source_branches: []
+
+  # Skip PRs with any of these labels
+  # Default: [] (none)
+  skip_labels: []
+
+  # Skip PRs from these authors (useful for bots)
+  # Default: [] (none)
+  skip_authors: []
+
+# =============================================================================
+# PATHS
+# =============================================================================
+# Control which files Sentinel includes in reviews.
+# Supports glob patterns: *, **, ?
+
+paths:
+  # Files to completely ignore (won't be reviewed)
+  # Default: [*.lock, vendor/**, node_modules/**]
+  ignore:
+    - "*.lock"
+    - "*.min.js"
+    - "*.min.css"
+    - "vendor/**"
+    - "node_modules/**"
+    - "public/build/**"
+    - "storage/**"
+    - "bootstrap/cache/**"
+    - "*.map"
+
+  # Only review files matching these patterns (allowlist mode)
+  # Default: [] (review all files not in ignore)
+  # WARNING: When set, only matching files are reviewed!
+  include:
+    # - "app/**"
+    # - "src/**"
+    # - "lib/**"
+
+  # Files requiring extra scrutiny (security-sensitive)
+  # Sentinel will apply stricter checks to these files
+  # Default: [] (none)
+  sensitive:
+    # - "**/auth/**"
+    # - "**/authentication/**"
+    # - "**/authorization/**"
+    # - "**/*password*"
+    # - "**/*secret*"
+    # - "**/*token*"
+    # - "**/*credential*"
+    # - "**/middleware/**"
+    # - "**/policies/**"
+
+# =============================================================================
+# REVIEW
+# =============================================================================
+# Configure review behavior, severity thresholds, and feedback style.
+
+review:
+  # Minimum severity level to report
+  # Options: info, low, medium, high, critical
+  # Default: low
+  min_severity: low
+
+  # Maximum findings per review (0 = unlimited)
+  # Default: 25
+  max_findings: 25
+
+  # Enable/disable review categories
+  # Default: security, correctness, performance, maintainability enabled; style disabled
+  categories:
+    security: true        # SQL injection, XSS, auth issues, etc.
+    correctness: true     # Logic errors, incorrect behavior
+    performance: true     # N+1 queries, inefficient algorithms
+    maintainability: true # Code organization, complexity, readability
+    style: false          # Code style, formatting (often covered by linters)
+
+  # Feedback tone
+  # Options: constructive, direct, educational, minimal
+  # Default: constructive
+  #
+  # - constructive: Balanced feedback with explanations and suggestions
+  # - direct: Concise, to-the-point feedback
+  # - educational: Detailed explanations, good for learning
+  # - minimal: Brief, essential feedback only
+  tone: constructive
+
+  # Response language (ISO 639-1 code)
+  # Default: en
+  language: en
+
+  # Custom focus areas for this codebase
+  # Sentinel will prioritize these concerns in reviews
+  # Default: [] (none)
+  focus:
+    # - "SQL injection prevention"
+    # - "Laravel best practices"
+    # - "React hooks rules"
+    # - "Memory management"
+    # - "Error handling patterns"
+
+# =============================================================================
+# GUIDELINES
+# =============================================================================
+# Custom team guidelines to include in review context.
+# Sentinel will consider these documents when reviewing code.
+#
+# Supported formats: .md, .mdx, .blade.php
+# Limits: Max 5 files, max 50KB per file
+
+guidelines:
+  # - path: docs/CODING_STANDARDS.md
+  #   description: "Team coding conventions and style guide"
+
+  # - path: docs/ARCHITECTURE.md
+  #   description: "System architecture and design decisions"
+
+  # - path: docs/SECURITY.md
+  #   description: "Security requirements and best practices"
+
+  # - path: .github/CONTRIBUTING.md
+  #   description: "Contribution guidelines"
+
+# =============================================================================
+# ANNOTATIONS
+# =============================================================================
+# Configure how Sentinel posts findings to pull requests.
+
+annotations:
+  # How to post annotations
+  # Options: review, comment, check
+  # Default: review
+  #
+  # - review: GitHub PR review with inline comments (recommended)
+  # - comment: Individual PR comments
+  # - check: GitHub Check Run with annotations
+  style: review
+
+  # Minimum severity to post as annotation
+  # Findings below this level are included in summary only
+  # Options: info, low, medium, high, critical
+  # Default: medium
+  post_threshold: medium
+
+  # Group findings into a single review vs individual comments
+  # Default: true
+  grouped: true
+
+  # Include code suggestions when possible
+  # Default: true
+  include_suggestions: true
