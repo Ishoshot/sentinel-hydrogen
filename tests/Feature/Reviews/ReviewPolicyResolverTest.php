@@ -38,11 +38,14 @@ it('returns default policy when repository has no settings', function (): void {
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
+    // Default values match config/reviews.php and SentinelConfig::default()
     expect($policy)->toHaveKey('policy_version')
         ->and($policy['policy_version'])->toBe(1)
-        ->and($policy['enabled_rules'])->toBe(['summary_only'])
-        ->and($policy['severity_thresholds']['comment'])->toBe('medium')
-        ->and($policy['comment_limits']['max_inline_comments'])->toBe(10);
+        ->and($policy['enabled_rules'])->toBe(['security', 'correctness', 'performance', 'maintainability'])
+        ->and($policy['severity_thresholds']['comment'])->toBe('low')
+        ->and($policy['comment_limits']['max_inline_comments'])->toBe(25)
+        ->and($policy['tone'])->toBe('constructive')
+        ->and($policy['language'])->toBe('en');
 });
 
 it('merges sentinel config review settings into policy', function (): void {
@@ -81,11 +84,9 @@ it('merges sentinel config review settings into policy', function (): void {
     // Check max_findings mapping
     expect($policy['comment_limits']['max_inline_comments'])->toBe(15);
 
-    // Check enabled categories are added to enabled_rules
-    expect($policy['enabled_rules'])->toContain('security')
-        ->and($policy['enabled_rules'])->toContain('correctness')
-        ->and($policy['enabled_rules'])->not->toContain('performance')
-        ->and($policy['enabled_rules'])->not->toContain('maintainability');
+    // Check enabled categories replace enabled_rules (not merge)
+    // User set performance: false and maintainability: false, so they should NOT be in enabled_rules
+    expect($policy['enabled_rules'])->toBe(['security', 'correctness']);
 
     // Check tone, language, and focus
     expect($policy['tone'])->toBe('direct')
@@ -112,7 +113,7 @@ it('uses default review config when sentinel config is empty', function (): void
         ->and($policy['language'])->toBe('en');
 });
 
-it('merges enabled categories with default enabled_rules', function (): void {
+it('replaces enabled_rules with user categories', function (): void {
     $repository = createRepositoryWithProvider();
 
     $sentinelConfig = new SentinelConfig(
@@ -137,14 +138,11 @@ it('merges enabled categories with default enabled_rules', function (): void {
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
-    // Default enabled_rules from config/reviews.php is ['summary_only']
-    // Categories should be merged with default rules
-    expect($policy['enabled_rules'])->toContain('summary_only')
-        ->and($policy['enabled_rules'])->toContain('security')
-        ->and($policy['enabled_rules'])->toContain('style');
+    // User's categories replace defaults - only security and style enabled
+    expect($policy['enabled_rules'])->toBe(['security', 'style']);
 });
 
-it('does not add focus when focus array is empty', function (): void {
+it('keeps empty focus array when not specified by user', function (): void {
     $repository = createRepositoryWithProvider();
 
     $sentinelConfig = new SentinelConfig(
@@ -163,7 +161,8 @@ it('does not add focus when focus array is empty', function (): void {
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
-    expect($policy)->not->toHaveKey('focus');
+    // Default focus is empty array (from config/reviews.php), not added from user config
+    expect($policy['focus'])->toBe([]);
 });
 
 it('applies constructive tone', function (): void {
