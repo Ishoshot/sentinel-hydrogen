@@ -60,6 +60,7 @@ final readonly class CreatePullRequestRun
 
         if ($skipReason !== null) {
             $metadata['skip_reason'] = $skipReason;
+            $metadata['skip_message'] = $skipReason;
         }
 
         $status = $skipReason !== null ? RunStatus::Skipped : RunStatus::Queued;
