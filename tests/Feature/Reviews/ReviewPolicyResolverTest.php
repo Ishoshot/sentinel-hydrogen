@@ -41,7 +41,7 @@ it('returns default policy when repository has no settings', function (): void {
     // Default values match config/reviews.php and SentinelConfig::default()
     expect($policy)->toHaveKey('policy_version')
         ->and($policy['policy_version'])->toBe(1)
-        ->and($policy['enabled_rules'])->toBe(['security', 'correctness', 'performance', 'maintainability'])
+        ->and($policy['enabled_rules'])->toBe(['security', 'correctness', 'performance', 'maintainability', 'testing'])
         ->and($policy['severity_thresholds']['comment'])->toBe('low')
         ->and($policy['comment_limits']['max_inline_comments'])->toBe(25)
         ->and($policy['tone'])->toBe('constructive')
@@ -62,6 +62,7 @@ it('merges sentinel config review settings into policy', function (): void {
                 performance: false,
                 maintainability: false,
                 style: false,
+                testing: false,
             ),
             tone: SentinelConfigTone::Direct,
             language: 'es',
@@ -125,6 +126,7 @@ it('replaces enabled_rules with user categories', function (): void {
                 performance: false,
                 maintainability: false,
                 style: true,
+                testing: false,
             ),
         ),
     );

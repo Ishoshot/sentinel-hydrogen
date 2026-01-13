@@ -17,6 +17,7 @@ use App\Models\Repository;
 use App\Models\RepositorySettings;
 use App\Models\Run;
 use App\Services\GitHub\GitHubWebhookService;
+use App\Services\Queue\QueueResolver;
 use App\Services\SentinelConfig\TriggerRuleEvaluator;
 use Illuminate\Support\Facades\Queue;
 
@@ -94,7 +95,8 @@ it('creates a run for pull request webhook when auto review is enabled', functio
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
-        app(TriggerRuleEvaluator::class)
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class)
     );
 
     $run = Run::query()->first();
@@ -164,7 +166,8 @@ it('skips run creation when auto review is disabled', function (): void {
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
-        app(TriggerRuleEvaluator::class)
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class)
     );
 
     expect(Run::query()->count())->toBe(0);
@@ -241,7 +244,8 @@ it('syncs metadata when labels are added to an existing run', function (): void 
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
-        app(TriggerRuleEvaluator::class)
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class)
     );
 
     $existingRun->refresh();
@@ -322,7 +326,8 @@ it('syncs metadata when reviewers are requested on an existing run', function ()
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
-        app(TriggerRuleEvaluator::class)
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class)
     );
 
     $existingRun->refresh();
@@ -392,7 +397,8 @@ it('does not sync metadata when no existing run is found', function (): void {
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
-        app(TriggerRuleEvaluator::class)
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class)
     );
 
     // No runs should exist and no review should be triggered
@@ -476,7 +482,8 @@ it('creates skipped run and posts error comment when repository has config error
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         $fakeConfigErrorPoster,
-        app(TriggerRuleEvaluator::class)
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class)
     );
 
     $run = Run::query()->first();
@@ -560,7 +567,8 @@ it('creates normal run when repository has no config error', function (): void {
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
-        app(TriggerRuleEvaluator::class)
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class)
     );
 
     $run = Run::query()->first();
@@ -638,7 +646,8 @@ it('creates skipped run when PR target branch does not match trigger rules', fun
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
-        app(TriggerRuleEvaluator::class)
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class)
     );
 
     $run = Run::query()->first();
@@ -716,7 +725,8 @@ it('creates skipped run when PR author is in skip list', function (): void {
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
-        app(TriggerRuleEvaluator::class)
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class)
     );
 
     $run = Run::query()->first();
@@ -796,7 +806,8 @@ it('creates skipped run when PR has skip label', function (): void {
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
-        app(TriggerRuleEvaluator::class)
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class)
     );
 
     $run = Run::query()->first();

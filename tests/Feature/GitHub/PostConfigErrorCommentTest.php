@@ -56,9 +56,8 @@ it('returns null when repository installation relationship returns null', functi
         'full_name' => 'org/repo',
     ]);
 
-    // Delete the installation to simulate a missing installation
-    $installation->delete();
-    $repository->unsetRelation('installation');
+    // Force installation relationship to null to simulate missing installation
+    $repository->setRelation('installation', null);
 
     $mockGitHubApi = mock(GitHubApiServiceContract::class);
     $mockGitHubApi->shouldNotReceive('createPullRequestComment');
