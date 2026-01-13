@@ -11,11 +11,13 @@ use App\Actions\GitHub\PostPullRequestGreeting;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\FetchSentinelConfig;
 use App\Services\Context\Collectors\DiffCollector;
+use App\Services\Context\Collectors\FileContextCollector;
 use App\Services\Context\Collectors\GuidelinesCollector;
 use App\Services\Context\Collectors\LinkedIssueCollector;
 use App\Services\Context\Collectors\PullRequestCommentCollector;
 use App\Services\Context\Collectors\RepositoryContextCollector;
 use App\Services\Context\Collectors\ReviewHistoryCollector;
+use App\Services\Context\Collectors\SemanticCollector;
 use App\Services\Context\ContextEngine;
 use App\Services\Context\Contracts\ContextEngineContract;
 use App\Services\Context\Filters\BinaryFileFilter;
@@ -59,6 +61,8 @@ final class AppServiceProvider extends ServiceProvider
 
             // Register collectors (highest priority runs first)
             $engine->registerCollector(app(DiffCollector::class));              // Priority 100
+            $engine->registerCollector(app(FileContextCollector::class));       // Priority 85
+            $engine->registerCollector(app(SemanticCollector::class));          // Priority 80
             $engine->registerCollector(app(LinkedIssueCollector::class));       // Priority 80
             $engine->registerCollector(app(PullRequestCommentCollector::class)); // Priority 70
             $engine->registerCollector(app(ReviewHistoryCollector::class));     // Priority 60
