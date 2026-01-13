@@ -34,6 +34,15 @@ Plans control:
 
 Plans do **not** include AI usage by default.
 
+Current subscription tiers:
+
+| Plan           | Monthly Price | Runs/Month | Team Size   | Support   |
+| -------------- | ------------- | ---------- | ----------- | --------- |
+| **Free**       | $0            | 20         | 2 Members   | Community |
+| **Team**       | $49           | 500        | 5 Members   | Email     |
+| **Business**   | $199          | 2,000      | Unlimited   | Priority  |
+| **Enterprise** | Custom        | Unlimited  | Unlimited   | Dedicated |
+
 ---
 
 ### Subscription
@@ -86,6 +95,15 @@ Plans may enable or restrict access to specific features, including but not limi
 -   repository-level configuration
 -   configuration-as-code support
 -   extended data retention
+
+Plan feature flags are enforced for:
+
+-   BYOK provider keys
+-   custom repository guidelines
+-   priority review queues
+-   API token access
+-   single sign-on
+-   audit log retention
 
 Feature availability is enforced consistently across the application.
 
