@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\FindingCategory;
+use App\Enums\SentinelConfigSeverity;
 use Database\Factories\FindingFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -75,6 +77,8 @@ final class Finding extends Model
     protected function casts(): array
     {
         return [
+            'severity' => SentinelConfigSeverity::class,
+            'category' => FindingCategory::class,
             'line_start' => 'integer',
             'line_end' => 'integer',
             'confidence' => 'decimal:2',

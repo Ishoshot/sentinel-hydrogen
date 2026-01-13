@@ -8,7 +8,9 @@ use App\Enums\BillingInterval;
 use App\Models\Plan;
 use App\Models\Promotion;
 use App\Models\Workspace;
+use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -50,12 +52,19 @@ final class PolarBillingService
         $accessToken = (string) config('services.polar.access_token');
 
         if ($accessToken === '') {
+            Log::error('Polar access token not configured', LogContext::fromWorkspace($workspace));
+
             throw new InvalidArgumentException('Polar access token is not configured.');
         }
 
         $productId = $this->getProductId($plan->tier, $interval);
 
         if ($productId === null) {
+            Log::error('Polar product ID not configured', LogContext::merge(
+                LogContext::fromWorkspace($workspace),
+                ['plan_tier' => $plan->tier, 'interval' => $interval->value]
+            ));
+
             throw new InvalidArgumentException(
                 sprintf('Polar product ID is not configured for %s %s plan.', $interval->value, $plan->tier)
             );
@@ -85,6 +94,11 @@ final class PolarBillingService
             ->post($baseUrl.'/v1/checkouts', $payload);
 
         if (! $response->successful()) {
+            Log::error('Polar checkout session creation failed', LogContext::merge(
+                LogContext::fromWorkspace($workspace),
+                ['response_status' => $response->status(), 'response_body' => $response->body()]
+            ));
+
             throw new RuntimeException(
                 sprintf('Failed to create Polar checkout session: %s', $response->body())
             );
@@ -95,8 +109,15 @@ final class PolarBillingService
         $checkoutUrl = $data['url'] ?? null;
 
         if (! is_string($checkoutUrl) || $checkoutUrl === '') {
+            Log::error('Polar API returned no checkout URL', LogContext::fromWorkspace($workspace));
+
             throw new RuntimeException('Polar API did not return a checkout URL.');
         }
+
+        Log::info('Polar checkout session created', LogContext::merge(
+            LogContext::fromWorkspace($workspace),
+            ['plan_tier' => $plan->tier, 'interval' => $interval->value]
+        ));
 
         return $checkoutUrl;
     }
@@ -112,6 +133,8 @@ final class PolarBillingService
         $accessToken = (string) config('services.polar.access_token');
 
         if ($accessToken === '') {
+            Log::error('Polar access token not configured for portal session', LogContext::fromWorkspace($workspace));
+
             throw new InvalidArgumentException('Polar access token is not configured.');
         }
 
@@ -119,6 +142,8 @@ final class PolarBillingService
         $customerId = $subscription?->polar_customer_id;
 
         if ($customerId === null || $customerId === '') {
+            Log::warning('Workspace missing Polar customer ID', LogContext::fromWorkspace($workspace));
+
             throw new InvalidArgumentException('Workspace does not have a Polar customer ID.');
         }
 
@@ -133,6 +158,11 @@ final class PolarBillingService
             ->post($baseUrl.'/v1/customer-sessions', $payload);
 
         if (! $response->successful()) {
+            Log::error('Polar customer session creation failed', LogContext::merge(
+                LogContext::fromWorkspace($workspace),
+                ['response_status' => $response->status(), 'response_body' => $response->body()]
+            ));
+
             throw new RuntimeException(
                 sprintf('Failed to create Polar customer session: %s', $response->body())
             );
@@ -143,8 +173,12 @@ final class PolarBillingService
         $portalUrl = $data['customer_portal_url'] ?? null;
 
         if (! is_string($portalUrl) || $portalUrl === '') {
+            Log::error('Polar API returned no portal URL', LogContext::fromWorkspace($workspace));
+
             throw new RuntimeException('Polar API did not return a customer portal URL.');
         }
+
+        Log::info('Polar customer portal session created', LogContext::fromWorkspace($workspace));
 
         return $portalUrl;
     }
@@ -159,18 +193,24 @@ final class PolarBillingService
         $secret = (string) config('services.polar.webhook_secret');
 
         if ($secret === '') {
+            Log::error('Polar webhook secret not configured');
+
             throw new RuntimeException('Polar webhook secret is not configured.');
         }
 
         $expectedSignature = hash_hmac('sha256', $payload, $secret);
 
         if (! hash_equals($expectedSignature, $signature)) {
+            Log::warning('Invalid Polar webhook signature received');
+
             throw new RuntimeException('Invalid Polar webhook signature.');
         }
 
         $event = json_decode($payload, true);
 
         if (! is_array($event)) {
+            Log::warning('Invalid Polar webhook payload format');
+
             throw new RuntimeException('Invalid Polar webhook payload.');
         }
 

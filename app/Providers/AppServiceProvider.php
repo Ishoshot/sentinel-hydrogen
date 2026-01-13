@@ -10,7 +10,6 @@ use App\Actions\GitHub\PostConfigErrorComment;
 use App\Actions\GitHub\PostPullRequestGreeting;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\FetchSentinelConfig;
-use App\Contracts\GitHub\GitHubApiServiceContract;
 use App\Services\Context\Collectors\DiffCollector;
 use App\Services\Context\Collectors\GuidelinesCollector;
 use App\Services\Context\Collectors\LinkedIssueCollector;
@@ -25,6 +24,7 @@ use App\Services\Context\Filters\RelevanceFilter;
 use App\Services\Context\Filters\SensitiveDataFilter;
 use App\Services\Context\Filters\TokenLimitFilter;
 use App\Services\Context\Filters\VendorPathFilter;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\GitHub\GitHubApiService;
 use App\Services\Reviews\Contracts\ProviderKeyResolver;
 use App\Services\Reviews\Contracts\ReviewEngine;
@@ -46,6 +46,7 @@ final class AppServiceProvider extends ServiceProvider
 
         // Register GitHub API service contract
         $this->app->bind(GitHubApiServiceContract::class, GitHubApiService::class);
+        $this->app->bind(GitHubAppServiceContract::class, GitHubAppService::class);
 
         // Register SentinelConfig action contracts
         $this->app->bind(FetchesSentinelConfig::class, FetchSentinelConfig::class);
