@@ -13,6 +13,7 @@ use App\Jobs\Reviews\ExecuteReviewRun;
 use App\Models\Installation;
 use App\Models\Repository;
 use App\Services\GitHub\GitHubWebhookService;
+use App\Services\Logging\LogContext;
 use App\Services\Queue\JobContext;
 use App\Services\Queue\QueueResolver;
 use App\Services\SentinelConfig\TriggerRuleEvaluator;
@@ -47,18 +48,21 @@ final class ProcessPullRequestWebhook implements ShouldQueue
     ): void {
         $data = $webhookService->parsePullRequestPayload($this->payload);
 
-        Log::info('Processing pull request webhook', [
-            'action' => $data['action'],
-            'repository' => $data['repository_full_name'],
-            'pr_number' => $data['pull_request_number'],
-        ]);
+        $webhookCtx = LogContext::forWebhook(
+            $data['installation_id'],
+            $data['repository_full_name'],
+            $data['action']
+        );
+        $webhookCtx['pr_number'] = $data['pull_request_number'];
+
+        Log::info('Processing pull request webhook', $webhookCtx);
 
         $shouldTriggerReview = $webhookService->shouldTriggerReview($data['action']);
         $shouldSyncMetadata = $webhookService->shouldSyncMetadata($data['action']);
 
         // Ignore actions that don't trigger review or metadata sync
         if (! $shouldTriggerReview && ! $shouldSyncMetadata) {
-            Log::info('Ignoring pull request action', ['action' => $data['action']]);
+            Log::info('Ignoring pull request action', $webhookCtx);
 
             return;
         }
@@ -66,9 +70,7 @@ final class ProcessPullRequestWebhook implements ShouldQueue
         $installation = Installation::where('installation_id', $data['installation_id'])->first();
 
         if ($installation === null) {
-            Log::warning('Installation not found for pull request webhook', [
-                'installation_id' => $data['installation_id'],
-            ]);
+            Log::warning('Installation not found for pull request webhook', $webhookCtx);
 
             return;
         }
@@ -78,10 +80,9 @@ final class ProcessPullRequestWebhook implements ShouldQueue
             ->first();
 
         if ($repository === null) {
-            Log::warning('Repository not found for pull request webhook', [
-                'repository_id' => $data['repository_id'],
-                'full_name' => $data['repository_full_name'],
-            ]);
+            Log::warning('Repository not found for pull request webhook', array_merge($webhookCtx, [
+                'github_repository_id' => $data['repository_id'],
+            ]));
 
             return;
         }
@@ -93,11 +94,12 @@ final class ProcessPullRequestWebhook implements ShouldQueue
             return;
         }
 
+        $ctx = LogContext::fromRepository($repository);
+        $ctx['pr_number'] = $data['pull_request_number'];
+
         // Handle new review creation
         if (! $repository->hasAutoReviewEnabled()) {
-            Log::info('Auto-review disabled for repository', [
-                'repository' => $data['repository_full_name'],
-            ]);
+            Log::info('Auto-review disabled for repository', $ctx);
 
             return;
         }
@@ -107,10 +109,9 @@ final class ProcessPullRequestWebhook implements ShouldQueue
         $settings = $repository->settings;
 
         if ($settings !== null && $settings->hasConfigError()) {
-            Log::warning('Repository has config error, skipping review', [
-                'repository' => $data['repository_full_name'],
+            Log::warning('Repository has config error, skipping review', array_merge($ctx, [
                 'config_error' => $settings->config_error,
-            ]);
+            ]));
 
             // Post error comment to PR
             $postConfigError->handle(
@@ -144,11 +145,9 @@ final class ProcessPullRequestWebhook implements ShouldQueue
             ]);
 
             if (! $triggerResult['should_trigger']) {
-                Log::info('Review skipped due to trigger rules', [
-                    'repository' => $data['repository_full_name'],
-                    'pr_number' => $data['pull_request_number'],
+                Log::info('Review skipped due to trigger rules', array_merge($ctx, [
                     'reason' => $triggerResult['reason'],
-                ]);
+                ]));
 
                 // Create skipped run silently (no PR comment for trigger rules)
                 $createPullRequestRun->handle($repository, $data, null, $triggerResult['reason']);
@@ -170,15 +169,12 @@ final class ProcessPullRequestWebhook implements ShouldQueue
 
         ExecuteReviewRun::dispatch($run->id, $queue);
 
-        Log::info('Pull request queued for review', [
+        Log::info('Pull request queued for review', array_merge($ctx, [
             'run_id' => $run->id,
-            'repository' => $data['repository_full_name'],
-            'pr_number' => $data['pull_request_number'],
             'pr_title' => $data['pull_request_title'],
             'head_sha' => $data['head_sha'],
-            'action' => $data['action'],
             'queue' => $queue->value,
             'greeting_comment_id' => $greetingCommentId,
-        ]);
+        ]));
     }
 }

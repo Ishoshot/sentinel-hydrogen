@@ -398,18 +398,13 @@ final readonly class PostRunAnnotations
 
         return $run->findings
             ->filter(function (Finding $finding) use ($minPriority): bool {
-                $findingSeverityEnum = SentinelConfigSeverity::tryFrom($finding->severity);
-                $findingPriority = $findingSeverityEnum?->priority() ?? 0;
+                $findingPriority = $finding->severity?->priority() ?? 0;
 
                 return $findingPriority >= $minPriority
                     && $finding->file_path !== null
                     && $finding->line_start !== null;
             })
-            ->sortByDesc(function (Finding $finding): int {
-                $severityEnum = SentinelConfigSeverity::tryFrom($finding->severity);
-
-                return $severityEnum?->priority() ?? 0;
-            })
+            ->sortByDesc(fn (Finding $finding): int => $finding->severity?->priority() ?? 0)
             ->take($maxComments);
     }
 
@@ -509,14 +504,14 @@ final readonly class PostRunAnnotations
         $metadata = $finding->metadata ?? [];
 
         $severityBadge = match ($finding->severity) {
-            'critical' => '**:red_circle: Critical**',
-            'high' => '**:orange_circle: High**',
-            'medium' => '**:yellow_circle: Medium**',
-            'low' => '**:white_circle: Low**',
+            SentinelConfigSeverity::Critical => '**:red_circle: Critical**',
+            SentinelConfigSeverity::High => '**:orange_circle: High**',
+            SentinelConfigSeverity::Medium => '**:yellow_circle: Medium**',
+            SentinelConfigSeverity::Low => '**:white_circle: Low**',
             default => '**:blue_circle: Info**',
         };
 
-        $body = "{$severityBadge} | `{$finding->category}`\n\n";
+        $body = "{$severityBadge} | `{$finding->category->value}`\n\n";
         $body .= "### {$finding->title}\n\n";
         $body .= $finding->description.PHP_EOL;
 

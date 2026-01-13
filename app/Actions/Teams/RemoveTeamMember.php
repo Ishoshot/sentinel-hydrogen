@@ -9,6 +9,7 @@ use App\Enums\ActivityType;
 use App\Enums\TeamRole;
 use App\Models\TeamMember;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 final readonly class RemoveTeamMember
@@ -27,7 +28,11 @@ final readonly class RemoveTeamMember
      */
     public function handle(TeamMember $member, User $actor): void
     {
+        $ctx = ['member_id' => $member->id, 'workspace_id' => $member->workspace_id, 'actor_id' => $actor->id];
+
         if ($member->role === TeamRole::Owner) {
+            Log::warning('Attempted to remove workspace owner', $ctx);
+
             throw new InvalidArgumentException('Cannot remove the workspace owner.');
         }
 
