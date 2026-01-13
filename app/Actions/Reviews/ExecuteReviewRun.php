@@ -125,16 +125,11 @@ final readonly class ExecuteReviewRun
     private function createFinding(Run $run, array $findingData): void
     {
         $metadata = Arr::only($findingData, [
-            // Legacy fields
-            'suggestion',
-            'patch',
-            'references',
-            'tags',
-            'rationale',
-            // New enhanced fields
+            'impact',
             'current_code',
             'replacement_code',
             'explanation',
+            'references',
         ]);
 
         if ($metadata === []) {

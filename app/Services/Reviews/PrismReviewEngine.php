@@ -467,20 +467,16 @@ final readonly class PrismReviewEngine implements ReviewEngine
             ? max(0.0, min(1.0, (float) $finding['confidence']))
             : 0.5;
 
-        // Support both 'impact' (new) and 'rationale' (legacy) for backward compatibility
-        $rationale = '';
-        if (isset($finding['impact']) && is_string($finding['impact'])) {
-            $rationale = $finding['impact'];
-        } elseif (isset($finding['rationale']) && is_string($finding['rationale'])) {
-            $rationale = $finding['rationale'];
-        }
+        $impact = isset($finding['impact']) && is_string($finding['impact'])
+            ? $finding['impact']
+            : '';
 
         $result = [
             'severity' => $severity,
             'category' => $category,
             'title' => $finding['title'],
             'description' => $finding['description'],
-            'rationale' => $rationale,
+            'impact' => $impact,
             'confidence' => $confidence,
         ];
 
@@ -510,29 +506,11 @@ final readonly class PrismReviewEngine implements ReviewEngine
             $result['explanation'] = $finding['explanation'];
         }
 
-        // Legacy suggestion field (for backward compatibility)
-        if (isset($finding['suggestion']) && is_string($finding['suggestion'])) {
-            $result['suggestion'] = $finding['suggestion'];
-        }
-
-        // Legacy patch field (for backward compatibility)
-        if (isset($finding['patch']) && is_string($finding['patch'])) {
-            $result['patch'] = $finding['patch'];
-        }
-
         // References
         if (isset($finding['references']) && is_array($finding['references'])) {
             $references = array_filter($finding['references'], is_string(...));
             if ($references !== []) {
                 $result['references'] = array_values($references);
-            }
-        }
-
-        // Tags (legacy, for backward compatibility)
-        if (isset($finding['tags']) && is_array($finding['tags'])) {
-            $tags = array_filter($finding['tags'], is_string(...));
-            if ($tags !== []) {
-                $result['tags'] = array_values($tags);
             }
         }
 
