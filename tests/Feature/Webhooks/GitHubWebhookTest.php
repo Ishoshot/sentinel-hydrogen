@@ -11,7 +11,9 @@ use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Provider;
 use App\Models\Repository;
+use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use Illuminate\Support\Facades\Queue;
+use Mockery;
 
 beforeEach(function (): void {
     config(['github.webhook_secret' => 'test-secret']);
@@ -196,6 +198,8 @@ it('ignores unsupported webhook events', function (): void {
 });
 
 it('processes installation deleted webhook', function (): void {
+    Queue::fake();
+
     $provider = Provider::where('type', ProviderType::GitHub)->first();
     $connection = Connection::factory()->forProvider($provider)->active()->create();
     $installation = Installation::factory()->forConnection($connection)->create([
@@ -228,12 +232,16 @@ it('processes installation deleted webhook', function (): void {
     );
 
     $response->assertOk();
+    Queue::assertPushed(ProcessInstallationWebhook::class);
 
-    // Process the job synchronously for testing
+    // Process the job manually with mocked service
+    $appServiceMock = Mockery::mock(GitHubAppServiceContract::class);
+    $appServiceMock->shouldReceive('clearInstallationToken')->once()->andReturnNull();
+
     $job = new ProcessInstallationWebhook(json_decode($payload, true));
     $job->handle(
         app(App\Services\GitHub\GitHubWebhookService::class),
-        app(App\Services\GitHub\GitHubAppService::class)
+        $appServiceMock
     );
 
     $installation->refresh();
@@ -261,10 +269,13 @@ it('processes installation suspended webhook', function (): void {
         ],
     ]);
 
+    // Mock the contract since GitHubAppService is final
+    $appServiceMock = Mockery::mock(GitHubAppServiceContract::class);
+
     $job = new ProcessInstallationWebhook(json_decode($payload, true));
     $job->handle(
         app(App\Services\GitHub\GitHubWebhookService::class),
-        app(App\Services\GitHub\GitHubAppService::class)
+        $appServiceMock
     );
 
     $installation->refresh();

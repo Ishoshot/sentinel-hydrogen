@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Contracts\GitHub\GitHubApiServiceContract;
 use App\Enums\ProviderType;
 use App\Models\Connection;
 use App\Models\Installation;
@@ -11,6 +10,7 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Collectors\GuidelinesCollector;
 use App\Services\Context\ContextBag;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
 it('has correct priority', function (): void {
     $collector = app(GuidelinesCollector::class);
