@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Services\Context\ContextBag;
 use App\Services\Context\Filters\SensitiveDataFilter;
 
-it('redacts Stripe keys in file patches', function (): void {
+it('redacts Polar tokens in file patches', function (): void {
     $bag = new ContextBag(
         files: [
             [
@@ -14,7 +14,7 @@ it('redacts Stripe keys in file patches', function (): void {
                 'additions' => 1,
                 'deletions' => 0,
                 'changes' => 1,
-                'patch' => '$stripeKey = "sk_live_1234567890abcdefghijklmnop";',
+                'patch' => '$polarToken = "polar_live_1234567890abcdefghijklmnop";',
             ],
         ],
     );
@@ -23,7 +23,7 @@ it('redacts Stripe keys in file patches', function (): void {
     $filter->filter($bag);
 
     expect($bag->files[0]['patch'])->toContain('[REDACTED:')
-        ->and($bag->files[0]['patch'])->not->toContain('sk_live_1234567890');
+        ->and($bag->files[0]['patch'])->not->toContain('polar_live_1234567890');
 });
 
 it('redacts AWS access keys', function (): void {

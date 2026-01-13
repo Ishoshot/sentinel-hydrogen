@@ -35,8 +35,8 @@ final class SensitiveDataFilter implements ContextFilter
         'github_token' => '/gh[pousr]_[A-Za-z0-9_]{36,}/i',
         'github_pat' => '/github_pat_[A-Za-z0-9_]{22,}/i',
 
-        // Stripe
-        'stripe_key' => '/(?:sk|pk)_(?:live|test)_[a-zA-Z0-9]{24,}/i',
+        // Polar
+        'polar_token' => '/polar_(?:live|test)_[a-zA-Z0-9]{24,}/i',
 
         // Database connection strings
         'db_url' => '/(?:mysql|postgres|mongodb|redis):\/\/[^@\s]+:[^@\s]+@[^\s]+/i',

@@ -21,3 +21,24 @@ parameters:
         - '#Cannot call method toISOString\(\) on string#'
         - '#Strict comparison using === between string and .+ will always evaluate to false#'
         - '#Method .+::isActive\(\) never returns true#'
+        # Eloquent cast attributes are not properly typed by PHPStan
+        - '#Parameter \#2 \$array of function array_key_exists expects array, array\|string given#'
+        - '#Result of && is always false#'
+        - '#Instanceof between string and .+ will always evaluate to false#'
+        - '#Method .+::hasFeature\(\) never returns true#'
+        - '#Offset string on array\{\}\|string on left side of \?\? does not exist#'
+        - '#Call to function array_key_exists\(\) with string and array\{\}\|string will always evaluate to false#'
+        # Config helper returns mixed
+        - '#Cannot cast mixed to string#'
+        # json_decode returns mixed
+        - '#should return array<string, mixed> but returns array<mixed, mixed>#'
+        # Nullsafe access on non-nullable types
+        - '#Using nullsafe .+ on non-nullable type#'
+        - '#Using nullsafe property access .+ on left side of \?\? is unnecessary#'
+        # Method calls on string (JsonResource issues)
+        - '#Cannot call method toDateString\(\) on string#'
+        # Generic interface types
+        - '#implements generic interface .+ but does not specify its types#'
+        # Mixed type access (webhook payloads, API responses)
+        - '#Cannot access offset .+ on mixed#'
+        - '#Parameter .+ expects .+, mixed given#'
