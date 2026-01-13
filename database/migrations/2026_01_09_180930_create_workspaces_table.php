@@ -14,7 +14,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->foreignId('owner_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('owner_id')->constrained('users')->noActionOnDelete();
             $table->jsonb('settings')->nullable();
             $table->timestamps();
 
