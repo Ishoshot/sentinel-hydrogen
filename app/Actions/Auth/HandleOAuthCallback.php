@@ -8,6 +8,7 @@ use App\Actions\Workspaces\CreateWorkspaceForNewUser;
 use App\Enums\OAuthProvider;
 use App\Models\ProviderIdentity;
 use App\Models\User;
+use App\Notifications\WelcomeNotification;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
@@ -78,6 +79,8 @@ final readonly class HandleOAuthCallback
         ]);
 
         $this->createWorkspaceForNewUser->handle($user);
+
+        $user->notify(new WelcomeNotification);
 
         return $user;
     }

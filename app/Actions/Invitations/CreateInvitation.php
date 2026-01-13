@@ -11,6 +11,7 @@ use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\InvitationSentNotification;
+use App\Services\Plans\PlanLimitEnforcer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Notification;
 use InvalidArgumentException;
@@ -22,6 +23,7 @@ final readonly class CreateInvitation
      */
     public function __construct(
         private LogActivity $logActivity,
+        private PlanLimitEnforcer $planLimitEnforcer,
     ) {}
 
     /**
@@ -37,6 +39,12 @@ final readonly class CreateInvitation
     ): Invitation {
         if ($role === TeamRole::Owner) {
             throw new InvalidArgumentException('Cannot invite someone as owner.');
+        }
+
+        $limitCheck = $this->planLimitEnforcer->ensureCanInviteMember($workspace);
+
+        if (! $limitCheck->allowed) {
+            throw new InvalidArgumentException($limitCheck->message ?? 'Team size limit reached.');
         }
 
         $existingMember = $workspace->teamMembers()
