@@ -48,11 +48,18 @@ final readonly class ReviewJobTierRule implements QueueRule
      */
     public function evaluate(JobContext $context): QueueRuleResult
     {
-        $queue = match (true) {
-            $context->isEnterpriseTier() => Queue::ReviewsEnterprise,
-            $context->isPaidTier() => Queue::ReviewsPaid,
-            default => Queue::ReviewsDefault,
-        };
+        if (! $context->isPriorityQueueEnabled()) {
+            $tierLabel = $context->tier ?? 'free';
+
+            return QueueRuleResult::force(
+                Queue::ReviewsDefault,
+                sprintf('Review job for %s tier routed to default queue (priority disabled)', $tierLabel)
+            );
+        }
+
+        $queue = $context->isEnterpriseTier()
+            ? Queue::ReviewsEnterprise
+            : Queue::ReviewsPaid;
 
         $tierLabel = $context->tier ?? 'free';
 
