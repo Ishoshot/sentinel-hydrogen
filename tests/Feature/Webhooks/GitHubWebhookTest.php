@@ -21,6 +21,18 @@ beforeEach(function (): void {
         ['type' => ProviderType::GitHub],
         ['name' => 'GitHub', 'is_active' => true]
     );
+
+    // Mock GitHubAppServiceContract to avoid needing private key file in CI
+    $this->app->bind(GitHubAppServiceContract::class, function () {
+        $mock = Mockery::mock(GitHubAppServiceContract::class);
+        $mock->shouldReceive('generateJwt')->andReturn('mock-jwt-token');
+        $mock->shouldReceive('getInstallationToken')->andReturn('mock-installation-token');
+        $mock->shouldReceive('clearInstallationToken')->andReturnNull();
+        $mock->shouldReceive('getInstallationUrl')->andReturn('https://github.com/apps/test');
+        $mock->shouldReceive('getAppName')->andReturn('test-app');
+
+        return $mock;
+    });
 });
 
 function createWebhookSignature(string $payload, string $secret = 'test-secret'): string
