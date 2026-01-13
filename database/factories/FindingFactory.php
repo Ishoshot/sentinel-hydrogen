@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\FindingCategory;
+use App\Enums\SentinelConfigSeverity;
 use App\Models\Finding;
 use App\Models\Run;
 use App\Models\Workspace;
@@ -28,8 +30,8 @@ final class FindingFactory extends Factory
         return [
             'run_id' => Run::factory(),
             'workspace_id' => Workspace::factory(),
-            'severity' => fake()->randomElement(['low', 'medium', 'high', 'critical']),
-            'category' => fake()->randomElement(['correctness', 'security', 'reliability', 'maintainability']),
+            'severity' => fake()->randomElement(SentinelConfigSeverity::cases()),
+            'category' => fake()->randomElement(FindingCategory::cases()),
             'title' => fake()->sentence(4),
             'description' => fake()->paragraph(),
             'file_path' => fake()->optional()->filePath(),

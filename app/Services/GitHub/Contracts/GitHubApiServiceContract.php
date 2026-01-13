@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Contracts\GitHub;
+namespace App\Services\GitHub\Contracts;
 
 use App\Models\Installation;
 use GrahamCampbell\GitHub\GitHubManager;

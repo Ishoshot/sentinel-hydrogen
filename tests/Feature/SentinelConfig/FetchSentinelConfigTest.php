@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use App\Actions\SentinelConfig\FetchSentinelConfig;
-use App\Contracts\GitHub\GitHubApiServiceContract;
 use App\Enums\ProviderType;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Provider;
 use App\Models\Repository;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Github\Exception\RuntimeException;
 
 beforeEach(function (): void {
