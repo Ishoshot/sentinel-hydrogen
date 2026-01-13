@@ -484,10 +484,18 @@ final readonly class PostRunAnnotations
                 continue;
             }
 
+            // Multi-line comment with 1 line context before and after
+            // start_line = first line (with context before)
+            // line = last line (with context after)
+            $startLine = max(1, $finding->line_start - 1);
+            $endLine = ($finding->line_end ?? $finding->line_start) + 1;
+
             $comments[] = [
                 'path' => $finding->file_path,
-                'line' => $finding->line_start,
-                'side' => 'RIGHT', // Comment on the new version of the file
+                'start_line' => $startLine,
+                'line' => $endLine,
+                'start_side' => 'RIGHT',
+                'side' => 'RIGHT',
                 'body' => $this->formatFindingComment($finding, $includeSuggestions),
             ];
         }
