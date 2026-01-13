@@ -15,8 +15,8 @@ return new class extends Migration
     {
         Schema::create('provider_keys', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('repository_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('repository_id')->constrained()->noActionOnDelete();
+            $table->foreignId('workspace_id')->constrained()->noActionOnDelete();
             $table->string('provider', 50);
             $table->text('encrypted_key');
             $table->timestamps();
