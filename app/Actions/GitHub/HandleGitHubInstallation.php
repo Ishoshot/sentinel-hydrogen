@@ -46,9 +46,20 @@ final readonly class HandleGitHubInstallation
             $connection = null;
 
             if ($state !== null) {
-                $connection = Connection::whereJsonContains('metadata->state', $state)
-                    ->where('status', ConnectionStatus::Pending)
-                    ->first();
+                // Fetch pending connections created within a reasonable time window (15 minutes)
+                // Then validate state using constant-time comparison to prevent timing attacks
+                $pendingConnections = Connection::where('status', ConnectionStatus::Pending)
+                    ->where('created_at', '>=', now()->subMinutes(15))
+                    ->limit(100)
+                    ->get();
+
+                $connection = $pendingConnections->first(function (Connection $conn) use ($state): bool {
+                    /** @var array<string, mixed> $metadata */
+                    $metadata = $conn->metadata ?? [];
+                    $storedState = $metadata['state'] ?? null;
+
+                    return is_string($storedState) && hash_equals($storedState, $state);
+                });
 
                 if ($connection === null) {
                     throw new InvalidInstallationStateException('Invalid or expired state parameter.');

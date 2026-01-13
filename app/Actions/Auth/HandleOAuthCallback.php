@@ -38,6 +38,10 @@ final readonly class HandleOAuthCallback
 
     /**
      * Find an existing user or create a new one.
+     *
+     * Uses lockForUpdate() to prevent race conditions where concurrent OAuth
+     * callbacks with the same email could both pass existence checks and
+     * attempt to create duplicate users.
      */
     private function findOrCreateUser(OAuthProvider $provider, SocialiteUser $socialiteUser): User
     {
@@ -47,16 +51,22 @@ final readonly class HandleOAuthCallback
             throw new InvalidArgumentException('OAuth provider did not return an email address.');
         }
 
+        // Check for existing provider identity with lock to prevent race conditions
         $existingIdentity = ProviderIdentity::query()
             ->where('provider', $provider)
             ->where('provider_user_id', $socialiteUser->getId())
+            ->lockForUpdate()
             ->first();
 
         if ($existingIdentity !== null && $existingIdentity->user !== null) {
             return $existingIdentity->user;
         }
 
-        $existingUser = User::query()->where('email', $email)->first();
+        // Check for existing user by email with lock
+        $existingUser = User::query()
+            ->where('email', $email)
+            ->lockForUpdate()
+            ->first();
 
         if ($existingUser !== null) {
             return $existingUser;

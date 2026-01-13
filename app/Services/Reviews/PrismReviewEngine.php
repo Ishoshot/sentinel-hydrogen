@@ -165,7 +165,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
             ->withMaxTokens(8192)
             ->usingTemperature($temperature)
             ->withProviderOptions($providerOptions)
-            ->withClientOptions(['timeout' => 240])
+            ->withClientOptions(['timeout' => 420])
             ->asStructured();
 
         $durationMs = (int) round((microtime(true) - $startTime) * 1000);
