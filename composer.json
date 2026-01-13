@@ -9,7 +9,7 @@
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.4",
         "brick/money": "^0.10.3",
         "echolabsdev/prism": "^0.99.11",
         "firebase/php-jwt": "^7.0",
