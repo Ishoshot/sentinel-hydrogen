@@ -84,7 +84,7 @@ final class LogContext
             'github_installation_id' => $installationId,
             'repository_name' => $repositoryName,
             'action' => $action,
-        ], static fn ($v): bool => $v !== null);
+        ], static fn (int|string|null $v): bool => $v !== null);
     }
 
     /**
@@ -103,7 +103,7 @@ final class LogContext
             'workspace_id' => $workspaceId,
             'pr_number' => $prNumber,
             'repository_name' => $repositoryName,
-        ], static fn ($v): bool => $v !== null);
+        ], static fn (int|string|null $v): bool => $v !== null);
     }
 
     /**

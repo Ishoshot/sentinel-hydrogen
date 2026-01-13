@@ -13,6 +13,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property SentinelConfigSeverity|null $severity
+ * @property FindingCategory|null $category
+ */
 final class Finding extends Model
 {
     /** @use HasFactory<FindingFactory> */

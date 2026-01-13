@@ -511,7 +511,8 @@ final readonly class PostRunAnnotations
             default => '**:blue_circle: Info**',
         };
 
-        $body = "{$severityBadge} | `{$finding->category->value}`\n\n";
+        $categoryValue = $finding->category?->value ?? 'unknown';
+        $body = "{$severityBadge} | `{$categoryValue}`\n\n";
         $body .= "### {$finding->title}\n\n";
         $body .= $finding->description.PHP_EOL;
 
