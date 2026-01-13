@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\GitHub;
 
-use App\Contracts\GitHub\GitHubApiServiceContract;
 use App\Models\Installation;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use GrahamCampbell\GitHub\GitHubManager;
 
 final readonly class GitHubApiService implements GitHubApiServiceContract
