@@ -8,6 +8,7 @@ use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
 use App\Enums\Queue;
 use App\Models\Installation;
 use App\Models\Repository;
+use App\Services\Logging\LogContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -47,13 +48,12 @@ final class ProcessPushWebhook implements ShouldQueue
         $repositoryId = $repositoryData['id'] ?? null;
         $repositoryFullName = $repositoryData['full_name'] ?? 'unknown';
 
-        Log::debug('Processing push webhook', [
-            'ref' => $ref,
-            'repository' => $repositoryFullName,
-        ]);
+        $webhookCtx = LogContext::forWebhook($installationId, $repositoryFullName, 'push');
+
+        Log::debug('Processing push webhook', array_merge($webhookCtx, ['ref' => $ref]));
 
         if ($installationId === null || $repositoryId === null) {
-            Log::warning('Push webhook missing installation or repository data');
+            Log::warning('Push webhook missing installation or repository data', $webhookCtx);
 
             return;
         }
@@ -61,9 +61,7 @@ final class ProcessPushWebhook implements ShouldQueue
         $installation = Installation::where('installation_id', $installationId)->first();
 
         if ($installation === null) {
-            Log::warning('Installation not found for push webhook', [
-                'installation_id' => $installationId,
-            ]);
+            Log::warning('Installation not found for push webhook', $webhookCtx);
 
             return;
         }
@@ -73,51 +71,45 @@ final class ProcessPushWebhook implements ShouldQueue
             ->first();
 
         if ($repository === null) {
-            Log::warning('Repository not found for push webhook', [
-                'repository_id' => $repositoryId,
-                'full_name' => $repositoryFullName,
-            ]);
+            Log::warning('Repository not found for push webhook', array_merge($webhookCtx, [
+                'github_repository_id' => $repositoryId,
+            ]));
 
             return;
         }
 
+        $ctx = LogContext::fromRepository($repository);
+
         // Check if push is to the default branch
         $expectedRef = sprintf('refs/heads/%s', $repository->default_branch);
         if ($ref !== $expectedRef) {
-            Log::debug('Push is not to default branch, skipping config sync', [
+            Log::debug('Push is not to default branch, skipping config sync', array_merge($ctx, [
                 'ref' => $ref,
                 'default_branch' => $repository->default_branch,
-            ]);
+            ]));
 
             return;
         }
 
         // Check if any commits modified .sentinel/ files
         if (! $this->hasConfigChanges()) {
-            Log::debug('No .sentinel/ changes in push, skipping config sync', [
-                'repository' => $repositoryFullName,
-            ]);
+            Log::debug('No .sentinel/ changes in push, skipping config sync', $ctx);
 
             return;
         }
 
-        Log::info('Syncing Sentinel config due to push to default branch', [
-            'repository' => $repositoryFullName,
-            'ref' => $ref,
-        ]);
+        Log::info('Syncing Sentinel config due to push to default branch', array_merge($ctx, ['ref' => $ref]));
 
         $result = $syncConfig->handle($repository);
 
         if ($result['synced']) {
-            Log::info('Sentinel config synced successfully from push', [
-                'repository' => $repositoryFullName,
+            Log::info('Sentinel config synced successfully from push', array_merge($ctx, [
                 'has_config' => $result['config'] !== null,
-            ]);
+            ]));
         } else {
-            Log::warning('Failed to sync Sentinel config from push', [
-                'repository' => $repositoryFullName,
+            Log::warning('Failed to sync Sentinel config from push', array_merge($ctx, [
                 'error' => $result['error'],
-            ]);
+            ]));
         }
     }
 
