@@ -12,8 +12,8 @@ return new class extends Migration
     {
         Schema::create('installations', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('connection_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('connection_id')->constrained()->noActionOnDelete();
+            $table->foreignId('workspace_id')->constrained()->noActionOnDelete();
             $table->unsignedBigInteger('installation_id')->unique();
             $table->string('account_type');
             $table->string('account_login');

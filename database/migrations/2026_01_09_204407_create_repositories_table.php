@@ -12,8 +12,8 @@ return new class extends Migration
     {
         Schema::create('repositories', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('installation_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('installation_id')->constrained()->noActionOnDelete();
+            $table->foreignId('workspace_id')->constrained()->noActionOnDelete();
             $table->unsignedBigInteger('github_id');
             $table->string('name');
             $table->string('full_name');

@@ -12,8 +12,8 @@ return new class extends Migration
     {
         Schema::create('repository_settings', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('repository_id')->unique()->constrained()->cascadeOnDelete();
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('repository_id')->unique()->constrained()->noActionOnDelete();
+            $table->foreignId('workspace_id')->constrained()->noActionOnDelete();
             $table->boolean('auto_review_enabled')->default(true);
             $table->json('review_rules')->nullable();
             $table->timestamps();

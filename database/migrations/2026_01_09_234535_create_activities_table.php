@@ -15,8 +15,8 @@ return new class extends Migration
     {
         Schema::create('activities', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('actor_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('workspace_id')->constrained()->noActionOnDelete();
+            $table->foreignId('actor_id')->nullable()->constrained('users')->noActionOnDelete();
             $table->string('type');
             $table->string('subject_type')->nullable();
             $table->unsignedBigInteger('subject_id')->nullable();
