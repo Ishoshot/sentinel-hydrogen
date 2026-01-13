@@ -29,7 +29,7 @@ final readonly class PostSkipReasonComment
      *
      * @return int|null The comment ID if successful, null otherwise
      */
-    public function handle(Run $run, SkipReason $reason, ?string $errorType = null): ?int
+    public function handle(Run $run, SkipReason $reason, ?string $detail = null): ?int
     {
         try {
             $run->loadMissing(['repository.installation']);
@@ -66,7 +66,7 @@ final readonly class PostSkipReasonComment
 
             [$owner, $repo] = explode('/', (string) $repository->full_name);
 
-            $comment = $this->buildComment($reason, $errorType);
+            $comment = $this->buildComment($reason, $detail);
 
             $response = $this->gitHubApiService->createPullRequestComment(
                 installationId: $installation->installation_id,
@@ -102,11 +102,12 @@ final readonly class PostSkipReasonComment
     /**
      * Build the appropriate comment based on the skip reason.
      */
-    private function buildComment(SkipReason $reason, ?string $errorType): string
+    private function buildComment(SkipReason $reason, ?string $detail): string
     {
         return match ($reason) {
             SkipReason::NoProviderKeys => $this->messageService->buildNoProviderKeysComment(),
-            SkipReason::RunFailed => $this->messageService->buildRunFailedComment($errorType ?? 'Unknown'),
+            SkipReason::RunFailed => $this->messageService->buildRunFailedComment($detail ?? 'Unknown'),
+            SkipReason::PlanLimitReached => $this->messageService->buildPlanLimitReachedComment($detail),
         };
     }
 }

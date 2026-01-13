@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\Reviews;
 
 use App\Actions\Activities\LogActivity;
+use App\Actions\GitHub\PostSkipReasonComment;
 use App\Enums\ActivityType;
 use App\Enums\RunStatus;
+use App\Enums\SkipReason;
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Plans\PlanLimitEnforcer;
 
 /**
  * Creates a Run record for a pull request webhook event.
@@ -18,7 +21,11 @@ final readonly class CreatePullRequestRun
     /**
      * Create a new action instance.
      */
-    public function __construct(private LogActivity $logActivity) {}
+    public function __construct(
+        private LogActivity $logActivity,
+        private PlanLimitEnforcer $planLimitEnforcer,
+        private PostSkipReasonComment $postSkipReasonComment,
+    ) {}
 
     /**
      * Create a run for a pull request webhook event.
@@ -29,6 +36,19 @@ final readonly class CreatePullRequestRun
      */
     public function handle(Repository $repository, array $payload, ?int $greetingCommentId = null, ?string $skipReason = null): Run
     {
+        $workspace = $repository->workspace;
+        $limitCheck = null;
+        $planLimitTriggered = false;
+
+        if ($workspace !== null) {
+            $limitCheck = $this->planLimitEnforcer->ensureRunAllowed($workspace);
+
+            if (! $limitCheck->allowed) {
+                $skipReason = $limitCheck->message ?? 'Run limit reached.';
+                $planLimitTriggered = true;
+            }
+        }
+
         $externalReference = sprintf(
             'github:pull_request:%s:%s',
             $payload['pull_request_number'],
@@ -61,6 +81,9 @@ final readonly class CreatePullRequestRun
         if ($skipReason !== null) {
             $metadata['skip_reason'] = $skipReason;
             $metadata['skip_message'] = $skipReason;
+            if ($planLimitTriggered) {
+                $metadata['skip_reason_code'] = $limitCheck?->code ?? 'plan_limit';
+            }
         }
 
         $status = $skipReason !== null ? RunStatus::Skipped : RunStatus::Queued;
@@ -82,6 +105,10 @@ final readonly class CreatePullRequestRun
 
         if ($run->wasRecentlyCreated) {
             $this->logRunCreated($repository, $run, $payload, $skipReason);
+        }
+
+        if ($planLimitTriggered && in_array(($metadata['skip_reason_code'] ?? null), ['runs_limit', 'subscription_inactive'], true)) {
+            $this->postSkipReasonComment->handle($run, SkipReason::PlanLimitReached, $skipReason);
         }
 
         return $run;

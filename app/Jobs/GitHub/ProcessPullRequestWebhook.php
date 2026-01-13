@@ -13,6 +13,8 @@ use App\Jobs\Reviews\ExecuteReviewRun;
 use App\Models\Installation;
 use App\Models\Repository;
 use App\Services\GitHub\GitHubWebhookService;
+use App\Services\Queue\JobContext;
+use App\Services\Queue\QueueResolver;
 use App\Services\SentinelConfig\TriggerRuleEvaluator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -40,7 +42,8 @@ final class ProcessPullRequestWebhook implements ShouldQueue
         SyncPullRequestRunMetadata $syncMetadata,
         PostsGreetingComment $postGreeting,
         PostsConfigErrorComment $postConfigError,
-        TriggerRuleEvaluator $triggerEvaluator
+        TriggerRuleEvaluator $triggerEvaluator,
+        QueueResolver $queueResolver
     ): void {
         $data = $webhookService->parsePullRequestPayload($this->payload);
 
@@ -162,7 +165,7 @@ final class ProcessPullRequestWebhook implements ShouldQueue
         // Determine the queue based on workspace tier
         $workspace = $repository->workspace;
         $queue = $workspace !== null
-            ? Queue::reviewQueueForTier($workspace->getCurrentTier())
+            ? $queueResolver->resolve(JobContext::forWorkspace(ExecuteReviewRun::class, $workspace, true, 'high'))->queue
             : Queue::ReviewsDefault;
 
         ExecuteReviewRun::dispatch($run->id, $queue);
