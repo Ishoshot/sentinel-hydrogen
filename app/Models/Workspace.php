@@ -27,6 +27,9 @@ final class Workspace extends Model
         'name',
         'slug',
         'owner_id',
+        'plan_id',
+        'subscription_status',
+        'trial_ends_at',
         'settings',
     ];
 
@@ -124,6 +127,30 @@ final class Workspace extends Model
     }
 
     /**
+     * @return BelongsTo<Plan, $this>
+     */
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    /**
+     * @return HasMany<Subscription, $this>
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * @return HasMany<UsageRecord, $this>
+     */
+    public function usageRecords(): HasMany
+    {
+        return $this->hasMany(UsageRecord::class);
+    }
+
+    /**
      * @return HasMany<Finding, $this>
      */
     public function findings(): HasMany
@@ -133,21 +160,10 @@ final class Workspace extends Model
 
     /**
      * Get the current tier for this workspace.
-     *
-     * Returns the subscription tier (free, paid, enterprise) for queue prioritization.
-     * This is a placeholder until Plans & Billing (Phase 5) is implemented.
      */
     public function getCurrentTier(): string
     {
-        // TODO: Implement proper tier resolution when Plans & Billing is implemented
-        // For now, check settings for a tier override
-        $settings = $this->settings;
-
-        if (is_array($settings) && isset($settings['tier']) && is_string($settings['tier'])) {
-            return $settings['tier'];
-        }
-
-        return 'free';
+        return $this->plan?->tier ?? 'foundation';
     }
 
     /**
@@ -168,6 +184,8 @@ final class Workspace extends Model
     {
         return [
             'settings' => 'array',
+            'subscription_status' => \App\Enums\SubscriptionStatus::class,
+            'trial_ends_at' => 'datetime',
         ];
     }
 
