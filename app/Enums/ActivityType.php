@@ -34,6 +34,12 @@ enum ActivityType: string
     case ProviderKeyUpdated = 'provider_key.updated';
     case ProviderKeyDeleted = 'provider_key.deleted';
 
+    // Billing
+    case SubscriptionCreated = 'subscription.created';
+    case SubscriptionUpgraded = 'subscription.upgraded';
+    case SubscriptionCanceled = 'subscription.canceled';
+    case PlanLimitReached = 'plan.limit_reached';
+
     /**
      * @return array<string>
      */
@@ -66,6 +72,10 @@ enum ActivityType: string
             self::AnnotationsPosted => 'Annotations Posted',
             self::ProviderKeyUpdated => 'Provider Key Configured',
             self::ProviderKeyDeleted => 'Provider Key Deleted',
+            self::SubscriptionCreated => 'Subscription Created',
+            self::SubscriptionUpgraded => 'Subscription Upgraded',
+            self::SubscriptionCanceled => 'Subscription Canceled',
+            self::PlanLimitReached => 'Plan Limit Reached',
         };
     }
 
@@ -93,6 +103,10 @@ enum ActivityType: string
             self::AnnotationsPosted => 'message-circle',
             self::ProviderKeyUpdated => 'key',
             self::ProviderKeyDeleted => 'key',
+            self::SubscriptionCreated => 'credit-card',
+            self::SubscriptionUpgraded => 'arrow-up-right',
+            self::SubscriptionCanceled => 'x-circle',
+            self::PlanLimitReached => 'alert-triangle',
         };
     }
 
@@ -120,6 +134,10 @@ enum ActivityType: string
             self::AnnotationsPosted => 'review',
             self::ProviderKeyUpdated,
             self::ProviderKeyDeleted => 'settings',
+            self::SubscriptionCreated,
+            self::SubscriptionUpgraded,
+            self::SubscriptionCanceled,
+            self::PlanLimitReached => 'billing',
         };
     }
 }

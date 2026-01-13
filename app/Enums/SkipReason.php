@@ -13,4 +13,5 @@ enum SkipReason: string
 {
     case NoProviderKeys = 'no_provider_keys';
     case RunFailed = 'run_failed';
+    case PlanLimitReached = 'plan_limit_reached';
 }
