@@ -237,6 +237,7 @@ describe('CategoriesConfig', function (): void {
             performance: true,
             maintainability: false,
             style: true,
+            testing: false,
         );
 
         expect($config->getEnabled())->toBe(['security', 'performance', 'style']);
