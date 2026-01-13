@@ -16,6 +16,7 @@ use App\Models\Provider;
 use App\Models\Workspace;
 use App\Services\GitHub\GitHubApiService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 final readonly class HandleGitHubInstallation
 {
@@ -62,6 +63,10 @@ final readonly class HandleGitHubInstallation
                 });
 
                 if ($connection === null) {
+                    Log::warning('GitHub installation failed - invalid/expired state', [
+                        'github_installation_id' => $installationId,
+                    ]);
+
                     throw new InvalidInstallationStateException('Invalid or expired state parameter.');
                 }
             }
@@ -85,6 +90,10 @@ final readonly class HandleGitHubInstallation
 
             // If still no connection, we can't proceed (orphan installation)
             if ($connection === null) {
+                Log::warning('GitHub installation failed - orphan installation', [
+                    'github_installation_id' => $installationId,
+                ]);
+
                 throw new InvalidInstallationStateException('No connection found for this installation.');
             }
 

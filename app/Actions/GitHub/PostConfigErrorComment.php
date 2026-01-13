@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\GitHub;
 
 use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
-use App\Contracts\GitHub\GitHubApiServiceContract;
 use App\Models\Repository;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\SentinelMessageService;
 use Illuminate\Support\Facades\Log;
 use Throwable;
