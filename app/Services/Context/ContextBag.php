@@ -23,8 +23,9 @@ final class ContextBag
      * @param  array<int, array{number: int, title: string, body: string|null, state: string, labels: array<int, string>, comments: array<int, array{author: string, body: string}>}>  $linkedIssues
      * @param  array<int, array{author: string, body: string, created_at: string}>  $prComments
      * @param  array{readme?: string|null, contributing?: string|null}  $repositoryContext
-     * @param  array<int, array{run_id: int, summary: string, findings_count: int, created_at: string}>  $reviewHistory
+     * @param  array<int, array{run_id: int, summary: string, findings_count: int, created_at: string, key_findings?: array<int, array{severity: string, category: string, title: string, file_path: string|null, resolution_status?: string}>}>  $reviewHistory
      * @param  array<int, array{path: string, description: string|null, content: string}>  $guidelines
+     * @param  array<string, string>  $fileContents  Full file contents for touched files (path => content)
      * @param  array<string, mixed>  $metadata
      */
     public function __construct(
@@ -36,6 +37,7 @@ final class ContextBag
         public array $repositoryContext = [],
         public array $reviewHistory = [],
         public array $guidelines = [],
+        public array $fileContents = [],
         public array $metadata = [],
     ) {}
 
@@ -86,6 +88,11 @@ final class ContextBag
             $totalChars += mb_strlen($guideline['content']);
         }
 
+        // File contents
+        foreach ($this->fileContents as $content) {
+            $totalChars += mb_strlen($content);
+        }
+
         return (int) ceil($totalChars * self::TOKENS_PER_CHAR);
     }
 
@@ -113,6 +120,7 @@ final class ContextBag
             'repository_context' => $this->repositoryContext,
             'review_history' => $this->reviewHistory,
             'guidelines' => $this->guidelines,
+            'file_contents' => $this->fileContents,
             'metadata' => $this->metadata,
         ];
     }

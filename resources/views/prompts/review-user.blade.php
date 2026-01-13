@@ -49,46 +49,60 @@
 @endif
 
 @if(isset($review_history) && count($review_history) > 0)
-## Previous Reviews
+## Previous Reviews (IMPORTANT - Check for Resolution)
 
-This PR has been reviewed {{ count($review_history) }} time(s) before by Sentinel.
+⚠️ This PR has been reviewed **{{ count($review_history) }} time(s)** before. You MUST check if previous findings were addressed.
 
-@foreach($review_history as $review)
-### Review from {{ $review['created_at'] ?? 'earlier' }}
+@foreach($review_history as $reviewIndex => $review)
+### Review #{{ $reviewIndex + 1 }} — {{ $review['created_at'] ?? 'earlier' }}
 {{ $review['summary'] }}
 
 @if(isset($review['key_findings']) && count($review['key_findings']) > 0)
-**Key findings from previous review:**
-@foreach($review['key_findings'] as $finding)
-- [{{ strtoupper($finding['severity']) }}] {{ $finding['title'] }}@if($finding['file_path']) in `{{ $finding['file_path'] }}`@endif
+**Findings to check (were they fixed?):**
 
+| Status | Severity | Finding | Location |
+|--------|----------|---------|----------|
+@foreach($review['key_findings'] as $finding)
+| ❓ | **{{ strtoupper($finding['severity']) }}** | {{ $finding['title'] }} | `{{ $finding['file_path'] ?? 'N/A' }}`@if(isset($finding['line_start'])):{{ $finding['line_start'] }}@endif |
 @endforeach
+
 @endif
 @endforeach
 
-**Important:** Check if issues from previous reviews have been addressed. If they haven't, include them in your findings with a note that they persist from earlier review(s).
+**Your task:**
+1. Check the current diff - did the developer fix any of these issues?
+2. For **fixed issues**: Acknowledge in your overview (e.g., "✓ SQL injection from previous review has been fixed")
+3. For **unfixed issues**: Reference them as persistent (e.g., "The N+1 query I flagged before is still present")
+4. **Do NOT re-report identical findings** - just note they persist
 
 @endif
 
 @if(isset($guidelines) && count($guidelines) > 0)
-## Team Guidelines
+## Team Guidelines (MANDATORY)
 
-The repository maintainers have provided the following guidelines for code review:
+⚠️ **These are project-specific rules defined by the repository maintainers. They carry the same weight as security and correctness checks.**
+
+The following documents define how code should be written in this repository. Violations of these guidelines are findings, not suggestions.
 
 @foreach($guidelines as $guideline)
-### {{ basename($guideline['path']) }}@if($guideline['description']) - {{ $guideline['description'] }}@endif
-
-
-<details>
-<summary>Click to expand {{ basename($guideline['path']) }}</summary>
+### 📄 `{{ $guideline['path'] }}`@if($guideline['description']) — {{ $guideline['description'] }}@endif
 
 {{ $guideline['content'] }}
 
-</details>
+---
 
 @endforeach
 
-**Important:** Apply these team-specific guidelines when reviewing the code. Flag violations as appropriate based on their severity.
+**How to use these guidelines:**
+- Read each guideline document carefully before reviewing the code
+- When code violates a guideline, **quote the specific rule** in your finding using blockquotes
+- Reference the guideline file: `{{ $guideline['path'] ?? 'guideline' }}` in your finding
+- If the code follows the guidelines well, mention it as a strength
+
+**Example citation format:**
+> `architecture-guide.md` states: "All domain logic must reside in the Domain layer, never in Controllers."
+>
+> The `UserController.php` **lines 45-60** violates this by calculating discounts directly in the controller.
 
 @endif
 @if(isset($repository_context) && (($repository_context['readme'] ?? null) || ($repository_context['contributing'] ?? null)))
@@ -151,6 +165,21 @@ _Binary file or no diff available_
 @endif
 
 @endforeach
+
+@if(isset($file_contents) && count($file_contents) > 0)
+## Full File Context
+
+The following files are provided in full for better understanding of the changes:
+
+@foreach($file_contents as $path => $content)
+### 📄 `{{ $path }}`
+
+```{{ pathinfo($path, PATHINFO_EXTENSION) }}
+{{ $content }}
+```
+
+@endforeach
+@endif
 
 ## Review Request
 

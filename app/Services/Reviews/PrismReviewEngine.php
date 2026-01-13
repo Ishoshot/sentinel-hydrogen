@@ -267,7 +267,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
             name: 'summary',
             description: 'Overall review summary',
             properties: [
-                new StringSchema('overview', 'Brief overview of the changes'),
+                new StringSchema('overview', 'Comprehensive overview starting with methodology checklist'),
                 new EnumSchema('verdict', 'Review verdict', ReviewVerdict::values()),
                 new EnumSchema('risk_level', 'Overall risk level', RiskLevel::values()),
                 new ArraySchema('strengths', 'List of positive aspects', new StringSchema('strength', 'A strength')),
@@ -293,6 +293,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
                 new StringSchema('current_code', 'The current code that needs to be changed'),
                 new StringSchema('replacement_code', 'The suggested replacement code'),
                 new StringSchema('explanation', 'Explanation of the code change'),
+                new ArraySchema('references', 'Sources: markdown links [Text](url), repo guidelines, or plain text standards', new StringSchema('reference', 'A reference source')),
             ],
             requiredFields: ['severity', 'category', 'title', 'description', 'confidence'],
         );
