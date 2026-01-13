@@ -23,7 +23,7 @@ final class ContextBag
      * @param  array<int, array{number: int, title: string, body: string|null, state: string, labels: array<int, string>, comments: array<int, array{author: string, body: string}>}>  $linkedIssues
      * @param  array<int, array{author: string, body: string, created_at: string}>  $prComments
      * @param  array{readme?: string|null, contributing?: string|null}  $repositoryContext
-     * @param  array<int, array{run_id: int, summary: string, findings_count: int, created_at: string, key_findings?: array<int, array{severity: string, category: string, title: string, file_path: string|null, resolution_status?: string}>}>  $reviewHistory
+     * @param  array<int, array{run_id: int, summary: string, findings_count: int, severity_breakdown: array<string, int>, key_findings: array<int, array{severity: string, category: string, title: string, file_path: string|null, line_start: int|null, fingerprint: string}>, created_at: string}>  $reviewHistory
      * @param  array<int, array{path: string, description: string|null, content: string}>  $guidelines
      * @param  array<string, string>  $fileContents  Full file contents for touched files (path => content)
      * @param  array<string, mixed>  $metadata

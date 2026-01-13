@@ -184,9 +184,7 @@ final readonly class FileContextCollector implements ContextCollector
             $candidates[] = $file;
         }
 
-        usort($candidates, static function (array $a, array $b): int {
-            return $b['changes'] <=> $a['changes'];
-        });
+        usort($candidates, static fn (array $a, array $b): int => $b['changes'] <=> $a['changes']);
 
         return array_slice($candidates, 0, self::MAX_FILES);
     }
@@ -213,6 +211,7 @@ final readonly class FileContextCollector implements ContextCollector
             return mb_strlen($response) <= self::MAX_FILE_SIZE ? $response : null;
         }
 
+        // @phpstan-ignore function.alreadyNarrowedType (defensive check against GitHub API changes)
         if (! is_array($response)) {
             return null;
         }
