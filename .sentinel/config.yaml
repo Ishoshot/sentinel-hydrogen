@@ -60,7 +60,7 @@ paths:
   # Only review files matching these patterns (allowlist mode)
   # Default: [] (review all files not in ignore)
   # WARNING: When set, only matching files are reviewed!
-  include:
+  include: []
     # - "app/**"
     # - "src/**"
     # - "lib/**"
@@ -68,16 +68,11 @@ paths:
   # Files requiring extra scrutiny (security-sensitive)
   # Sentinel will apply stricter checks to these files
   # Default: [] (none)
-  sensitive:
+  sensitive: []
     # - "**/auth/**"
     # - "**/authentication/**"
-    # - "**/authorization/**"
     # - "**/*password*"
-    # - "**/*secret*"
-    # - "**/*token*"
-    # - "**/*credential*"
     # - "**/middleware/**"
-    # - "**/policies/**"
 
 # =============================================================================
 # REVIEW
@@ -120,11 +115,9 @@ review:
   # Custom focus areas for this codebase
   # Sentinel will prioritize these concerns in reviews
   # Default: [] (none)
-  focus:
+  focus: []
     # - "SQL injection prevention"
     # - "Laravel best practices"
-    # - "React hooks rules"
-    # - "Memory management"
     # - "Error handling patterns"
 
 # =============================================================================
@@ -136,18 +129,12 @@ review:
 # Supported formats: .md, .mdx, .blade.php
 # Limits: Max 5 files, max 50KB per file
 
-guidelines:
-  # - path: docs/CODING_STANDARDS.md
-  #   description: "Team coding conventions and style guide"
-
-  # - path: docs/ARCHITECTURE.md
-  #   description: "System architecture and design decisions"
-
-  # - path: docs/SECURITY.md
-  #   description: "Security requirements and best practices"
-
-  # - path: .github/CONTRIBUTING.md
-  #   description: "Contribution guidelines"
+# Example:
+#   - path: docs/CODING_STANDARDS.md
+#     description: "Team coding conventions and style guide"
+#   - path: docs/ARCHITECTURE.md
+#     description: "System architecture and design decisions"
+guidelines: []
 
 # =============================================================================
 # ANNOTATIONS

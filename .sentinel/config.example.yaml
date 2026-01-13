@@ -71,7 +71,7 @@ paths:
   # Only review files matching these patterns (allowlist mode)
   # Default: [] (review all files not in ignore)
   # WARNING: When set, only matching files are reviewed!
-  include:
+  include: []
     # - "app/**"
     # - "src/**"
     # - "lib/**"
@@ -79,16 +79,11 @@ paths:
   # Files requiring extra scrutiny (security-sensitive)
   # Sentinel will apply stricter checks to these files
   # Default: [] (none)
-  sensitive:
-    - "**/auth/**"
-    - "**/authentication/**"
-    - "**/authorization/**"
-    - "**/*password*"
-    - "**/*secret*"
-    - "**/*token*"
-    - "**/*credential*"
-    - "**/middleware/**"
-    - "**/policies/**"
+  sensitive: []
+    # - "**/auth/**"
+    # - "**/authentication/**"
+    # - "**/*password*"
+    # - "**/middleware/**"
 
 # =============================================================================
 # REVIEW
@@ -113,7 +108,7 @@ review:
     performance: true     # N+1 queries, inefficient algorithms
     maintainability: true # Code organization, complexity, readability
     style: false          # Code style, formatting (often covered by linters)
-    testing: false        # Test coverage, test quality, missing tests
+    testing: true         # Test coverage, test quality, missing tests
     documentation: false  # Missing docs, outdated comments, API documentation
 
   # Feedback tone
@@ -133,11 +128,9 @@ review:
   # Custom focus areas for this codebase
   # Sentinel will prioritize these concerns in reviews
   # Default: [] (none)
-  focus:
+  focus: []
     # - "SQL injection prevention"
     # - "Laravel best practices"
-    # - "React hooks rules"
-    # - "Memory management"
     # - "Error handling patterns"
 
 # =============================================================================
@@ -149,18 +142,12 @@ review:
 # Supported formats: .md, .mdx, .blade.php
 # Limits: Max 5 files, max 50KB per file
 
-guidelines:
-  # - path: docs/CODING_STANDARDS.md
-  #   description: "Team coding conventions and style guide"
-
-  # - path: docs/ARCHITECTURE.md
-  #   description: "System architecture and design decisions"
-
-  # - path: docs/SECURITY.md
-  #   description: "Security requirements and best practices"
-
-  # - path: .github/CONTRIBUTING.md
-  #   description: "Contribution guidelines"
+# Example:
+#   - path: docs/CODING_STANDARDS.md
+#     description: "Team coding conventions and style guide"
+#   - path: docs/ARCHITECTURE.md
+#     description: "System architecture and design decisions"
+guidelines: []
 
 # =============================================================================
 # ANNOTATIONS
@@ -211,5 +198,5 @@ provider:
   # Fallback to other providers if preferred fails
   # If true, tries up to 3 other providers on failure (no API key, rate limit, etc.)
   # If false, fails fast without trying alternatives
-  # Default: true
-  fallback: true
+  # Default: false
+  fallback: false

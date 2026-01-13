@@ -22,7 +22,8 @@ return [
             'correctness',
             'performance',
             'maintainability',
-            // 'style' is disabled by default
+            'testing',
+            // 'style' and 'documentation' are disabled by default
         ],
 
         // Severity thresholds - 'low' matches SentinelConfigSeverity::Low default

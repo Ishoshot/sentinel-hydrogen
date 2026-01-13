@@ -21,7 +21,7 @@ final readonly class ProviderConfig
     public function __construct(
         public ?AiProvider $preferred = null,
         public ?string $model = null,
-        public bool $fallback = true,
+        public bool $fallback = false,
     ) {}
 
     /**
@@ -40,7 +40,7 @@ final readonly class ProviderConfig
         return new self(
             preferred: $preferred,
             model: isset($data['model']) && is_string($data['model']) ? $data['model'] : null,
-            fallback: (bool) ($data['fallback'] ?? true),
+            fallback: (bool) ($data['fallback'] ?? false),
         );
     }
 
