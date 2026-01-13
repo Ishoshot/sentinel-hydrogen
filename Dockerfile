@@ -38,17 +38,13 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files first (for caching)
-COPY composer.json composer.lock ./
-COPY package.json package-lock.json ./
+# Copy everything first so vite.config.js is available
+COPY . .
 
 # Install dependencies
 ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer install --optimize-autoloader --no-scripts --no-interaction --no-dev
 RUN npm ci && npm run build && npm prune --omit=dev
-
-# Copy application code
-COPY . .
 
 # Run Laravel optimizations
 RUN php artisan config:cache \
