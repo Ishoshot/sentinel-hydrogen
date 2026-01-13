@@ -94,7 +94,7 @@ it('executes a review run and stores findings', function (): void {
                 'category' => 'maintainability',
                 'title' => 'Extract shared logic',
                 'description' => 'Shared logic appears in multiple files and should be centralized.',
-                'rationale' => 'Repeated logic increases the cost of change and risk of drift.',
+                'impact' => 'Repeated logic increases the cost of change and risk of drift.',
                 'confidence' => 0.82,
                 'file_path' => 'app/Services/Example.php',
                 'line_start' => 10,

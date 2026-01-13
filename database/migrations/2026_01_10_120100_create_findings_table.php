@@ -15,8 +15,8 @@ return new class extends Migration
     {
         Schema::create('findings', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('run_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('run_id')->constrained()->noActionOnDelete();
+            $table->foreignId('workspace_id')->constrained()->noActionOnDelete();
             $table->string('severity');
             $table->string('category');
             $table->string('title');

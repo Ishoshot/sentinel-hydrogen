@@ -9,10 +9,17 @@ use App\Http\Controllers\GitHub\RepositoryController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\ListWorkspaceRunsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProviderKeyController;
 use App\Http\Controllers\RunController;
+use App\Http\Controllers\Subscriptions\CancelSubscriptionController;
+use App\Http\Controllers\Subscriptions\ShowSubscriptionController;
+use App\Http\Controllers\Subscriptions\SubscriptionPortalController;
+use App\Http\Controllers\Subscriptions\SubscriptionUsageController;
+use App\Http\Controllers\Subscriptions\UpgradeSubscriptionController;
 use App\Http\Controllers\TeamMemberController;
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
+use App\Http\Controllers\Webhooks\PolarWebhookController;
 use App\Http\Controllers\WorkspaceController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,12 +50,17 @@ Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept
 Route::post('/webhooks/github', [GitHubWebhookController::class, 'handle'])
     ->name('webhooks.github');
 
+Route::post('/webhooks/polar', [PolarWebhookController::class, 'handle'])
+    ->name('webhooks.polar');
+
 Route::get('/github/callback', [ConnectionController::class, 'callback'])
     ->name('github.callback');
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/user', [OAuthController::class, 'user'])->name('user');
     Route::post('/logout', [OAuthController::class, 'logout'])->name('logout');
+
+    Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
 
     // Notifications
     Route::prefix('notifications')->group(function (): void {
@@ -101,6 +113,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
             // Workspace-level runs
             Route::get('/runs', ListWorkspaceRunsController::class)->name('runs.workspace');
             Route::get('/runs/{run}', [RunController::class, 'show'])->name('runs.show');
+
+            // Subscription & Usage
+            Route::get('/subscription', ShowSubscriptionController::class)->name('subscriptions.show');
+            Route::post('/subscription/upgrade', UpgradeSubscriptionController::class)->name('subscriptions.upgrade');
+            Route::post('/subscription/cancel', CancelSubscriptionController::class)->name('subscriptions.cancel');
+            Route::post('/subscription/portal', SubscriptionPortalController::class)->name('subscriptions.portal');
+            Route::get('/usage', SubscriptionUsageController::class)->name('usage.show');
 
             // Activities
             Route::get('/activities', [ActivityController::class, 'index'])->name('activities.index');

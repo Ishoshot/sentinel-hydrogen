@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use Database\Factories\Concerns\RefreshOnCreate;
@@ -31,6 +32,9 @@ final class WorkspaceFactory extends Factory
             'name' => $name,
             'slug' => Str::slug($name).'-'.Str::random(6),
             'owner_id' => User::factory(),
+            'plan_id' => Plan::factory(),
+            'subscription_status' => \App\Enums\SubscriptionStatus::Active,
+            'trial_ends_at' => null,
             'settings' => null,
         ];
     }

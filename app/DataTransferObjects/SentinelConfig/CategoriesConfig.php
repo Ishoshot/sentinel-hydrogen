@@ -18,7 +18,7 @@ final readonly class CategoriesConfig
         public bool $performance = true,
         public bool $maintainability = true,
         public bool $style = false,
-        public bool $testing = false,
+        public bool $testing = true,
         public bool $documentation = false,
     ) {}
 
@@ -35,7 +35,7 @@ final readonly class CategoriesConfig
             performance: (bool) ($data['performance'] ?? true),
             maintainability: (bool) ($data['maintainability'] ?? true),
             style: (bool) ($data['style'] ?? false),
-            testing: (bool) ($data['testing'] ?? false),
+            testing: (bool) ($data['testing'] ?? true),
             documentation: (bool) ($data['documentation'] ?? false),
         );
     }

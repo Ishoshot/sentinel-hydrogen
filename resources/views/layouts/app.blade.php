@@ -17,8 +17,9 @@
             <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
-                        <a href="{{ route('workspaces.index') }}" class="font-semibold text-lg">
-                            {{ config('app.name', 'Sentinel') }}
+                        <a href="{{ route('workspaces.index') }}" class="flex items-center gap-2">
+                            <img src="{{ asset('images/sentinel-logo-icon.svg') }}" alt="Sentinel" class="h-8 w-8">
+                            <span class="font-semibold text-lg">{{ config('app.name', 'Sentinel') }}</span>
                         </a>
                     </div>
 

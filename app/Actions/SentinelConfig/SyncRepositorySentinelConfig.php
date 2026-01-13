@@ -6,7 +6,9 @@ namespace App\Actions\SentinelConfig;
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
+use App\Enums\PlanFeature;
 use App\Models\Repository;
+use App\Services\Plans\PlanLimitEnforcer;
 use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use Illuminate\Support\Facades\Log;
 
@@ -24,6 +26,7 @@ final readonly class SyncRepositorySentinelConfig
     public function __construct(
         private FetchesSentinelConfig $fetchConfig,
         private SentinelConfigParser $parser,
+        private PlanLimitEnforcer $planLimitEnforcer,
     ) {}
 
     /**
@@ -110,10 +113,34 @@ final readonly class SyncRepositorySentinelConfig
         /** @var SentinelConfig $config */
         $config = $parseResult['config'];
 
+        $configError = null;
+        $workspace = $repository->workspace;
+
+        if ($workspace !== null && $config->guidelines !== []) {
+            $featureCheck = $this->planLimitEnforcer->ensureFeatureEnabled(
+                $workspace,
+                PlanFeature::CustomGuidelines,
+                'Custom guidelines are not available on your current plan.'
+            );
+
+            if (! $featureCheck->allowed) {
+                $configError = $featureCheck->message;
+                $config = new SentinelConfig(
+                    version: $config->version,
+                    triggers: $config->triggers,
+                    paths: $config->paths,
+                    review: $config->review,
+                    guidelines: [],
+                    annotations: $config->annotations,
+                    provider: $config->provider,
+                );
+            }
+        }
+
         $settings->update([
             'sentinel_config' => $config->toArray(),
             'config_synced_at' => now(),
-            'config_error' => null,
+            'config_error' => $configError,
         ]);
 
         Log::info('Sentinel config synced successfully', [
@@ -124,7 +151,7 @@ final readonly class SyncRepositorySentinelConfig
         return [
             'synced' => true,
             'config' => $config,
-            'error' => null,
+            'error' => $configError,
         ];
     }
 }

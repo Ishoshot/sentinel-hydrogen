@@ -73,9 +73,9 @@ final class SentinelConfigSchema
             'paths' => ['sometimes', 'array'],
             'paths.ignore' => ['sometimes', 'array', 'max:100'],
             'paths.ignore.*' => ['string', 'max:'.self::MAX_PATTERN_LENGTH],
-            'paths.include' => ['sometimes', 'array', 'max:100'],
+            'paths.include' => ['sometimes', 'nullable', 'array', 'max:100'],
             'paths.include.*' => ['string', 'max:'.self::MAX_PATTERN_LENGTH],
-            'paths.sensitive' => ['sometimes', 'array', 'max:50'],
+            'paths.sensitive' => ['sometimes', 'nullable', 'array', 'max:50'],
             'paths.sensitive.*' => ['string', 'max:'.self::MAX_PATTERN_LENGTH],
 
             // Review section
@@ -92,11 +92,11 @@ final class SentinelConfigSchema
             'review.categories.documentation' => ['sometimes', 'boolean'],
             'review.tone' => ['sometimes', Rule::in(SentinelConfigTone::values())],
             'review.language' => ['sometimes', 'string', 'size:2'],
-            'review.focus' => ['sometimes', 'array', 'max:'.self::MAX_FOCUS_ITEMS],
+            'review.focus' => ['sometimes', 'nullable', 'array', 'max:'.self::MAX_FOCUS_ITEMS],
             'review.focus.*' => ['string', 'max:500'],
 
             // Guidelines section
-            'guidelines' => ['sometimes', 'array', 'max:'.self::MAX_GUIDELINES],
+            'guidelines' => ['sometimes', 'nullable', 'array', 'max:'.self::MAX_GUIDELINES],
             'guidelines.*.path' => ['required_with:guidelines', 'string', 'max:500'],
             'guidelines.*.description' => ['sometimes', 'nullable', 'string', 'max:1000'],
 

@@ -1,0 +1,40 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Sentinel Icon Logo: Shield + Eye + Code Brackets -->
+
+  <!-- Outer angular shield/bracket form -->
+  <path d="M 100 30
+           L 150 60
+           L 150 120
+           L 100 170
+           L 50 120
+           L 50 60
+           Z"
+        fill="none"
+        stroke="#1a1a1a"
+        stroke-width="8"
+        stroke-linejoin="miter"/>
+
+  <!-- Inner eye/watchful element -->
+  <ellipse cx="100" cy="90" rx="40" ry="25"
+           fill="none"
+           stroke="#1a1a1a"
+           stroke-width="6"/>
+
+  <!-- Pupil - the watching sentinel -->
+  <circle cx="100" cy="90" r="12" fill="#1a1a1a"/>
+
+  <!-- Code brackets accent -->
+  <path d="M 70 120 L 60 130 L 70 140"
+        fill="none"
+        stroke="#1a1a1a"
+        stroke-width="6"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <path d="M 130 120 L 140 130 L 130 140"
+        fill="none"
+        stroke="#1a1a1a"
+        stroke-width="6"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+</svg>

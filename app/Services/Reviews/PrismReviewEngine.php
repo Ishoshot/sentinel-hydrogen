@@ -165,7 +165,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
             ->withMaxTokens(8192)
             ->usingTemperature($temperature)
             ->withProviderOptions($providerOptions)
-            ->withClientOptions(['timeout' => 240])
+            ->withClientOptions(['timeout' => 420])
             ->asStructured();
 
         $durationMs = (int) round((microtime(true) - $startTime) * 1000);
@@ -267,7 +267,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
             name: 'summary',
             description: 'Overall review summary',
             properties: [
-                new StringSchema('overview', 'Brief overview of the changes'),
+                new StringSchema('overview', 'Comprehensive overview starting with methodology checklist'),
                 new EnumSchema('verdict', 'Review verdict', ReviewVerdict::values()),
                 new EnumSchema('risk_level', 'Overall risk level', RiskLevel::values()),
                 new ArraySchema('strengths', 'List of positive aspects', new StringSchema('strength', 'A strength')),
@@ -293,6 +293,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
                 new StringSchema('current_code', 'The current code that needs to be changed'),
                 new StringSchema('replacement_code', 'The suggested replacement code'),
                 new StringSchema('explanation', 'Explanation of the code change'),
+                new ArraySchema('references', 'Sources: markdown links [Text](url), repo guidelines, or plain text standards', new StringSchema('reference', 'A reference source')),
             ],
             requiredFields: ['severity', 'category', 'title', 'description', 'confidence'],
         );
@@ -467,20 +468,16 @@ final readonly class PrismReviewEngine implements ReviewEngine
             ? max(0.0, min(1.0, (float) $finding['confidence']))
             : 0.5;
 
-        // Support both 'impact' (new) and 'rationale' (legacy) for backward compatibility
-        $rationale = '';
-        if (isset($finding['impact']) && is_string($finding['impact'])) {
-            $rationale = $finding['impact'];
-        } elseif (isset($finding['rationale']) && is_string($finding['rationale'])) {
-            $rationale = $finding['rationale'];
-        }
+        $impact = isset($finding['impact']) && is_string($finding['impact'])
+            ? $finding['impact']
+            : '';
 
         $result = [
             'severity' => $severity,
             'category' => $category,
             'title' => $finding['title'],
             'description' => $finding['description'],
-            'rationale' => $rationale,
+            'impact' => $impact,
             'confidence' => $confidence,
         ];
 
@@ -510,29 +507,11 @@ final readonly class PrismReviewEngine implements ReviewEngine
             $result['explanation'] = $finding['explanation'];
         }
 
-        // Legacy suggestion field (for backward compatibility)
-        if (isset($finding['suggestion']) && is_string($finding['suggestion'])) {
-            $result['suggestion'] = $finding['suggestion'];
-        }
-
-        // Legacy patch field (for backward compatibility)
-        if (isset($finding['patch']) && is_string($finding['patch'])) {
-            $result['patch'] = $finding['patch'];
-        }
-
         // References
         if (isset($finding['references']) && is_array($finding['references'])) {
             $references = array_filter($finding['references'], is_string(...));
             if ($references !== []) {
                 $result['references'] = array_values($references);
-            }
-        }
-
-        // Tags (legacy, for backward compatibility)
-        if (isset($finding['tags']) && is_array($finding['tags'])) {
-            $tags = array_filter($finding['tags'], is_string(...));
-            if ($tags !== []) {
-                $result['tags'] = array_values($tags);
             }
         }
 

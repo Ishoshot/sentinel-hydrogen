@@ -13,9 +13,9 @@ return new class extends Migration
         Schema::create('invitations', function (Blueprint $table): void {
             $table->id();
             $table->string('email');
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('team_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('invited_by_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained()->noActionOnDelete();
+            $table->foreignId('team_id')->constrained()->noActionOnDelete();
+            $table->foreignId('invited_by_id')->constrained('users')->noActionOnDelete();
             $table->string('role');
             $table->string('token', 64)->unique();
             $table->timestamp('expires_at');

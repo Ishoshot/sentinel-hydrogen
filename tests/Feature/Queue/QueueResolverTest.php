@@ -112,15 +112,15 @@ describe('JobContext', function (): void {
     });
 
     it('detects paid tiers correctly', function (): void {
-        $free = new JobContext(jobClass: 'App\Jobs\Test', tier: 'free');
-        $paid = new JobContext(jobClass: 'App\Jobs\Test', tier: 'paid');
-        $enterprise = new JobContext(jobClass: 'App\Jobs\Test', tier: 'enterprise');
+        $foundation = new JobContext(jobClass: 'App\Jobs\Test', tier: 'foundation');
+        $illuminate = new JobContext(jobClass: 'App\Jobs\Test', tier: 'illuminate');
+        $sanctum = new JobContext(jobClass: 'App\Jobs\Test', tier: 'sanctum');
 
-        expect($free->isPaidTier())->toBeFalse();
-        expect($paid->isPaidTier())->toBeTrue();
-        expect($enterprise->isPaidTier())->toBeTrue();
-        expect($enterprise->isEnterpriseTier())->toBeTrue();
-        expect($paid->isEnterpriseTier())->toBeFalse();
+        expect($foundation->isPaidTier())->toBeFalse();
+        expect($illuminate->isPaidTier())->toBeTrue();
+        expect($sanctum->isPaidTier())->toBeTrue();
+        expect($sanctum->isEnterpriseTier())->toBeTrue();
+        expect($illuminate->isEnterpriseTier())->toBeFalse();
     });
 });
 
@@ -185,26 +185,28 @@ describe('QueueResolver', function (): void {
     it('routes review jobs based on tier', function (): void {
         $resolver = new QueueResolver([new ReviewJobTierRule()]);
 
-        // Enterprise tier
-        $enterpriseContext = new JobContext(
+        // Sanctum tier (with priority queue enabled)
+        $sanctumContext = new JobContext(
             jobClass: ExecuteReviewRun::class,
-            tier: 'enterprise'
+            tier: 'sanctum',
+            metadata: ['priority_queue' => true],
         );
-        expect($resolver->resolve($enterpriseContext)->queue)->toBe(Queue::ReviewsEnterprise);
+        expect($resolver->resolve($sanctumContext)->queue)->toBe(Queue::ReviewsEnterprise);
 
-        // Paid tier
-        $paidContext = new JobContext(
+        // Illuminate tier (with priority queue enabled)
+        $illuminateContext = new JobContext(
             jobClass: ExecuteReviewRun::class,
-            tier: 'paid'
+            tier: 'illuminate',
+            metadata: ['priority_queue' => true],
         );
-        expect($resolver->resolve($paidContext)->queue)->toBe(Queue::ReviewsPaid);
+        expect($resolver->resolve($illuminateContext)->queue)->toBe(Queue::ReviewsPaid);
 
-        // Free tier
-        $freeContext = new JobContext(
+        // Foundation tier
+        $foundationContext = new JobContext(
             jobClass: ExecuteReviewRun::class,
-            tier: 'free'
+            tier: 'foundation'
         );
-        expect($resolver->resolve($freeContext)->queue)->toBe(Queue::ReviewsDefault);
+        expect($resolver->resolve($foundationContext)->queue)->toBe(Queue::ReviewsDefault);
     });
 
     it('routes annotation jobs to annotations queue', function (): void {

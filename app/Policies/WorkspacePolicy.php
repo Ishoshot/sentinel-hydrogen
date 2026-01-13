@@ -76,4 +76,12 @@ final class WorkspacePolicy
     {
         return $user->isOwnerOf($workspace);
     }
+
+    /**
+     * Determine whether the user can manage subscriptions for the workspace.
+     */
+    public function manageSubscription(User $user, Workspace $workspace): bool
+    {
+        return $user->isOwnerOf($workspace);
+    }
 }

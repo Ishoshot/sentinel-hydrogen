@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Queue;
 
+use App\Enums\PlanFeature;
 use App\Enums\Queue;
 use App\Models\Workspace;
 
@@ -50,6 +51,8 @@ final readonly class JobContext
         ?int $estimatedDurationSeconds = null,
         array $metadata = [],
     ): self {
+        $plan = $workspace->plan;
+
         return new self(
             jobClass: $jobClass,
             tier: $workspace->getCurrentTier(),
@@ -58,7 +61,9 @@ final readonly class JobContext
             isUserInitiated: $isUserInitiated,
             importance: $importance,
             estimatedDurationSeconds: $estimatedDurationSeconds,
-            metadata: $metadata,
+            metadata: array_merge([
+                PlanFeature::PriorityQueue->value => $plan?->hasFeature(PlanFeature::PriorityQueue) ?? false,
+            ], $metadata),
         );
     }
 
@@ -114,7 +119,7 @@ final readonly class JobContext
      */
     public function isPaidTier(): bool
     {
-        return in_array($this->tier, ['paid', 'pro', 'team', 'enterprise'], true);
+        return in_array($this->tier, ['illuminate', 'orchestrate', 'sanctum'], true);
     }
 
     /**
@@ -122,7 +127,15 @@ final readonly class JobContext
      */
     public function isEnterpriseTier(): bool
     {
-        return $this->tier === 'enterprise';
+        return $this->tier === 'sanctum';
+    }
+
+    /**
+     * Check if the plan enables priority queue routing.
+     */
+    public function isPriorityQueueEnabled(): bool
+    {
+        return (bool) ($this->metadata['priority_queue'] ?? false);
     }
 
     /**

@@ -160,6 +160,26 @@ final class SentinelMessageService
     }
 
     /**
+     * Build a comment explaining that the review was skipped due to plan limits.
+     */
+    public function buildPlanLimitReachedComment(?string $message): string
+    {
+        $branding = $this->getRandomBranding();
+        $details = $message ?? 'Your current plan has reached its limit.';
+
+        return <<<MARKDOWN
+        ⚠️ **Review Skipped - Plan Limit Reached**
+
+        {$details}
+
+        Upgrade your plan in the Sentinel dashboard to continue running reviews.
+
+        ---
+        <sub>{$branding}</sub>
+        MARKDOWN;
+    }
+
+    /**
      * Load messages from JSON file with caching.
      *
      * @return array{greetings: array<int, array{emoji: string, message: string}>, branding: array<int, string>}

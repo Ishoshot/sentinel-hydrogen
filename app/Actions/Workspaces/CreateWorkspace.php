@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Workspaces;
 
 use App\Actions\Activities\LogActivity;
+use App\Actions\Subscriptions\CreateSubscription;
 use App\Enums\ActivityType;
 use App\Enums\TeamRole;
 use App\Models\Team;
@@ -21,6 +22,7 @@ final readonly class CreateWorkspace
      */
     public function __construct(
         private LogActivity $logActivity,
+        private CreateSubscription $createSubscription,
     ) {}
 
     /**
@@ -58,6 +60,8 @@ final readonly class CreateWorkspace
                 actor: $owner,
                 subject: $workspace,
             );
+
+            $this->createSubscription->handle($workspace, actor: $owner);
 
             return $workspace->refresh();
         });

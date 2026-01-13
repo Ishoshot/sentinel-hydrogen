@@ -7,9 +7,12 @@ namespace App\Actions\ProviderKeys;
 use App\Actions\Activities\LogActivity;
 use App\Enums\ActivityType;
 use App\Enums\AiProvider;
+use App\Enums\PlanFeature;
 use App\Models\ProviderKey;
 use App\Models\Repository;
 use App\Models\User;
+use App\Services\Plans\PlanLimitEnforcer;
+use InvalidArgumentException;
 use SensitiveParameter;
 
 /**
@@ -24,6 +27,7 @@ final readonly class StoreProviderKey
      */
     public function __construct(
         private LogActivity $logActivity,
+        private PlanLimitEnforcer $planLimitEnforcer,
     ) {}
 
     /**
@@ -37,6 +41,20 @@ final readonly class StoreProviderKey
         #[SensitiveParameter] string $key,
         ?User $actor = null,
     ): ProviderKey {
+        $workspace = $repository->workspace;
+
+        if ($workspace !== null) {
+            $limitCheck = $this->planLimitEnforcer->ensureFeatureEnabled(
+                $workspace,
+                PlanFeature::ByokEnabled,
+                'Bring Your Own Key is not available on your current plan.'
+            );
+
+            if (! $limitCheck->allowed) {
+                throw new InvalidArgumentException($limitCheck->message ?? 'BYOK is not available.');
+            }
+        }
+
         // Upsert: create or update existing key for this provider
         $providerKey = ProviderKey::updateOrCreate(
             [

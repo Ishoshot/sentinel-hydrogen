@@ -15,8 +15,8 @@ return new class extends Migration
     {
         Schema::create('runs', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('repository_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained()->noActionOnDelete();
+            $table->foreignId('repository_id')->constrained()->noActionOnDelete();
             $table->string('external_reference');
             $table->string('status');
             $table->timestamp('started_at')->nullable();

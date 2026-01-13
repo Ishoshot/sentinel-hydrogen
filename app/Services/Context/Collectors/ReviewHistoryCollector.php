@@ -125,15 +125,18 @@ final readonly class ReviewHistoryCollector implements ContextCollector
 
             $summary = $this->buildSummary($severityCounts, $findingsCount);
 
-            // Extract key findings
+            // Extract key findings with fingerprints for resolution tracking
             $keyFindings = $findings->take(self::MAX_FINDINGS_PER_REVIEW)
                 ->map(fn (Finding $finding): array => [
-                    'severity' => $finding->severity,
-                    'category' => $finding->category,
-                    'title' => $finding->title,
+                    'severity' => (string) ($finding->severity ?? ''),
+                    'category' => (string) ($finding->category ?? ''),
+                    'title' => (string) ($finding->title ?? ''),
                     'file_path' => $finding->file_path,
+                    'line_start' => $finding->line_start,
+                    'fingerprint' => $this->generateFingerprint($finding),
                 ])
-                ->toArray();
+                ->values()
+                ->all();
 
             $reviewHistory[] = [
                 'run_id' => $run->id,
@@ -183,5 +186,22 @@ final readonly class ReviewHistoryCollector implements ContextCollector
         }
 
         return 'Previous review found: '.implode(', ', $parts).'.';
+    }
+
+    /**
+     * Generate a fingerprint for a finding to track resolution across reviews.
+     *
+     * The fingerprint is based on the finding's essential characteristics
+     * so we can identify if the same issue appears in subsequent reviews.
+     */
+    private function generateFingerprint(Finding $finding): string
+    {
+        $components = [
+            $finding->category ?? '',
+            $finding->file_path ?? '',
+            $finding->title ?? '',
+        ];
+
+        return hash('xxh3', implode('|', $components));
     }
 }

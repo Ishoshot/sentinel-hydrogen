@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\SubscriptionStatus;
 use App\Models\Invitation;
+use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\InvitationSentNotification;
@@ -31,9 +33,16 @@ it('can create an invitation as owner', function (): void {
 });
 
 it('can create an invitation as admin', function (): void {
+    $plan = Plan::factory()->create([
+        'team_size_limit' => 10,
+    ]);
     $owner = User::factory()->create();
     $admin = User::factory()->create();
-    $workspace = Workspace::factory()->create(['owner_id' => $owner->id]);
+    $workspace = Workspace::factory()->create([
+        'owner_id' => $owner->id,
+        'plan_id' => $plan->id,
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
     $workspace->teamMembers()->create([
         'user_id' => $owner->id,
         'team_id' => $workspace->team->id,

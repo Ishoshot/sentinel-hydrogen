@@ -12,8 +12,8 @@ return new class extends Migration
     {
         Schema::create('connections', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('provider_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained()->noActionOnDelete();
+            $table->foreignId('provider_id')->constrained()->noActionOnDelete();
             $table->string('status');
             $table->string('external_id')->nullable();
             $table->json('metadata')->nullable();

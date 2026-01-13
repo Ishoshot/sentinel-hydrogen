@@ -15,6 +15,7 @@ use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use InvalidArgumentException;
 
 final class ProviderKeyController
 {
@@ -58,12 +59,18 @@ final class ProviderKeyController
         /** @var array{provider: string, key: string} $validated */
         $validated = $request->validated();
 
-        $providerKey = $storeAction->handle(
-            repository: $repository,
-            provider: AiProvider::from($validated['provider']),
-            key: $validated['key'],
-            actor: $request->user(),
-        );
+        try {
+            $providerKey = $storeAction->handle(
+                repository: $repository,
+                provider: AiProvider::from($validated['provider']),
+                key: $validated['key'],
+                actor: $request->user(),
+            );
+        } catch (InvalidArgumentException $invalidArgumentException) {
+            return response()->json([
+                'message' => $invalidArgumentException->getMessage(),
+            ], 422);
+        }
 
         return response()->json([
             'data' => new ProviderKeyResource($providerKey),

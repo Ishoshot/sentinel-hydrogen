@@ -5,9 +5,12 @@ declare(strict_types=1);
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
+use App\Enums\PlanFeature;
 use App\Enums\ProviderType;
+use App\Enums\SubscriptionStatus;
 use App\Models\Connection;
 use App\Models\Installation;
+use App\Models\Plan;
 use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\RepositorySettings;
@@ -181,10 +184,17 @@ it('fails gracefully when repository has no settings', function (): void {
 });
 
 it('stores complete config with all sections', function (): void {
+    $plan = Plan::factory()->create([
+        'features' => [PlanFeature::CustomGuidelines->value => true],
+    ]);
     $provider = Provider::where('type', ProviderType::GitHub)->first();
     $connection = Connection::factory()->forProvider($provider)->active()->create();
     $installation = Installation::factory()->forConnection($connection)->create();
     $repository = Repository::factory()->forInstallation($installation)->create();
+    $repository->workspace->update([
+        'plan_id' => $plan->id,
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
     RepositorySettings::factory()->forRepository($repository)->create();
 
     $yamlContent = <<<'YAML'

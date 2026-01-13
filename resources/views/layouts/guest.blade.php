@@ -12,7 +12,7 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="bg-[#FDFDFC] dark:bg-[#0a0a0a] text-[#1b1b18] dark:text-[#EDEDEC] min-h-screen flex items-center justify-center">
+    <body class="bg-[#FDFDFC] dark:bg-[#0a0a0a] text-[#1b1b18] dark:text-[#EDEDEC] min-h-screen flex flex-col items-center justify-center">
         @if(session('error'))
             <div class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
                 <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-sm">
@@ -28,6 +28,10 @@
                 </div>
             </div>
         @endif
+
+        <div class="mb-8">
+            <img src="{{ asset('images/sentinel-logo-wordmark.svg') }}" alt="Sentinel" class="h-12">
+        </div>
 
         <main>
             {{ $slot }}

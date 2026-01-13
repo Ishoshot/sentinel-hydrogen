@@ -12,7 +12,7 @@ return new class extends Migration
     {
         Schema::create('provider_identities', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->noActionOnDelete();
             $table->string('provider');
             $table->string('provider_user_id');
             $table->string('email')->nullable();

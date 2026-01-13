@@ -525,9 +525,9 @@ final readonly class PostRunAnnotations
             $body .= $this->formatCodeSuggestion($metadata);
         }
 
-        $rationale = isset($metadata['rationale']) && is_string($metadata['rationale']) ? $metadata['rationale'] : null;
-        if ($rationale !== null && $rationale !== '') {
-            $body .= "\n_Rationale: {$rationale}_\n";
+        $impact = isset($metadata['impact']) && is_string($metadata['impact']) ? $metadata['impact'] : null;
+        if ($impact !== null && $impact !== '') {
+            $body .= "\n_Impact: {$impact}_\n";
         }
 
         $confidence = $finding->confidence;

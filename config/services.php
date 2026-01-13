@@ -49,4 +49,22 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URL', '/auth/google/callback'),
     ],
 
+    'polar' => [
+        'api_url' => env('POLAR_API_URL', 'https://api.polar.sh'),
+        'access_token' => env('POLAR_ACCESS_TOKEN'),
+        'product_ids' => [
+            'monthly' => [
+                'illuminate' => env('POLAR_PRODUCT_ILLUMINATE_MONTHLY'),
+                'orchestrate' => env('POLAR_PRODUCT_ORCHESTRATE_MONTHLY'),
+                'sanctum' => env('POLAR_PRODUCT_SANCTUM_MONTHLY'),
+            ],
+            'yearly' => [
+                'illuminate' => env('POLAR_PRODUCT_ILLUMINATE_YEARLY'),
+                'orchestrate' => env('POLAR_PRODUCT_ORCHESTRATE_YEARLY'),
+                'sanctum' => env('POLAR_PRODUCT_SANCTUM_YEARLY'),
+            ],
+        ],
+        'webhook_secret' => env('POLAR_WEBHOOK_SECRET'),
+    ],
+
 ];

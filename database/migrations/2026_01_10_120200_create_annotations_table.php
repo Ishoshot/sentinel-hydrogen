@@ -15,9 +15,9 @@ return new class extends Migration
     {
         Schema::create('annotations', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('finding_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('provider_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('finding_id')->constrained()->noActionOnDelete();
+            $table->foreignId('workspace_id')->constrained()->noActionOnDelete();
+            $table->foreignId('provider_id')->nullable()->constrained()->noActionOnDelete();
             $table->string('external_id')->nullable();
             $table->string('type');
             $table->timestamp('created_at');
