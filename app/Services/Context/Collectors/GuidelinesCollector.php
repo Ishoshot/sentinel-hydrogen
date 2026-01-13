@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Collectors;
 
-use App\Contracts\GitHub\GitHubApiServiceContract;
 use App\DataTransferObjects\SentinelConfig\GuidelineConfig;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 

@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services\GitHub;
 
+use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use DateTimeImmutable;
 use GrahamCampbell\GitHub\GitHubManager;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use RuntimeException;
 
-final readonly class GitHubAppService
+final readonly class GitHubAppService implements GitHubAppServiceContract
 {
     /**
      * Create a new service instance.
@@ -35,12 +37,16 @@ final readonly class GitHubAppService
         $privateKeyPath = str_starts_with($configPath, '/') ? $configPath : base_path($configPath);
 
         if (! file_exists($privateKeyPath)) {
+            Log::error('GitHub App private key not found', ['path' => $privateKeyPath]);
+
             throw new RuntimeException('GitHub App private key not found at: '.$privateKeyPath);
         }
 
         $privateKey = file_get_contents($privateKeyPath);
 
         if ($privateKey === false || $privateKey === '') {
+            Log::error('Failed to read GitHub App private key', ['path' => $privateKeyPath]);
+
             throw new RuntimeException('Failed to read GitHub App private key');
         }
 

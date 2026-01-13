@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\SentinelConfig;
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
-use App\Contracts\GitHub\GitHubApiServiceContract;
 use App\Models\Repository;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Github\Exception\RuntimeException;
 use Illuminate\Support\Facades\Log;
 

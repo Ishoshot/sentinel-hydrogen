@@ -9,7 +9,7 @@ use App\Enums\InstallationStatus;
 use App\Enums\Queue;
 use App\Models\Connection;
 use App\Models\Installation;
-use App\Services\GitHub\GitHubAppService;
+use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use App\Services\GitHub\GitHubWebhookService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -33,7 +33,7 @@ final class ProcessInstallationWebhook implements ShouldQueue
      */
     public function handle(
         GitHubWebhookService $webhookService,
-        GitHubAppService $appService
+        GitHubAppServiceContract $appService
     ): void {
         $data = $webhookService->parseInstallationPayload($this->payload);
         $action = $data['action'];
@@ -72,7 +72,7 @@ final class ProcessInstallationWebhook implements ShouldQueue
     /**
      * @param  array<string, mixed>  $data
      */
-    private function handleDeleted(array $data, GitHubAppService $appService): void
+    private function handleDeleted(array $data, GitHubAppServiceContract $appService): void
     {
         $installation = Installation::where('installation_id', $data['installation_id'])->first();
 

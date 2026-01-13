@@ -1,0 +1,278 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://usesentinel.ai/schemas/sentinel-config.schema.json",
+    "title": "Sentinel Configuration",
+    "description": "Schema for .sentinel/config.yaml files",
+    "type": "object",
+    "required": [
+        "version"
+    ],
+    "properties": {
+        "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1,
+            "description": "Configuration schema version"
+        },
+        "triggers": {
+            "type": "object",
+            "description": "Control when reviews are triggered",
+            "properties": {
+                "target_branches": {
+                    "type": "array",
+                    "description": "Only run reviews for PRs targeting these branches (glob patterns)",
+                    "items": {
+                        "type": "string",
+                        "maxLength": 256
+                    },
+                    "maxItems": 50
+                },
+                "skip_source_branches": {
+                    "type": "array",
+                    "description": "Skip reviews for PRs from these source branches (glob patterns)",
+                    "items": {
+                        "type": "string",
+                        "maxLength": 256
+                    },
+                    "maxItems": 50
+                },
+                "skip_labels": {
+                    "type": "array",
+                    "description": "Skip reviews for PRs with these labels",
+                    "items": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "maxItems": 50
+                },
+                "skip_authors": {
+                    "type": "array",
+                    "description": "Skip reviews for PRs by these authors",
+                    "items": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "maxItems": 50
+                }
+            },
+            "additionalProperties": false
+        },
+        "paths": {
+            "type": "object",
+            "description": "File path filtering configuration",
+            "properties": {
+                "ignore": {
+                    "type": "array",
+                    "description": "File patterns to ignore (glob patterns)",
+                    "items": {
+                        "type": "string",
+                        "maxLength": 256
+                    },
+                    "maxItems": 100
+                },
+                "include": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "description": "Only review files matching these patterns (glob patterns)",
+                    "items": {
+                        "type": "string",
+                        "maxLength": 256
+                    },
+                    "maxItems": 100
+                },
+                "sensitive": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "description": "Patterns for sensitive files requiring extra scrutiny",
+                    "items": {
+                        "type": "string",
+                        "maxLength": 256
+                    },
+                    "maxItems": 50
+                }
+            },
+            "additionalProperties": false
+        },
+        "review": {
+            "type": "object",
+            "description": "Review behavior configuration",
+            "properties": {
+                "min_severity": {
+                    "type": "string",
+                    "enum": [
+                        "critical",
+                        "high",
+                        "medium",
+                        "low",
+                        "info"
+                    ],
+                    "description": "Minimum severity level to report"
+                },
+                "max_findings": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Maximum number of findings to report per review"
+                },
+                "categories": {
+                    "type": "object",
+                    "description": "Enable/disable specific review categories",
+                    "properties": {
+                        "security": {
+                            "type": "boolean"
+                        },
+                        "correctness": {
+                            "type": "boolean"
+                        },
+                        "performance": {
+                            "type": "boolean"
+                        },
+                        "maintainability": {
+                            "type": "boolean"
+                        },
+                        "style": {
+                            "type": "boolean"
+                        },
+                        "testing": {
+                            "type": "boolean"
+                        },
+                        "documentation": {
+                            "type": "boolean"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "constructive",
+                        "direct",
+                        "educational",
+                        "minimal"
+                    ],
+                    "description": "Tone of review comments"
+                },
+                "language": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2,
+                    "description": "ISO 639-1 language code for review comments (e.g., 'en', 'es', 'fr')"
+                },
+                "focus": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "description": "Specific areas to focus on during review",
+                    "items": {
+                        "type": "string",
+                        "maxLength": 500
+                    },
+                    "maxItems": 20
+                }
+            },
+            "additionalProperties": false
+        },
+        "guidelines": {
+            "type": [
+                "array",
+                "null"
+            ],
+            "description": "Custom guideline files to include in review context",
+            "items": {
+                "type": "object",
+                "required": [
+                    "path"
+                ],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "maxLength": 500,
+                        "description": "Path to the guideline file in the repository"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1000,
+                        "description": "Description of what this guideline covers"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "maxItems": 10
+        },
+        "annotations": {
+            "type": "object",
+            "description": "Annotation posting configuration",
+            "properties": {
+                "style": {
+                    "type": "string",
+                    "enum": [
+                        "review",
+                        "comment",
+                        "check"
+                    ],
+                    "description": "How to post review annotations"
+                },
+                "post_threshold": {
+                    "type": "string",
+                    "enum": [
+                        "critical",
+                        "high",
+                        "medium",
+                        "low",
+                        "info"
+                    ],
+                    "description": "Minimum severity for inline annotations"
+                },
+                "grouped": {
+                    "type": "boolean",
+                    "description": "Group all findings in a single comment"
+                },
+                "include_suggestions": {
+                    "type": "boolean",
+                    "description": "Include code suggestions in comments"
+                }
+            },
+            "additionalProperties": false
+        },
+        "provider": {
+            "type": "object",
+            "description": "AI provider preferences (requires BYOK)",
+            "properties": {
+                "preferred": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "anthropic",
+                        "openai",
+                        null
+                    ],
+                    "description": "Preferred AI provider"
+                },
+                "model": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "maxLength": 100,
+                    "description": "Specific model to use"
+                },
+                "fallback": {
+                    "type": "boolean",
+                    "description": "Allow fallback to default provider if preferred fails"
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "additionalProperties": false
+}

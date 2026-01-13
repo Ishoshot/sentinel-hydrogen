@@ -7,7 +7,9 @@ namespace App\Services\Reviews;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\GitHub\GitHubApiService;
+use App\Services\Logging\LogContext;
 use App\Services\Reviews\Contracts\PullRequestDataResolver;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 final readonly class GitHubPullRequestDataResolver implements PullRequestDataResolver
@@ -43,15 +45,23 @@ final readonly class GitHubPullRequestDataResolver implements PullRequestDataRes
         $reviewers = $this->getUsers($metadata, 'reviewers');
         $labels = $this->getLabels($metadata);
 
+        $ctx = LogContext::merge(LogContext::fromRun($run), ['pr_number' => $pullRequestNumber]);
+
         if ($fullName === '' || ! str_contains($fullName, '/')) {
+            Log::error('Repository full name missing for review run', $ctx);
+
             throw new RuntimeException('Repository full name missing for review run.');
         }
 
         if ($pullRequestNumber <= 0) {
+            Log::error('Pull request number missing for review run', $ctx);
+
             throw new RuntimeException('Pull request number missing for review run.');
         }
 
         if ($installationId === null) {
+            Log::error('Installation ID missing for review run', $ctx);
+
             throw new RuntimeException('Installation id missing for review run.');
         }
 

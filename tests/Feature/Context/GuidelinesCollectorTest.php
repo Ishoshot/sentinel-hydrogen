@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Contracts\GitHub\GitHubApiServiceContract;
 use App\Enums\ProviderType;
 use App\Models\Connection;
 use App\Models\Installation;
@@ -11,6 +10,7 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Collectors\GuidelinesCollector;
 use App\Services\Context\ContextBag;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
 it('has correct priority', function (): void {
     $collector = app(GuidelinesCollector::class);
@@ -120,12 +120,13 @@ it('collects guidelines from sentinel config', function (): void {
 
     $guidelineContent = '# Code Review Guidelines\n\nFollow these rules...';
 
-    $mockGitHubService = $this->mock(GitHubApiServiceContract::class);
+    $mockGitHubService = Mockery::mock(GitHubApiServiceContract::class);
     $mockGitHubService->shouldReceive('getFileContents')
         ->with(12345, 'test-owner', 'test-repo', 'docs/GUIDELINES.md')
         ->once()
         ->andReturn($guidelineContent);
 
+    /** @var GitHubApiServiceContract $mockGitHubService */
     $collector = new GuidelinesCollector($mockGitHubService);
 
     $bag = new ContextBag();
@@ -163,9 +164,10 @@ it('skips non-allowed file types', function (): void {
     ]);
     $run = Run::factory()->forRepository($repository)->create();
 
-    $mockGitHubService = $this->mock(GitHubApiServiceContract::class);
+    $mockGitHubService = Mockery::mock(GitHubApiServiceContract::class);
     $mockGitHubService->shouldNotReceive('getFileContents');
 
+    /** @var GitHubApiServiceContract $mockGitHubService */
     $collector = new GuidelinesCollector($mockGitHubService);
 
     $bag = new ContextBag();
@@ -201,7 +203,7 @@ it('limits guidelines to maximum count', function (): void {
     ]);
     $run = Run::factory()->forRepository($repository)->create();
 
-    $mockGitHubService = $this->mock(GitHubApiServiceContract::class);
+    $mockGitHubService = Mockery::mock(GitHubApiServiceContract::class);
 
     // Create 7 guidelines but only expect 5 to be fetched
     $guidelines = [];
@@ -216,6 +218,7 @@ it('limits guidelines to maximum count', function (): void {
         }
     }
 
+    /** @var GitHubApiServiceContract $mockGitHubService */
     $collector = new GuidelinesCollector($mockGitHubService);
 
     $bag = new ContextBag();
@@ -248,7 +251,7 @@ it('handles missing guideline files gracefully', function (): void {
     ]);
     $run = Run::factory()->forRepository($repository)->create();
 
-    $mockGitHubService = $this->mock(GitHubApiServiceContract::class);
+    $mockGitHubService = Mockery::mock(GitHubApiServiceContract::class);
     $mockGitHubService->shouldReceive('getFileContents')
         ->with(12345, 'test-owner', 'test-repo', 'docs/missing.md')
         ->once()
@@ -258,6 +261,7 @@ it('handles missing guideline files gracefully', function (): void {
         ->once()
         ->andReturn('Existing content');
 
+    /** @var GitHubApiServiceContract $mockGitHubService */
     $collector = new GuidelinesCollector($mockGitHubService);
 
     $bag = new ContextBag();
@@ -297,7 +301,7 @@ it('handles base64 encoded response from GitHub', function (): void {
     $originalContent = '# Guidelines Content';
     $base64Content = base64_encode($originalContent);
 
-    $mockGitHubService = $this->mock(GitHubApiServiceContract::class);
+    $mockGitHubService = Mockery::mock(GitHubApiServiceContract::class);
     $mockGitHubService->shouldReceive('getFileContents')
         ->with(12345, 'test-owner', 'test-repo', 'docs/GUIDELINES.md')
         ->once()
@@ -306,6 +310,7 @@ it('handles base64 encoded response from GitHub', function (): void {
             'encoding' => 'base64',
         ]);
 
+    /** @var GitHubApiServiceContract $mockGitHubService */
     $collector = new GuidelinesCollector($mockGitHubService);
 
     $bag = new ContextBag();
@@ -337,9 +342,10 @@ it('does nothing when no guidelines configured', function (): void {
     $repository = Repository::factory()->forInstallation($installation)->create();
     $run = Run::factory()->forRepository($repository)->create();
 
-    $mockGitHubService = $this->mock(GitHubApiServiceContract::class);
+    $mockGitHubService = Mockery::mock(GitHubApiServiceContract::class);
     $mockGitHubService->shouldNotReceive('getFileContents');
 
+    /** @var GitHubApiServiceContract $mockGitHubService */
     $collector = new GuidelinesCollector($mockGitHubService);
 
     $bag = new ContextBag();
@@ -368,9 +374,10 @@ it('does nothing when sentinel config is not in metadata', function (): void {
     $repository = Repository::factory()->forInstallation($installation)->create();
     $run = Run::factory()->forRepository($repository)->create();
 
-    $mockGitHubService = $this->mock(GitHubApiServiceContract::class);
+    $mockGitHubService = Mockery::mock(GitHubApiServiceContract::class);
     $mockGitHubService->shouldNotReceive('getFileContents');
 
+    /** @var GitHubApiServiceContract $mockGitHubService */
     $collector = new GuidelinesCollector($mockGitHubService);
 
     $bag = new ContextBag();
@@ -401,12 +408,13 @@ it('truncates oversized content', function (): void {
     // Create content larger than 50KB
     $largeContent = str_repeat('A', 60000);
 
-    $mockGitHubService = $this->mock(GitHubApiServiceContract::class);
+    $mockGitHubService = Mockery::mock(GitHubApiServiceContract::class);
     $mockGitHubService->shouldReceive('getFileContents')
         ->with(12345, 'test-owner', 'test-repo', 'docs/large.md')
         ->once()
         ->andReturn($largeContent);
 
+    /** @var GitHubApiServiceContract $mockGitHubService */
     $collector = new GuidelinesCollector($mockGitHubService);
 
     $bag = new ContextBag();

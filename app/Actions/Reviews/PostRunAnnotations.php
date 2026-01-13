@@ -398,18 +398,13 @@ final readonly class PostRunAnnotations
 
         return $run->findings
             ->filter(function (Finding $finding) use ($minPriority): bool {
-                $findingSeverityEnum = SentinelConfigSeverity::tryFrom($finding->severity);
-                $findingPriority = $findingSeverityEnum?->priority() ?? 0;
+                $findingPriority = $finding->severity?->priority() ?? 0;
 
                 return $findingPriority >= $minPriority
                     && $finding->file_path !== null
                     && $finding->line_start !== null;
             })
-            ->sortByDesc(function (Finding $finding): int {
-                $severityEnum = SentinelConfigSeverity::tryFrom($finding->severity);
-
-                return $severityEnum?->priority() ?? 0;
-            })
+            ->sortByDesc(fn (Finding $finding): int => $finding->severity?->priority() ?? 0)
             ->take($maxComments);
     }
 
@@ -489,10 +484,18 @@ final readonly class PostRunAnnotations
                 continue;
             }
 
+            // Multi-line comment with 1 line context before and after
+            // start_line = first line (with context before)
+            // line = last line (with context after)
+            $startLine = max(1, $finding->line_start - 1);
+            $endLine = ($finding->line_end ?? $finding->line_start) + 1;
+
             $comments[] = [
                 'path' => $finding->file_path,
-                'line' => $finding->line_start,
-                'side' => 'RIGHT', // Comment on the new version of the file
+                'start_line' => $startLine,
+                'line' => $endLine,
+                'start_side' => 'RIGHT',
+                'side' => 'RIGHT',
                 'body' => $this->formatFindingComment($finding, $includeSuggestions),
             ];
         }
@@ -509,14 +512,15 @@ final readonly class PostRunAnnotations
         $metadata = $finding->metadata ?? [];
 
         $severityBadge = match ($finding->severity) {
-            'critical' => '**:red_circle: Critical**',
-            'high' => '**:orange_circle: High**',
-            'medium' => '**:yellow_circle: Medium**',
-            'low' => '**:white_circle: Low**',
+            SentinelConfigSeverity::Critical => '**:red_circle: Critical**',
+            SentinelConfigSeverity::High => '**:orange_circle: High**',
+            SentinelConfigSeverity::Medium => '**:yellow_circle: Medium**',
+            SentinelConfigSeverity::Low => '**:white_circle: Low**',
             default => '**:blue_circle: Info**',
         };
 
-        $body = "{$severityBadge} | `{$finding->category}`\n\n";
+        $categoryValue = $finding->category?->value ?? 'unknown';
+        $body = "{$severityBadge} | `{$categoryValue}`\n\n";
         $body .= "### {$finding->title}\n\n";
         $body .= $finding->description.PHP_EOL;
 

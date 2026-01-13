@@ -9,6 +9,7 @@ use App\Enums\ActivityType;
 use App\Enums\TeamRole;
 use App\Models\TeamMember;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 final readonly class UpdateTeamMemberRole
@@ -27,7 +28,11 @@ final readonly class UpdateTeamMemberRole
      */
     public function handle(TeamMember $member, TeamRole $role, User $actor): TeamMember
     {
+        $ctx = ['member_id' => $member->id, 'workspace_id' => $member->workspace_id, 'actor_id' => $actor->id, 'new_role' => $role->value];
+
         if ($member->role === TeamRole::Owner) {
+            Log::warning('Attempted to change owner role', $ctx);
+
             throw new InvalidArgumentException('Cannot change the role of the workspace owner.');
         }
 

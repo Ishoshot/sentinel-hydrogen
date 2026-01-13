@@ -11,8 +11,10 @@ use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\InvitationSentNotification;
+use App\Services\Logging\LogContext;
 use App\Services\Plans\PlanLimitEnforcer;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use InvalidArgumentException;
 
@@ -37,13 +39,19 @@ final readonly class CreateInvitation
         string $email,
         TeamRole $role = TeamRole::Member,
     ): Invitation {
+        $ctx = LogContext::merge(LogContext::fromWorkspace($workspace), ['email' => $email, 'role' => $role->value]);
+
         if ($role === TeamRole::Owner) {
+            Log::warning('Attempted to invite as owner', $ctx);
+
             throw new InvalidArgumentException('Cannot invite someone as owner.');
         }
 
         $limitCheck = $this->planLimitEnforcer->ensureCanInviteMember($workspace);
 
         if (! $limitCheck->allowed) {
+            Log::info('Invitation blocked by team size limit', $ctx);
+
             throw new InvalidArgumentException($limitCheck->message ?? 'Team size limit reached.');
         }
 
@@ -54,6 +62,8 @@ final readonly class CreateInvitation
             ->exists();
 
         if ($existingMember) {
+            Log::info('Invitation rejected - user already member', $ctx);
+
             throw new InvalidArgumentException('This user is already a member of the workspace.');
         }
 
@@ -63,12 +73,16 @@ final readonly class CreateInvitation
             ->exists();
 
         if ($existingInvitation) {
+            Log::info('Invitation rejected - pending invitation exists', $ctx);
+
             throw new InvalidArgumentException('An invitation has already been sent to this email.');
         }
 
         $team = $workspace->team;
 
         if ($team === null) {
+            Log::error('Workspace missing team configuration', LogContext::fromWorkspace($workspace));
+
             throw new InvalidArgumentException('The workspace does not have a team configured.');
         }
 

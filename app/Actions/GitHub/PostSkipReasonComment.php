@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
-use App\Contracts\GitHub\GitHubApiServiceContract;
 use App\Enums\SkipReason;
 use App\Models\Run;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\SentinelMessageService;
 use Illuminate\Support\Facades\Log;
 use Throwable;

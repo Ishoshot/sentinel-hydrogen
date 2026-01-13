@@ -128,8 +128,8 @@ final readonly class ReviewHistoryCollector implements ContextCollector
             // Extract key findings with fingerprints for resolution tracking
             $keyFindings = $findings->take(self::MAX_FINDINGS_PER_REVIEW)
                 ->map(fn (Finding $finding): array => [
-                    'severity' => (string) ($finding->severity ?? ''),
-                    'category' => (string) ($finding->category ?? ''),
+                    'severity' => $finding->severity?->value ?? '',
+                    'category' => $finding->category?->value ?? '',
                     'title' => (string) ($finding->title ?? ''),
                     'file_path' => $finding->file_path,
                     'line_start' => $finding->line_start,
@@ -197,7 +197,7 @@ final readonly class ReviewHistoryCollector implements ContextCollector
     private function generateFingerprint(Finding $finding): string
     {
         $components = [
-            $finding->category ?? '',
+            $finding->category?->value ?? '',
             $finding->file_path ?? '',
             $finding->title ?? '',
         ];

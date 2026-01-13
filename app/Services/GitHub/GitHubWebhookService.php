@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\GitHub;
 
 use App\Enums\GitHubWebhookEvent;
+use App\Enums\PullRequestAction;
 
 final class GitHubWebhookService
 {
@@ -171,7 +172,9 @@ final class GitHubWebhookService
      */
     public function shouldTriggerReview(string $action): bool
     {
-        return in_array($action, ['opened', 'synchronize', 'reopened'], true);
+        $prAction = PullRequestAction::tryFrom($action);
+
+        return $prAction?->shouldTriggerReview() ?? false;
     }
 
     /**
@@ -185,17 +188,9 @@ final class GitHubWebhookService
      */
     public function shouldSyncMetadata(string $action): bool
     {
-        return in_array($action, [
-            'edited',
-            'labeled',
-            'unlabeled',
-            'assigned',
-            'unassigned',
-            'review_requested',
-            'review_request_removed',
-            'converted_to_draft',
-            'ready_for_review',
-        ], true);
+        $prAction = PullRequestAction::tryFrom($action);
+
+        return $prAction?->shouldSyncMetadata() ?? false;
     }
 
     /**
