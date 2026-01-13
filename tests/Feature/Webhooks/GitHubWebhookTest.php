@@ -13,7 +13,6 @@ use App\Models\Provider;
 use App\Models\Repository;
 use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use Illuminate\Support\Facades\Queue;
-use Mockery;
 
 beforeEach(function (): void {
     config(['github.webhook_secret' => 'test-secret']);
