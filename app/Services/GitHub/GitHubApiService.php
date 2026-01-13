@@ -6,6 +6,7 @@ namespace App\Services\GitHub;
 
 use App\Models\Installation;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use GrahamCampbell\GitHub\GitHubManager;
 
 final readonly class GitHubApiService implements GitHubApiServiceContract
@@ -15,7 +16,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function __construct(
         private GitHubManager $github,
-        private GitHubAppService $appService,
+        private GitHubAppServiceContract $appService,
         private GitHubRateLimiter $rateLimiter,
     ) {}
 
