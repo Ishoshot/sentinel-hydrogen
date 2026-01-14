@@ -21,9 +21,14 @@ final class DatabaseSeeder extends Seeder
 
         // User::factory(10)->create();
 
-        // User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        User::updateOrCreate([
+            'email' => 'ishoshot@gmail.com',
+        ], [
+            'name' => 'Oluwatobi Ishola',
+            'email' => 'ishoshot@gmail.com',
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'remember_token' => Str::random(10),
+        ]);
     }
 }
