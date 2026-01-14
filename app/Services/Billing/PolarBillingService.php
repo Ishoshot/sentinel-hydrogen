@@ -49,6 +49,7 @@ final class PolarBillingService
         ?Promotion $promotion = null,
         ?string $successUrl = null,
     ): string {
+
         $accessToken = (string) config('services.polar.access_token');
 
         if ($accessToken === '') {
