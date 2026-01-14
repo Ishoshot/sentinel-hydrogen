@@ -50,7 +50,7 @@ return [
     ],
 
     'polar' => [
-        'api_url' => env('POLAR_API_URL', 'https://api.polar.sh'),
+        'api_url' => env('POLAR_API_URL', 'https://sandbox-api.polar.sh/v1'),
         'access_token' => env('POLAR_ACCESS_TOKEN'),
         'product_ids' => [
             'monthly' => [

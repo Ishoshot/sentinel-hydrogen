@@ -78,6 +78,7 @@ final class PolarBillingService
                 'workspace_id' => (string) $workspace->id,
                 'plan_tier' => $plan->tier,
                 'billing_interval' => $interval->value,
+                'promotion_id' => $promotion?->id !== null ? (string) $promotion->id : null,
             ],
             'allow_discount_codes' => true,
         ];

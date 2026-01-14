@@ -7,6 +7,8 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 final class DatabaseSeeder extends Seeder
 {
@@ -22,10 +24,10 @@ final class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
         User::updateOrCreate([
-            'email' => 'ishoshot@gmail.com',
+            'email' => 'io.oluwatobi@gmail.com',
         ], [
-            'name' => 'Oluwatobi Ishola',
-            'email' => 'ishoshot@gmail.com',
+            'name' => 'Oluwaseun Ishola',
+            'email' => 'io.oluwatobi@gmail.com',
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'remember_token' => Str::random(10),

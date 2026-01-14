@@ -200,7 +200,7 @@ The following structural information was extracted from the changed files using 
 @if(isset($data['classes']) && count($data['classes']) > 0)
 **Classes:**
 @foreach($data['classes'] as $class)
-- `{{ $class['name'] }}`@if(!empty($class['extends'])) extends `{{ $class['extends'] }}`@endif@if(!empty($class['implements'])) implements {{ implode(', ', array_map(fn($i) => "`$i`", $class['implements'])) }}@endif @ lines {{ $class['line_start'] }}-{{ $class['line_end'] }}
+- `{{ $class['name'] }}`{{ !empty($class['extends']) ? " extends `{$class['extends']}`" : '' }}{{ !empty($class['implements']) ? ' implements ' . implode(', ', array_map(fn($i) => "`$i`", $class['implements'])) : '' }} @ lines {{ $class['line_start'] }}-{{ $class['line_end'] }}
   @if(isset($class['methods']) && count($class['methods']) > 0)
   - Methods: @foreach($class['methods'] as $method)`{{ $method['name'] }}()`@if(!$loop->last), @endif @endforeach
 

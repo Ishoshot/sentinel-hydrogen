@@ -16,6 +16,9 @@ use Throwable;
  */
 final readonly class PostAutoReviewDisabledComment implements PostsAutoReviewDisabledComment
 {
+    /**
+     * Create a new action instance.
+     */
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,
         private SentinelMessageService $messageService

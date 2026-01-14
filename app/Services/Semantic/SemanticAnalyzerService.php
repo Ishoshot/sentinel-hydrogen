@@ -78,11 +78,17 @@ final class SemanticAnalyzerService
         return $results;
     }
 
+    /**
+     * Get the path to the semantic analyzer binary.
+     */
     private function getBinaryPath(): string
     {
         return base_path(self::BINARY_PATH);
     }
 
+    /**
+     * Check if the file extension is supported for semantic analysis.
+     */
     private function isSupported(string $extension): bool
     {
         return in_array($extension, [

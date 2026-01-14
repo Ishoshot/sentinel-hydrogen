@@ -8,10 +8,12 @@ use App\Actions\Promotions\ValidatePromotion;
 use App\Actions\Subscriptions\UpgradeSubscription;
 use App\Enums\BillingInterval;
 use App\Enums\PlanTier;
+use App\Enums\PromotionUsageStatus;
 use App\Http\Requests\Subscription\UpgradeSubscriptionRequest;
 use App\Http\Resources\SubscriptionResource;
 use App\Models\Plan;
 use App\Models\Promotion;
+use App\Models\PromotionUsage;
 use App\Models\Workspace;
 use App\Services\Billing\PolarBillingService;
 use Illuminate\Http\JsonResponse;
@@ -76,7 +78,12 @@ final class UpgradeSubscriptionController
             }
 
             if ($promotion instanceof Promotion) {
-                $promotion->incrementUsage();
+                PromotionUsage::create([
+                    'promotion_id' => $promotion->id,
+                    'workspace_id' => $workspace->id,
+                    'status' => PromotionUsageStatus::Pending,
+                    'checkout_session_id' => $checkoutUrl,
+                ]);
             }
 
             return response()->json([
@@ -95,6 +102,13 @@ final class UpgradeSubscriptionController
         $subscription = $upgradeSubscription->handle($workspace, $tier, $request->user());
 
         if ($promotion instanceof Promotion) {
+            PromotionUsage::create([
+                'promotion_id' => $promotion->id,
+                'workspace_id' => $workspace->id,
+                'subscription_id' => $subscription->id,
+                'status' => PromotionUsageStatus::Completed,
+                'confirmed_at' => now(),
+            ]);
             $promotion->incrementUsage();
         }
 
