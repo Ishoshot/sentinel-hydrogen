@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\File;
  */
 final class SentinelMessageService
 {
-    private const CACHE_KEY = 'sentinel:messages';
+    private const string CACHE_KEY = 'sentinel:messages';
 
-    private const CACHE_TTL = 3600; // 1 hour
+    private const int CACHE_TTL = 3600; // 1 hour
 
     /**
      * @var array{greetings: array<int, array{emoji: string, message: string}>, branding: array<int, string>}|null
@@ -153,6 +153,28 @@ final class SentinelMessageService
         - Checking your repository settings in the Sentinel dashboard
 
         If the issue persists, please contact support.
+
+        ---
+        <sub>{$branding}</sub>
+        MARKDOWN;
+    }
+
+    /**
+     * Build a comment explaining that auto-reviews are disabled.
+     */
+    public function buildAutoReviewDisabledComment(): string
+    {
+        $branding = $this->getRandomBranding();
+
+        return <<<MARKDOWN
+        > [!IMPORTANT]
+        > ## Review skipped
+        >
+        > Auto reviews are disabled on this repository.
+        >
+        > Please check the settings in the Sentinel UI or the `.sentinel/config.yaml` file in this repository. To trigger a single review, invoke the `@sentinel review` command.
+        >
+        > You can disable this status message by setting the `reviews.review_status` to `false` in the Sentinel configuration file.
 
         ---
         <sub>{$branding}</sub>

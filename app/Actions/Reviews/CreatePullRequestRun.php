@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Reviews;
 
 use App\Actions\Activities\LogActivity;
-use App\Actions\GitHub\PostSkipReasonComment;
+use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Enums\ActivityType;
 use App\Enums\RunStatus;
 use App\Enums\SkipReason;
@@ -24,7 +24,7 @@ final readonly class CreatePullRequestRun
     public function __construct(
         private LogActivity $logActivity,
         private PlanLimitEnforcer $planLimitEnforcer,
-        private PostSkipReasonComment $postSkipReasonComment,
+        private PostsSkipReasonComment $postSkipReasonComment,
     ) {}
 
     /**

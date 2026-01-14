@@ -81,13 +81,7 @@ final readonly class TriggerRuleEvaluator
             return true;
         }
 
-        foreach ($patterns as $pattern) {
-            if ($this->matchesPattern($value, $pattern)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($patterns, fn (string $pattern): bool => $this->matchesPattern($value, $pattern));
     }
 
     /**

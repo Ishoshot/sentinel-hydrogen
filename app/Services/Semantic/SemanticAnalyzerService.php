@@ -52,6 +52,7 @@ final class SemanticAnalyzerService
             return null;
         }
 
+        /** @var array<string, mixed>|null $output */
         $output = json_decode($result->output(), true);
 
         return is_array($output) ? $output : null;

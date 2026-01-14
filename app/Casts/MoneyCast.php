@@ -11,7 +11,7 @@ use InvalidArgumentException;
 
 final class MoneyCast implements CastsAttributes
 {
-    private const DEFAULT_CURRENCY = 'USD';
+    private const string DEFAULT_CURRENCY = 'USD';
 
     /**
      * @param  int|string|null  $value

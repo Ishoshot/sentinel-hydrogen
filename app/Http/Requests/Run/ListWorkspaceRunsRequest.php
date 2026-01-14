@@ -7,6 +7,7 @@ namespace App\Http\Requests\Run;
 use App\Enums\RunStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Override;
 
 final class ListWorkspaceRunsRequest extends FormRequest
 {
@@ -41,6 +42,7 @@ final class ListWorkspaceRunsRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    #[Override]
     public function messages(): array
     {
         return [

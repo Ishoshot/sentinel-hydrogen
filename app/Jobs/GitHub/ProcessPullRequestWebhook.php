@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\GitHub;
 
+use App\Actions\GitHub\Contracts\PostsAutoReviewDisabledComment;
 use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Actions\Reviews\CreatePullRequestRun;
@@ -43,6 +44,7 @@ final class ProcessPullRequestWebhook implements ShouldQueue
         SyncPullRequestRunMetadata $syncMetadata,
         PostsGreetingComment $postGreeting,
         PostsConfigErrorComment $postConfigError,
+        PostsAutoReviewDisabledComment $postAutoReviewDisabled,
         TriggerRuleEvaluator $triggerEvaluator,
         QueueResolver $queueResolver
     ): void {
@@ -100,6 +102,9 @@ final class ProcessPullRequestWebhook implements ShouldQueue
         // Handle new review creation
         if (! $repository->hasAutoReviewEnabled()) {
             Log::info('Auto-review disabled for repository', $ctx);
+
+            // Post "review skipped" comment to PR (no run created to preserve quota)
+            $postAutoReviewDisabled->handle($repository, $data['pull_request_number']);
 
             return;
         }

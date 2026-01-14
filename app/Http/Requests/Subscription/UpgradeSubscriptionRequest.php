@@ -8,6 +8,7 @@ use App\Enums\BillingInterval;
 use App\Enums\PlanTier;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Override;
 
 final class UpgradeSubscriptionRequest extends FormRequest
 {
@@ -38,6 +39,7 @@ final class UpgradeSubscriptionRequest extends FormRequest
      *
      * @return array<string, string>
      */
+    #[Override]
     public function messages(): array
     {
         return [

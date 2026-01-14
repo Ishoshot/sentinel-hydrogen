@@ -70,12 +70,6 @@ final class VendorPathFilter implements ContextFilter
      */
     private function shouldExclude(string $path): bool
     {
-        foreach (self::EXCLUDED_PATTERNS as $pattern) {
-            if (preg_match($pattern, $path) === 1) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any(self::EXCLUDED_PATTERNS, fn ($pattern): bool => preg_match($pattern, $path) === 1);
     }
 }

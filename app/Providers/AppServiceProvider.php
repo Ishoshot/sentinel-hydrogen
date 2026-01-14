@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Actions\GitHub\Contracts\PostsAutoReviewDisabledComment;
 use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
+use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
+use App\Actions\GitHub\PostAutoReviewDisabledComment;
 use App\Actions\GitHub\PostConfigErrorComment;
 use App\Actions\GitHub\PostPullRequestGreeting;
+use App\Actions\GitHub\PostSkipReasonComment;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\FetchSentinelConfig;
 use App\Services\Context\Collectors\DiffCollector;
@@ -37,16 +41,20 @@ use App\Services\Reviews\ProviderKeyResolverService;
 use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use App\Services\SentinelConfig\SentinelConfigParserService;
 use Illuminate\Support\ServiceProvider;
+use Override;
 
 final class AppServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
      */
+    #[Override]
     public function register(): void
     {
         $this->app->bind(PostsGreetingComment::class, PostPullRequestGreeting::class);
         $this->app->bind(PostsConfigErrorComment::class, PostConfigErrorComment::class);
+        $this->app->bind(PostsAutoReviewDisabledComment::class, PostAutoReviewDisabledComment::class);
+        $this->app->bind(PostsSkipReasonComment::class, PostSkipReasonComment::class);
 
         // Register GitHub API service contract
         $this->app->bind(GitHubApiServiceContract::class, GitHubApiService::class);
