@@ -291,70 +291,64 @@ return [
     'environments' => [
         'production' => [
             'supervisor-critical' => [
-                'maxProcesses' => 2,
-                'memory' => 128,
+                'maxProcesses' => 5,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
             ],
 
             'supervisor-reviews' => [
-                'maxProcesses' => 2,
-                'memory' => 256,
+                'maxProcesses' => 10,
+                'balanceMaxShift' => 2,
+                'balanceCooldown' => 5,
             ],
 
             'supervisor-default' => [
-                'minProcesses' => 1,
-                'maxProcesses' => 2,
-                'memory' => 128,
+                'minProcesses' => 2,
+                'maxProcesses' => 8,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
             ],
 
             'supervisor-background' => [
-                'processes' => 1,
-                'memory' => 256,
+                'processes' => 3,
             ],
         ],
 
         'development' => [
             'supervisor-critical' => [
-                'maxProcesses' => 1,
-                'memory' => 128,
+                'maxProcesses' => 3,
             ],
 
             'supervisor-reviews' => [
-                'maxProcesses' => 1,
-                'memory' => 128,
+                'maxProcesses' => 5,
             ],
 
             'supervisor-default' => [
                 'minProcesses' => 1,
-                'maxProcesses' => 1,
-                'memory' => 128,
+                'maxProcesses' => 3,
             ],
 
             'supervisor-background' => [
-                'processes' => 1,
-                'memory' => 128,
+                'processes' => 2,
             ],
         ],
 
         'local' => [
             'supervisor-critical' => [
-                'maxProcesses' => 1,
-                'memory' => 128,
+                'maxProcesses' => 2,
             ],
 
             'supervisor-reviews' => [
-                'maxProcesses' => 1,
-                'memory' => 128,
+                'maxProcesses' => 2,
             ],
 
             'supervisor-default' => [
                 'minProcesses' => 1,
-                'maxProcesses' => 1,
-                'memory' => 128,
+                'maxProcesses' => 2,
             ],
 
             'supervisor-background' => [
                 'processes' => 1,
-                'memory' => 128,
             ],
         ],
     ],
