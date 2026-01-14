@@ -23,3 +23,16 @@ Route::get('/auth/{provider}/redirect', [OAuthController::class, 'redirect'])
 Route::get('/auth/{provider}/callback', [OAuthController::class, 'callback'])
     ->name('auth.callback')
     ->whereIn('provider', OAuthProvider::values());
+
+Route::get('/', function () {
+    return response()->json([
+        'version' => '1.0.0',
+        'name' => 'Sentinel',
+        'description' => 'Sentinel is an AI-powered code review and code intelligence platform that helps engineering teams maintain high code quality, reduce risk, and ship with confidence.',
+        'links' => [
+            'app' => 'https://usesentinel.ai',
+            'docs' => 'https://docs.usesentinel.ai',
+        ],
+        'author' => 'Oluwatobi Ishola',
+    ]);
+});
