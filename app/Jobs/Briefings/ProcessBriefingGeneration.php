@@ -76,6 +76,8 @@ final class ProcessBriefingGeneration implements ShouldQueue
             $this->updateProgress(BriefingGenerationStatus::Processing, 80, 'Generating excerpts...');
             $excerpts = $narrativeGenerator->generateExcerpts($narrative ?? '', $structuredData);
 
+            $this->updateProgress(BriefingGenerationStatus::Processing, 90, 'Rendering outputs...');
+
             $this->generation->update([
                 'status' => BriefingGenerationStatus::Completed,
                 'progress' => 100,
@@ -86,6 +88,9 @@ final class ProcessBriefingGeneration implements ShouldQueue
                 'excerpts' => $excerpts,
                 'completed_at' => now(),
             ]);
+
+            // Dispatch rendering job to generate HTML, PDF, and Markdown outputs
+            RenderBriefingPdf::dispatch($this->generation);
 
             BriefingGenerationCompleted::dispatch($this->generation);
 

@@ -8,6 +8,7 @@ use App\Enums\BriefingDeliveryChannel;
 use App\Enums\Queue;
 use App\Models\BriefingGeneration;
 use App\Models\BriefingSubscription;
+use App\Notifications\Briefings\BriefingDeliveryNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
@@ -77,11 +78,22 @@ final class DeliverBriefing implements ShouldQueue
             return;
         }
 
-        // TODO: Implement email delivery with a Mailable
-        Log::info('Briefing email delivery queued', [
-            'generation_id' => $this->generation->id,
-            'user_email' => $user->email,
-        ]);
+        try {
+            $user->notify(new BriefingDeliveryNotification($this->generation));
+
+            Log::info('Briefing delivered via email', [
+                'generation_id' => $this->generation->id,
+                'user_email' => $user->email,
+            ]);
+        } catch (Throwable $throwable) {
+            Log::error('Failed to deliver briefing via email', [
+                'generation_id' => $this->generation->id,
+                'user_email' => $user->email,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            throw $throwable;
+        }
     }
 
     /**

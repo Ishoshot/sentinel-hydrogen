@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Browsershot\Browsershot;
 
 final class RenderBriefingPdf implements ShouldQueue
 {
@@ -112,15 +113,23 @@ final class RenderBriefingPdf implements ShouldQueue
      */
     private function renderPdf(): string
     {
-        $driver = config('briefings.pdf.driver', 'browsershot');
-        // TODO: Implement PDF rendering with Browsershot or similar
-        // For now, return empty string as placeholder
-        Log::info('PDF rendering requested', [
+        $htmlContent = $this->renderHtml();
+
+        $browsershot = Browsershot::html($htmlContent)
+            ->format('A4')
+            ->margins(15, 15, 15, 15)
+            ->showBackground();
+
+        $chromePath = config('briefings.pdf.chrome_path');
+        if ($chromePath !== null) {
+            $browsershot->setChromePath($chromePath);
+        }
+
+        Log::info('PDF rendering started', [
             'generation_id' => $this->generation->id,
-            'driver' => $driver,
         ]);
 
-        return '';
+        return $browsershot->pdf();
     }
 
     /**
