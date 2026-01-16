@@ -101,6 +101,6 @@ final readonly class ReviewPromptBuilder
             '/^\./',
         ];
 
-        return array_any($skipPatterns, fn ($pattern): bool => preg_match($pattern, $filename) === 1);
+        return array_any($skipPatterns, static fn (string $pattern): bool => preg_match($pattern, $filename) === 1);
     }
 }
