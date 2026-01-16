@@ -10,6 +10,7 @@ arch('models')
         'App\Actions',
         'App\Console',
         'App\Contracts',
+        'App\Events',
         'App\Http',
         'App\Jobs',
         'App\Notifications',
