@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Collectors;
 
+use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\GitHubApiService;
+use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use App\Support\MetadataExtractor;
 use Illuminate\Support\Facades\Log;
 
@@ -22,7 +24,11 @@ final readonly class DiffCollector implements ContextCollector
     /**
      * Create a new collector instance.
      */
-    public function __construct(private GitHubApiService $gitHubApiService) {}
+    public function __construct(
+        private GitHubApiService $gitHubApiService,
+        private FetchesSentinelConfig $fetchConfig,
+        private SentinelConfigParser $configParser,
+    ) {}
 
     /**
      * {@inheritdoc}
@@ -113,12 +119,16 @@ final readonly class DiffCollector implements ContextCollector
         $bag->files = $this->normalizeFiles($files);
         $bag->metrics = $this->calculateMetrics($bag->files);
 
-        $repository->loadMissing('settings');
-        $sentinelConfig = $repository->settings?->getConfigOrDefault();
+        // Fetch sentinel config with fallback: head_branch -> base_branch -> default_branch
+        $headBranch = $bag->pullRequest['head_branch'] ?? null;
+        $baseBranch = $bag->pullRequest['base_branch'] ?? null;
+        $defaultBranch = $repository->default_branch;
 
-        if ($sentinelConfig !== null) {
-            $bag->metadata['sentinel_config'] = $sentinelConfig->toArray();
-            $bag->metadata['paths_config'] = $sentinelConfig->getPathsOrDefault()->toArray();
+        $configResult = $this->fetchConfigWithFallback($repository, $headBranch, $baseBranch, $defaultBranch);
+
+        if ($configResult['config'] !== null) {
+            $bag->metadata['sentinel_config'] = $configResult['config'];
+            $bag->metadata['paths_config'] = $configResult['config']['paths'] ?? [];
         }
 
         Log::info('DiffCollector: Collected PR data', [
@@ -126,7 +136,76 @@ final readonly class DiffCollector implements ContextCollector
             'pr_number' => $pullRequestNumber,
             'files_count' => count($bag->files),
             'files_with_patches' => $bag->getFilesWithPatchCount(),
+            'config_from_branch' => $configResult['branch'],
         ]);
+    }
+
+    /**
+     * Fetch sentinel config with fallback: head_branch -> base_branch -> default_branch.
+     *
+     * @return array{config: array<string, mixed>|null, branch: string|null}
+     */
+    private function fetchConfigWithFallback(
+        Repository $repository,
+        ?string $headBranch,
+        ?string $baseBranch,
+        ?string $defaultBranch
+    ): array {
+        // Build ordered list of branches to try (deduplicated)
+        $branches = array_values(array_unique(array_filter([
+            $headBranch,
+            $baseBranch,
+            $defaultBranch,
+        ])));
+
+        foreach ($branches as $branch) {
+            $config = $this->fetchAndParseConfig($repository, $branch);
+
+            if ($config !== null) {
+                Log::debug('DiffCollector: Found sentinel config', [
+                    'repository' => $repository->full_name,
+                    'branch' => $branch,
+                    'tried_branches' => $branches,
+                ]);
+
+                return ['config' => $config, 'branch' => $branch];
+            }
+        }
+
+        Log::debug('DiffCollector: No sentinel config found in any branch', [
+            'repository' => $repository->full_name,
+            'tried_branches' => $branches,
+        ]);
+
+        return ['config' => null, 'branch' => null];
+    }
+
+    /**
+     * Fetch and parse sentinel config from a specific branch.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function fetchAndParseConfig(Repository $repository, string $branch): ?array
+    {
+        $fetchResult = $this->fetchConfig->handle($repository, $branch);
+
+        if (! $fetchResult['found'] || $fetchResult['content'] === null) {
+            return null;
+        }
+
+        $parseResult = $this->configParser->tryParse($fetchResult['content']);
+
+        if (! $parseResult['success'] || $parseResult['config'] === null) {
+            Log::warning('DiffCollector: Failed to parse sentinel config', [
+                'repository' => $repository->full_name,
+                'branch' => $branch,
+                'error' => $parseResult['error'] ?? 'Unknown error',
+            ]);
+
+            return null;
+        }
+
+        return $parseResult['config']->toArray();
     }
 
     /**

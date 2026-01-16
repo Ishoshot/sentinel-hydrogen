@@ -40,4 +40,13 @@ interface GitHubAppServiceContract
      * Get the GitHub App slug/name.
      */
     public function getAppName(): string;
+
+    /**
+     * Get the URL to configure an existing GitHub App installation.
+     *
+     * @param  int  $installationId  The GitHub installation ID
+     * @param  string  $accountLogin  The GitHub account login (user or org name)
+     * @param  bool  $isOrganization  Whether this is an organization installation
+     */
+    public function getInstallationConfigureUrl(int $installationId, string $accountLogin, bool $isOrganization): string;
 }

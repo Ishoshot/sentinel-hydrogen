@@ -127,7 +127,7 @@ it('cannot initiate github connection as regular member', function (): void {
     $response->assertForbidden();
 });
 
-it('returns existing active connection when initiating', function (): void {
+it('returns existing active connection with configure url when initiating', function (): void {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
     $workspace->teamMembers()->create([
@@ -138,15 +138,49 @@ it('returns existing active connection when initiating', function (): void {
     ]);
 
     $provider = Provider::where('type', ProviderType::GitHub)->first();
-    Connection::factory()->forWorkspace($workspace)->forProvider($provider)->active()->create();
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->active()->create();
+
+    // Create an installation linked to the connection
+    $installation = Installation::factory()->forConnection($connection)->user()->create([
+        'installation_id' => 12345678,
+        'account_login' => 'testuser',
+    ]);
 
     $response = $this->actingAs($user, 'sanctum')
         ->postJson(route('github.connection.store', $workspace));
 
     $response->assertOk()
         ->assertJsonPath('data.status', 'active')
-        ->assertJsonMissing(['installation_url'])
-        ->assertJsonPath('message', 'GitHub connection already active.');
+        ->assertJsonPath('installation_url', 'https://github.com/settings/installations/12345678')
+        ->assertJsonPath('message', 'Redirect to GitHub to configure repository access.');
+});
+
+it('returns existing active connection with org configure url when initiating for organization', function (): void {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
+    $workspace->teamMembers()->create([
+        'user_id' => $user->id,
+        'team_id' => $workspace->team->id,
+        'role' => 'owner',
+        'joined_at' => now(),
+    ]);
+
+    $provider = Provider::where('type', ProviderType::GitHub)->first();
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->active()->create();
+
+    // Create an organization installation linked to the connection
+    Installation::factory()->forConnection($connection)->organization()->create([
+        'installation_id' => 87654321,
+        'account_login' => 'test-org',
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->postJson(route('github.connection.store', $workspace));
+
+    $response->assertOk()
+        ->assertJsonPath('data.status', 'active')
+        ->assertJsonPath('installation_url', 'https://github.com/organizations/test-org/settings/installations/87654321')
+        ->assertJsonPath('message', 'Redirect to GitHub to configure repository access.');
 });
 
 it('can disconnect github as owner', function (): void {

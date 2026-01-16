@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlanTier;
 use App\Models\Invitation;
+use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -239,4 +241,55 @@ it('allows any authenticated user to accept invitation regardless of email match
 
     $response->assertOk();
     expect($workspace->teamMembers()->where('user_id', $anyUser->id)->exists())->toBeTrue();
+});
+
+it('blocks acceptance when team size limit is reached', function (): void {
+    // Create a plan with team_size_limit of 2
+    $plan = Plan::factory()->create([
+        'tier' => PlanTier::Foundation->value,
+        'team_size_limit' => 2,
+    ]);
+
+    $owner = User::factory()->create();
+    $existingMember = User::factory()->create();
+    $invitee = User::factory()->create(['email' => 'invitee@example.com']);
+
+    $workspace = Workspace::factory()->create([
+        'owner_id' => $owner->id,
+        'plan_id' => $plan->id,
+    ]);
+
+    // Add owner as team member (1/2)
+    $workspace->teamMembers()->create([
+        'user_id' => $owner->id,
+        'team_id' => $workspace->team->id,
+        'role' => 'owner',
+        'joined_at' => now(),
+    ]);
+
+    // Add another member to reach the limit (2/2)
+    $workspace->teamMembers()->create([
+        'user_id' => $existingMember->id,
+        'team_id' => $workspace->team->id,
+        'role' => 'member',
+        'joined_at' => now(),
+    ]);
+
+    // Create invitation (was created before limit was reached)
+    $invitation = Invitation::factory()->create([
+        'workspace_id' => $workspace->id,
+        'team_id' => $workspace->team->id,
+        'invited_by_id' => $owner->id,
+        'email' => 'invitee@example.com',
+    ]);
+
+    // Try to accept - should be blocked
+    $response = $this->actingAs($invitee, 'sanctum')
+        ->postJson(route('invitations.accept', $invitation->token));
+
+    $response->assertUnprocessable()
+        ->assertJsonFragment(['message' => 'Team size limit reached (2/2). Upgrade your plan to add more members.']);
+
+    // Verify member was NOT added
+    expect($workspace->teamMembers()->where('user_id', $invitee->id)->exists())->toBeFalse();
 });
