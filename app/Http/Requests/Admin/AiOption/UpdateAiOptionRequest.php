@@ -26,7 +26,10 @@ final class UpdateAiOptionRequest extends FormRequest
      */
     public function rules(): array
     {
-        $aiOptionId = $this->route('ai_option')?->id;
+        /** @var \App\Models\AiOption|null $aiOption */
+        $aiOption = $this->route('ai_option');
+        $aiOptionId = $aiOption?->id;
+        $currentProvider = $aiOption?->provider?->value;
 
         return [
             'provider' => ['sometimes', 'string', Rule::enum(AiProvider::class)],
@@ -34,9 +37,7 @@ final class UpdateAiOptionRequest extends FormRequest
                 'sometimes',
                 'string',
                 'max:255',
-                Rule::unique('provider_models')->where(function ($query) {
-                    return $query->where('provider', $this->input('provider', $this->route('ai_option')?->provider?->value));
-                })->ignore($aiOptionId),
+                Rule::unique('provider_models')->where(fn (\Illuminate\Database\Query\Builder $query) => $query->where('provider', $this->input('provider', $currentProvider)))->ignore($aiOptionId),
             ],
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],

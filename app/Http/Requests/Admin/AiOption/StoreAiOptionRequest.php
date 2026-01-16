@@ -32,9 +32,7 @@ final class StoreAiOptionRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('provider_models')->where(function ($query) {
-                    return $query->where('provider', $this->input('provider'));
-                }),
+                Rule::unique('provider_models')->where(fn (\Illuminate\Database\Query\Builder $query) => $query->where('provider', $this->input('provider'))),
             ],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
