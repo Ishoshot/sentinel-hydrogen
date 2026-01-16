@@ -114,9 +114,9 @@ final class ProviderKeyController
                 providerKey: $providerKey,
                 providerModelId: $validated['provider_model_id'] ?? null,
             );
-        } catch (InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $invalidArgumentException) {
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => $invalidArgumentException->getMessage(),
             ], 422);
         }
 
