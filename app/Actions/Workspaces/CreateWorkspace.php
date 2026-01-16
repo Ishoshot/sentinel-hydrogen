@@ -8,10 +8,12 @@ use App\Actions\Activities\LogActivity;
 use App\Actions\Subscriptions\CreateSubscription;
 use App\Enums\ActivityType;
 use App\Enums\TeamRole;
+use App\Exceptions\WorkspaceLimitExceededException;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Plans\PlanLimitEnforcer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -23,15 +25,27 @@ final readonly class CreateWorkspace
     public function __construct(
         private LogActivity $logActivity,
         private CreateSubscription $createSubscription,
+        private PlanLimitEnforcer $planLimitEnforcer,
     ) {}
 
     /**
      * Create a new workspace with its associated team and owner membership.
      *
      * @param  array<string, mixed>|null  $settings
+     *
+     * @throws WorkspaceLimitExceededException
      */
     public function handle(User $owner, string $name, ?array $settings = null): Workspace
     {
+        $limitResult = $this->planLimitEnforcer->ensureCanCreateWorkspace($owner);
+
+        if (! $limitResult->allowed) {
+            throw new WorkspaceLimitExceededException(
+                $limitResult->message ?? 'Paid plan required to create additional workspaces',
+                $limitResult->code,
+            );
+        }
+
         return DB::transaction(function () use ($owner, $name, $settings): Workspace {
             $workspace = Workspace::create([
                 'name' => $name,
