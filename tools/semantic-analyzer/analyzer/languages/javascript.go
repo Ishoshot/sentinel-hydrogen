@@ -3,9 +3,9 @@ package languages
 import (
 	"strings"
 
+	"github.com/sentinel/tools/semantic-analyzer/types"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/javascript"
-	"github.com/sentinel/tools/semantic-analyzer/types"
 )
 
 // AnalyzeJavaScript analyzes JavaScript/JSX source code

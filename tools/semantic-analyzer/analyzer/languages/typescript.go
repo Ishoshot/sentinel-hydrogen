@@ -3,9 +3,9 @@ package languages
 import (
 	"strings"
 
+	"github.com/sentinel/tools/semantic-analyzer/types"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/typescript/typescript"
-	"github.com/sentinel/tools/semantic-analyzer/types"
 )
 
 // AnalyzeTypeScript analyzes TypeScript/TSX source code

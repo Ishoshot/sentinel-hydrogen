@@ -1,9 +1,9 @@
 package languages
 
 import (
+	"github.com/sentinel/tools/semantic-analyzer/types"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/python"
-	"github.com/sentinel/tools/semantic-analyzer/types"
 )
 
 // AnalyzePython analyzes Python source code
