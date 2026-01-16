@@ -99,7 +99,9 @@ final class UpgradeSubscriptionController
             ]);
         }
 
-        $subscription = $upgradeSubscription->handle($workspace, $tier, $request->user());
+        /** @var \App\Models\User|null $user */
+        $user = $request->user();
+        $subscription = $upgradeSubscription->handle($workspace, $tier, $user);
 
         if ($promotion instanceof Promotion) {
             PromotionUsage::create([
