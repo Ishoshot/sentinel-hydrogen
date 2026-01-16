@@ -66,7 +66,7 @@ final class PromotionUsage extends Model
             'confirmed_at' => now(),
         ])->save();
 
-        $this->promotion->incrementUsage();
+        $this->promotion?->incrementUsage();
     }
 
     /**

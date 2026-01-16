@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $repository_id
  * @property int $workspace_id
  * @property AiProvider $provider
+ * @property int|null $provider_model_id
  * @property string $encrypted_key
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -33,6 +34,7 @@ final class ProviderKey extends Model
         'repository_id',
         'workspace_id',
         'provider',
+        'provider_model_id',
         'encrypted_key',
     ];
 
@@ -57,6 +59,22 @@ final class ProviderKey extends Model
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    /**
+     * @return BelongsTo<AiOption, $this>
+     */
+    public function providerModel(): BelongsTo
+    {
+        return $this->belongsTo(AiOption::class, 'provider_model_id');
+    }
+
+    /**
+     * Get the model identifier if a model is selected.
+     */
+    public function getModelIdentifier(): ?string
+    {
+        return $this->providerModel?->identifier;
     }
 
     /**
