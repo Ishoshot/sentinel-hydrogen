@@ -16,16 +16,24 @@ final readonly class ListAiOptions
     /**
      * List AI options with pagination.
      *
-     * @return LengthAwarePaginator<AiOption>
+     * @return LengthAwarePaginator<int, AiOption>
      */
     public function handle(
         ?AiProvider $provider = null,
         bool $activeOnly = false,
         int $perPage = 15,
     ): LengthAwarePaginator {
-        return AiOption::query()
-            ->when($provider !== null, fn ($query) => $query->forProvider($provider))
-            ->when($activeOnly, fn ($query) => $query->active())
+        $query = AiOption::query();
+
+        if ($provider instanceof AiProvider) {
+            $query->forProvider($provider);
+        }
+
+        if ($activeOnly) {
+            $query->active();
+        }
+
+        return $query
             ->orderBy('provider')
             ->orderBy('sort_order')
             ->orderBy('name')

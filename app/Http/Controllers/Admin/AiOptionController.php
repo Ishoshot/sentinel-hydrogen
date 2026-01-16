@@ -93,9 +93,9 @@ final class AiOptionController
     ): JsonResponse {
         try {
             $deleteAiOption->handle($aiOption);
-        } catch (InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $invalidArgumentException) {
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => $invalidArgumentException->getMessage(),
             ], 422);
         }
 

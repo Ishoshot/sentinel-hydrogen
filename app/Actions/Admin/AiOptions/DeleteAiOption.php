@@ -24,7 +24,7 @@ final readonly class DeleteAiOption
 
         if ($usageCount > 0) {
             throw new InvalidArgumentException(
-                "Cannot delete this AI model as it is currently in use by {$usageCount} provider key(s)."
+                sprintf('Cannot delete this AI model as it is currently in use by %d provider key(s).', $usageCount)
             );
         }
 
