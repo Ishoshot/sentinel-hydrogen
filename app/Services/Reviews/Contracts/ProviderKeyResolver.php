@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Reviews\Contracts;
 
 use App\Enums\AiProvider;
+use App\Models\ProviderKey;
 use App\Models\Repository;
 
 interface ProviderKeyResolver
@@ -34,4 +35,13 @@ interface ProviderKeyResolver
      * Check if a provider has a configured key.
      */
     public function hasProvider(Repository $repository, AiProvider $provider): bool;
+
+    /**
+     * Get the ProviderKey model for a specific provider.
+     *
+     * Returns the full model including the selected AI model relationship.
+     *
+     * @return ProviderKey|null The provider key model, or null if not configured
+     */
+    public function getProviderKey(Repository $repository, AiProvider $provider): ?ProviderKey;
 }

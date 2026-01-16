@@ -11,6 +11,8 @@ use App\Enums\ReviewVerdict;
 use App\Enums\RiskLevel;
 use App\Enums\SentinelConfigSeverity;
 use App\Exceptions\NoProviderKeyException;
+use App\Models\AiOption;
+use App\Models\ProviderKey;
 use App\Models\Repository;
 use App\Services\Context\ContextBag;
 use App\Services\Reviews\Contracts\ProviderKeyResolver;
@@ -51,7 +53,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Supports provider preferences and fallback retry logic.
      *
      * @param  array{repository: Repository, policy_snapshot: array<string, mixed>, context_bag: ContextBag}  $context
-     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
+     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, input_tokens: int, output_tokens: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
      *
      * @throws NoProviderKeyException When no BYOK provider keys are configured for the repository
      */
@@ -123,7 +125,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Execute a review with a specific provider.
      *
      * @param  array{repository: Repository, policy_snapshot: array<string, mixed>, context_bag: ContextBag}  $context
-     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
+     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, input_tokens: int, output_tokens: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
      */
     private function executeReview(array $context, AiProvider $aiProvider, ProviderConfig $providerConfig): array
     {
@@ -132,14 +134,15 @@ final readonly class PrismReviewEngine implements ReviewEngine
         /** @var Repository $repository */
         $repository = $context['repository'];
 
-        $apiKey = $this->keyResolver->resolve($repository, $aiProvider);
+        $providerKey = $this->keyResolver->getProviderKey($repository, $aiProvider);
 
-        if ($apiKey === null) {
+        if (! $providerKey instanceof ProviderKey) {
             throw NoProviderKeyException::forProvider($aiProvider->value);
         }
 
+        $apiKey = $providerKey->encrypted_key;
         $provider = $this->mapToProvider($aiProvider);
-        $model = $this->resolveModel($aiProvider, $providerConfig);
+        $model = $this->resolveModel($aiProvider, $providerConfig, $providerKey);
 
         $systemPrompt = $this->promptBuilder->buildSystemPrompt($context['policy_snapshot']);
 
@@ -242,16 +245,27 @@ final readonly class PrismReviewEngine implements ReviewEngine
     }
 
     /**
-     * Resolve the AI model based on the provider and config.
+     * Resolve the AI model based on the provider, config, and user selection.
      */
-    private function resolveModel(AiProvider $aiProvider, ProviderConfig $providerConfig): string
+    private function resolveModel(AiProvider $aiProvider, ProviderConfig $providerConfig, ?ProviderKey $providerKey): string
     {
-        // Use custom model from config if set and matches the provider
+        // 1. Use model from provider key if user selected one
+        if ($providerKey?->providerModel !== null) {
+            return $providerKey->providerModel->identifier;
+        }
+
+        // 2. Use model from sentinel.yaml config if set for this provider
         if ($providerConfig->model !== null && $providerConfig->preferred === $aiProvider) {
             return $providerConfig->model;
         }
 
-        // Default models per provider
+        // 3. Get default from database
+        $defaultModel = AiOption::getDefault($aiProvider);
+        if ($defaultModel instanceof AiOption) {
+            return $defaultModel->identifier;
+        }
+
+        // 4. Hardcoded fallback (safety net)
         return match ($aiProvider) {
             AiProvider::Anthropic => 'claude-sonnet-4-5-20250929',
             AiProvider::OpenAI => 'gpt-4o',
@@ -313,7 +327,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Parse the structured AI response.
      *
      * @param  array{files_changed: int, lines_added: int, lines_deleted: int}  $inputMetrics
-     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
+     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, input_tokens: int, output_tokens: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
      */
     private function parseStructuredResponse(
         StructuredResponse $response,
@@ -336,7 +350,8 @@ final readonly class PrismReviewEngine implements ReviewEngine
         $summary = $this->normalizeSummary($summaryData);
         $findings = $this->normalizeFindings($findingsData);
 
-        $tokensUsed = $response->usage->promptTokens + $response->usage->completionTokens;
+        $inputTokens = $response->usage->promptTokens;
+        $outputTokens = $response->usage->completionTokens;
 
         return [
             'summary' => $summary,
@@ -345,7 +360,9 @@ final readonly class PrismReviewEngine implements ReviewEngine
                 'files_changed' => $inputMetrics['files_changed'],
                 'lines_added' => $inputMetrics['lines_added'],
                 'lines_deleted' => $inputMetrics['lines_deleted'],
-                'tokens_used_estimated' => $tokensUsed,
+                'input_tokens' => $inputTokens,
+                'output_tokens' => $outputTokens,
+                'tokens_used_estimated' => $inputTokens + $outputTokens,
                 'model' => $model,
                 'provider' => $provider,
                 'duration_ms' => $durationMs,
@@ -361,55 +378,35 @@ final readonly class PrismReviewEngine implements ReviewEngine
      */
     private function normalizeSummary(array $summary): array
     {
-        $overview = isset($summary['overview']) && is_string($summary['overview'])
-            ? $summary['overview']
-            : 'Review completed.';
-
-        $verdict = isset($summary['verdict']) && is_string($summary['verdict'])
-            && in_array($summary['verdict'], ReviewVerdict::values(), true)
-            ? $summary['verdict']
-            : ReviewVerdict::Comment->value;
-
-        $riskLevel = isset($summary['risk_level']) && is_string($summary['risk_level'])
-            && in_array($summary['risk_level'], RiskLevel::values(), true)
-            ? $summary['risk_level']
-            : RiskLevel::Low->value;
-
-        $strengths = [];
-        if (isset($summary['strengths']) && is_array($summary['strengths'])) {
-            foreach ($summary['strengths'] as $strength) {
-                if (is_string($strength)) {
-                    $strengths[] = $strength;
-                }
-            }
-        }
-
-        $concerns = [];
-        if (isset($summary['concerns']) && is_array($summary['concerns'])) {
-            foreach ($summary['concerns'] as $concern) {
-                if (is_string($concern)) {
-                    $concerns[] = $concern;
-                }
-            }
-        }
-
-        $recommendations = [];
-        if (isset($summary['recommendations']) && is_array($summary['recommendations'])) {
-            foreach ($summary['recommendations'] as $rec) {
-                if (is_string($rec)) {
-                    $recommendations[] = $rec;
-                }
-            }
-        }
+        $rawVerdict = $summary['verdict'] ?? null;
+        $rawRiskLevel = $summary['risk_level'] ?? null;
 
         return [
-            'overview' => $overview,
-            'verdict' => $verdict,
-            'risk_level' => $riskLevel,
-            'strengths' => $strengths,
-            'concerns' => $concerns,
-            'recommendations' => $recommendations,
+            'overview' => is_string($summary['overview'] ?? null) ? $summary['overview'] : 'Review completed.',
+            'verdict' => is_string($rawVerdict) && in_array($rawVerdict, ReviewVerdict::values(), true)
+                ? $rawVerdict
+                : ReviewVerdict::Comment->value,
+            'risk_level' => is_string($rawRiskLevel) && in_array($rawRiskLevel, RiskLevel::values(), true)
+                ? $rawRiskLevel
+                : RiskLevel::Low->value,
+            'strengths' => $this->filterStringArray($summary['strengths'] ?? []),
+            'concerns' => $this->filterStringArray($summary['concerns'] ?? []),
+            'recommendations' => $this->filterStringArray($summary['recommendations'] ?? []),
         ];
+    }
+
+    /**
+     * Filter an array to only include string values.
+     *
+     * @return array<int, string>
+     */
+    private function filterStringArray(mixed $items): array
+    {
+        if (! is_array($items)) {
+            return [];
+        }
+
+        return array_values(array_filter($items, is_string(...)));
     }
 
     /**
