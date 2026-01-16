@@ -20,10 +20,10 @@ final class PromotionSeeder extends Seeder
                 'description' => 'Special discount for early adopters during launch period.',
                 'code' => 'NEWLAUNCH2026',
                 'value_type' => 'percentage',
-                'value_amount' => 10000,
+                'value_amount' => 10,
                 'valid_from' => now(),
-                'valid_to' => now()->addMinutes(15),
-                'max_uses' => 1,
+                'valid_to' => now()->addMonths(3),
+                'max_uses' => 100,
                 'is_active' => true,
             ],
             // [
