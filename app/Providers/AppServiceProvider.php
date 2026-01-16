@@ -14,6 +14,10 @@ use App\Actions\GitHub\PostPullRequestGreeting;
 use App\Actions\GitHub\PostSkipReasonComment;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\FetchSentinelConfig;
+use App\Services\Briefings\BriefingDataCollectorService;
+use App\Services\Briefings\Contracts\BriefingDataCollector;
+use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
+use App\Services\Briefings\NarrativeGeneratorService;
 use App\Services\Context\Collectors\DiffCollector;
 use App\Services\Context\Collectors\FileContextCollector;
 use App\Services\Context\Collectors\GuidelinesCollector;
@@ -98,6 +102,10 @@ final class AppServiceProvider extends ServiceProvider
 
         // Register Sentinel Config Parser
         $this->app->bind(SentinelConfigParser::class, SentinelConfigParserService::class);
+
+        // Register Briefing Services
+        $this->app->bind(BriefingDataCollector::class, BriefingDataCollectorService::class);
+        $this->app->bind(BriefingNarrativeGenerator::class, NarrativeGeneratorService::class);
     }
 
     /**

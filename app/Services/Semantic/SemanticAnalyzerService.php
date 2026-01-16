@@ -103,21 +103,37 @@ final class SemanticAnalyzerService implements SemanticAnalyzerInterface
             // JVM languages
             'java',
             'kt', 'kts',
+            'scala', 'sc',
+            'groovy', 'gvy', 'gy', 'gsh',
+            'clj', 'cljs', 'cljc', 'edn',
             // .NET
             'cs',
+            'fs', 'fsi', 'fsx',
             // Dynamic languages
             'rb',
             // Apple ecosystem
             'swift',
+            'm', 'mm',
             // Systems languages
             'c', 'h',
             'cpp', 'cc', 'cxx', 'hpp', 'hxx',
+            'zig',
             // Frontend frameworks
             'vue',
             'svelte',
+            'dart',
             // Web fundamentals
             'html', 'htm',
             'css', 'scss', 'sass',
+            // Functional languages
+            'ex', 'exs',
+            'hs', 'lhs',
+            'ml', 'mli',
+            // Scripting languages
+            'lua',
+            'pl', 'pm', 't',
+            'r', 'R',
+            'jl',
             // Data & config
             'sql',
             'yaml', 'yml',
