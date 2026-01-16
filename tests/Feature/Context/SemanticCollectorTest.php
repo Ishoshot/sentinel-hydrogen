@@ -7,7 +7,7 @@ use App\Models\Run;
 use App\Models\Workspace;
 use App\Services\Context\Collectors\SemanticCollector;
 use App\Services\Context\ContextBag;
-use App\Services\Semantic\SemanticAnalyzerService;
+use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -24,7 +24,7 @@ beforeEach(function (): void {
 });
 
 it('has correct name and priority', function (): void {
-    $service = $this->mock(SemanticAnalyzerService::class);
+    $service = Mockery::mock(SemanticAnalyzerInterface::class);
     $collector = new SemanticCollector($service);
 
     expect($collector->name())->toBe('semantic')
@@ -32,7 +32,7 @@ it('has correct name and priority', function (): void {
 });
 
 it('should collect when repository and run are present', function (): void {
-    $service = $this->mock(SemanticAnalyzerService::class);
+    $service = Mockery::mock(SemanticAnalyzerInterface::class);
     $collector = new SemanticCollector($service);
 
     $shouldCollect = $collector->shouldCollect([
@@ -44,7 +44,7 @@ it('should collect when repository and run are present', function (): void {
 });
 
 it('should not collect without repository or run', function (): void {
-    $service = $this->mock(SemanticAnalyzerService::class);
+    $service = Mockery::mock(SemanticAnalyzerInterface::class);
     $collector = new SemanticCollector($service);
 
     expect($collector->shouldCollect([]))->toBeFalse()
@@ -53,7 +53,7 @@ it('should not collect without repository or run', function (): void {
 });
 
 it('does not collect when no file contents are available', function (): void {
-    $service = $this->mock(SemanticAnalyzerService::class);
+    $service = Mockery::mock(SemanticAnalyzerInterface::class);
     $service->shouldReceive('analyzeFiles')->never();
 
     $collector = new SemanticCollector($service);
@@ -105,7 +105,7 @@ it('collects semantic data from file contents', function (): void {
         ],
     ];
 
-    $service = $this->mock(SemanticAnalyzerService::class);
+    $service = Mockery::mock(SemanticAnalyzerInterface::class);
     $service->shouldReceive('analyzeFiles')
         ->once()
         ->with($fileContents)
@@ -129,7 +129,7 @@ it('limits the number of files analyzed', function (): void {
         $fileContents["file{$i}.php"] = "<?php function test{$i}() {}";
     }
 
-    $service = $this->mock(SemanticAnalyzerService::class);
+    $service = Mockery::mock(SemanticAnalyzerInterface::class);
     $service->shouldReceive('analyzeFiles')
         ->once()
         ->with(Mockery::on(function ($files) {
@@ -155,7 +155,7 @@ it('skips files that are too large', function (): void {
         'small.php' => $smallContent,
     ];
 
-    $service = $this->mock(SemanticAnalyzerService::class);
+    $service = Mockery::mock(SemanticAnalyzerInterface::class);
     $service->shouldReceive('analyzeFiles')
         ->once()
         ->with(Mockery::on(function ($files) {

@@ -13,6 +13,7 @@ beforeEach(function (): void {
     $this->socialiteUser->shouldReceive('getId')->andReturn('12345');
     $this->socialiteUser->shouldReceive('getEmail')->andReturn('test@example.com');
     $this->socialiteUser->shouldReceive('getName')->andReturn('Test User');
+    $this->socialiteUser->shouldReceive('getNickname')->andReturn('testuser');
     $this->socialiteUser->shouldReceive('getAvatar')->andReturn('https://example.com/avatar.jpg');
     $this->socialiteUser->token = 'access-token';
     $this->socialiteUser->refreshToken = 'refresh-token';
@@ -125,6 +126,7 @@ it('supports multiple providers for same user', function (): void {
     $googleSocialiteUser->shouldReceive('getId')->andReturn('google-12345');
     $googleSocialiteUser->shouldReceive('getEmail')->andReturn('test@example.com');
     $googleSocialiteUser->shouldReceive('getName')->andReturn('Test User');
+    $googleSocialiteUser->shouldReceive('getNickname')->andReturn('testuser');
     $googleSocialiteUser->shouldReceive('getAvatar')->andReturn('https://example.com/avatar.jpg');
     $googleSocialiteUser->token = 'google-access-token';
     $googleSocialiteUser->refreshToken = 'google-refresh-token';
