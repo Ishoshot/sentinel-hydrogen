@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Briefings;
 
+use App\Enums\FindingCategory;
+use App\Enums\SentinelConfigSeverity;
+use App\Models\Finding;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Briefings\Contracts\BriefingDataCollector;
@@ -172,7 +175,7 @@ final class BriefingDataCollectorService implements BriefingDataCollector
         $runs = $runsQuery->get();
 
         $completed = $runs->where('status.value', 'completed');
-        $inProgress = $runs->where('status.value', 'processing');
+        $inProgress = $runs->where('status.value', 'in_progress');
         $failed = $runs->where('status.value', 'failed');
 
         return [
@@ -212,7 +215,6 @@ final class BriefingDataCollectorService implements BriefingDataCollector
         // Add team-level metrics
         $repositories = Repository::query()
             ->where('workspace_id', $workspaceId)
-            ->where('is_active', true)
             ->get();
 
         $data['repositories'] = $repositories->map(fn (Repository $repo): array => [
@@ -266,9 +268,54 @@ final class BriefingDataCollectorService implements BriefingDataCollector
     {
         $data = $this->collectStandupData($workspaceId, $dateRange, $parameters);
 
-        // TODO: Add contributor-level data collection
-        $data['engineers'] = [];
-        $data['top_contributor'] = null;
+        $repositoryIds = $parameters['repository_ids'] ?? [];
+
+        // Get contributor statistics from run metadata
+        $runsQuery = Run::query()
+            ->where('workspace_id', $workspaceId)
+            ->whereBetween('created_at', [$dateRange['start'], $dateRange['end']])
+            ->whereNotNull('metadata->author');
+
+        if (! empty($repositoryIds)) {
+            $runsQuery->whereIn('repository_id', $repositoryIds);
+        }
+
+        $runs = $runsQuery->get();
+
+        // Group by author
+        /** @var array<string, array{name: string, pr_count: int, completed: int}> $contributorStats */
+        $contributorStats = [];
+        foreach ($runs as $run) {
+            $authorValue = $run->metadata['author'] ?? $run->metadata['author_login'] ?? null;
+            if ($authorValue === null) {
+                continue;
+            }
+
+            if (! is_string($authorValue)) {
+                continue;
+            }
+
+            $author = $authorValue;
+
+            if (! isset($contributorStats[$author])) {
+                $contributorStats[$author] = [
+                    'name' => $author,
+                    'pr_count' => 0,
+                    'completed' => 0,
+                ];
+            }
+
+            $contributorStats[$author]['pr_count']++;
+            if ($run->status->value === 'completed') {
+                $contributorStats[$author]['completed']++;
+            }
+        }
+
+        // Sort by PR count and get top contributors
+        usort($contributorStats, fn (array $a, array $b): int => $b['pr_count'] <=> $a['pr_count']);
+
+        $data['engineers'] = array_slice($contributorStats, 0, 10);
+        $data['top_contributor'] = $contributorStats === [] ? null : $contributorStats[0];
 
         return $data;
     }
@@ -319,11 +366,73 @@ final class BriefingDataCollectorService implements BriefingDataCollector
     {
         $data = $this->collectStandupData($workspaceId, $dateRange, $parameters);
 
-        // TODO: Add code quality metrics from findings
+        $repositoryIds = $parameters['repository_ids'] ?? [];
+
+        // Query findings within the date range
+        $findingsQuery = Finding::query()
+            ->where('workspace_id', $workspaceId)
+            ->whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
+
+        if (! empty($repositoryIds)) {
+            $findingsQuery->whereHas('run', function (\Illuminate\Database\Eloquent\Builder $query) use ($repositoryIds): void {
+                $query->whereIn('repository_id', $repositoryIds);
+            });
+        }
+
+        $findings = $findingsQuery->get();
+
+        // Count by severity
+        $severityCounts = [
+            'critical' => 0,
+            'high' => 0,
+            'medium' => 0,
+            'low' => 0,
+            'info' => 0,
+        ];
+
+        foreach ($findings as $finding) {
+            $severity = $finding->severity?->value ?? 'info';
+            if (array_key_exists($severity, $severityCounts)) {
+                $severityCounts[$severity]++;
+            }
+        }
+
+        // Count by category
+        $categoryCounts = [];
+        foreach (FindingCategory::cases() as $category) {
+            $categoryCounts[$category->value] = 0;
+        }
+
+        foreach ($findings as $finding) {
+            $category = $finding->category?->value;
+            if ($category !== null && isset($categoryCounts[$category])) {
+                $categoryCounts[$category]++;
+            }
+        }
+
+        // Get top issues by severity (critical and high)
+        $criticalFindings = $findings->filter(
+            fn (Finding $f): bool => $f->severity === SentinelConfigSeverity::Critical
+                || $f->severity === SentinelConfigSeverity::High
+        )->take(10)->map(fn (Finding $f): array => [
+            'id' => $f->id,
+            'title' => $f->title,
+            'severity' => $f->severity?->value,
+            'category' => $f->category?->value,
+            'file_path' => $f->file_path,
+            'line_start' => $f->line_start,
+        ])->values()->all();
+
         $data['code_health'] = [
-            'issues_found' => 0,
-            'issues_resolved' => 0,
-            'critical_issues' => 0,
+            'total_findings' => $findings->count(),
+            'critical_issues' => $severityCounts['critical'],
+            'high_issues' => $severityCounts['high'],
+            'medium_issues' => $severityCounts['medium'],
+            'low_issues' => $severityCounts['low'],
+            'info_issues' => $severityCounts['info'],
+            'severity_breakdown' => $severityCounts,
+            'category_breakdown' => $categoryCounts,
+            'top_critical_findings' => $criticalFindings,
         ];
 
         return $data;

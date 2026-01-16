@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Briefings;
 
+use App\Enums\BriefingGenerationStatus;
 use App\Models\Briefing;
 use App\Models\BriefingGeneration;
 use App\Models\Workspace;
@@ -140,7 +141,10 @@ final class BriefingLimitEnforcer
 
         $pendingCount = BriefingGeneration::query()
             ->where('workspace_id', $workspace->id)
-            ->whereIn('status', ['pending', 'processing'])
+            ->whereIn('status', [
+                BriefingGenerationStatus::Pending,
+                BriefingGenerationStatus::Processing,
+            ])
             ->count();
 
         if ($pendingCount >= $limit) {
