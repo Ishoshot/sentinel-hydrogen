@@ -30,3 +30,6 @@ Thumbs.db
 /tools/semantic-analyzer/go.sum
 
 .windsurf
+.playwright-mcp
+
+bin
