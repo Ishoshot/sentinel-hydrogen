@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Workspace;
 
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
@@ -21,7 +22,13 @@ final class UpdateWorkspaceRequest extends FormRequest
             return false;
         }
 
-        return $this->user()?->roleInWorkspace($workspace)?->canManageSettings() ?? false;
+        $user = $this->user();
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        return $user->roleInWorkspace($workspace)?->canManageSettings() ?? false;
     }
 
     /**
