@@ -1,0 +1,83 @@
+stateDiagram-v2
+    [*] --> WebhookReceived: PR Event (opened/synchronize/reopened)
+    
+    WebhookReceived --> ValidationChecks: ProcessPullRequestWebhook
+    
+    ValidationChecks --> Skipped_ConfigError: Config Error Detected
+    ValidationChecks --> Skipped_NoKeys: No Provider Keys
+    ValidationChecks --> Skipped_TriggerRules: Trigger Rules Failed
+    ValidationChecks --> Queued: All Checks Passed
+    
+    state Queued {
+        [*] --> GreetingPosted: Post "Review in progress" comment
+        GreetingPosted --> Dispatched: Dispatch ExecuteReviewRun job
+    }
+    
+    Queued --> InProgress: Job dequeued
+    
+    state InProgress {
+        [*] --> BuildingContext: ContextEngine.build()
+        BuildingContext --> ExecutingReview: ReviewEngine.review()
+        ExecutingReview --> StoringFindings: Save findings to DB
+        StoringFindings --> [*]
+    }
+    
+    InProgress --> Completed: Success
+    InProgress --> Failed: Exception thrown
+    InProgress --> Skipped_NoKeys: NoProviderKeyException
+    
+    state Completed {
+        [*] --> LogActivity: Log RunCompleted
+        LogActivity --> DispatchAnnotations: Queue PostRunAnnotations
+        DispatchAnnotations --> [*]
+    }
+    
+    Completed --> [*]: Terminal State
+    
+    state Failed {
+        [*] --> LogFailure: Log RunFailed
+        LogFailure --> PostComment: Post failure comment to PR
+        PostComment --> [*]
+    }
+    
+    Failed --> [*]: Terminal State
+    
+    state Skipped_ConfigError {
+        [*] --> PostConfigError: Post config error to PR
+        PostConfigError --> CreateSkippedRun: Store run with reason
+        CreateSkippedRun --> [*]
+    }
+    
+    Skipped_ConfigError --> [*]: Terminal State
+    
+    state Skipped_NoKeys {
+        [*] --> PostNoKeysComment: Post "No keys configured" to PR
+        PostNoKeysComment --> LogSkipped: Log RunSkipped
+        LogSkipped --> [*]
+    }
+    
+    Skipped_NoKeys --> [*]: Terminal State
+    
+    state Skipped_TriggerRules {
+        [*] --> CreateSkippedRun: Store run silently (no comment)
+        CreateSkippedRun --> [*]
+    }
+    
+    Skipped_TriggerRules --> [*]: Terminal State
+    
+    note right of Queued
+        Queue Priority:
+        - Premium: reviews-priority
+        - Free: reviews-default
+    end note
+    
+    note right of InProgress
+        Duration: 10-60s
+        Uses ContextEngine
+        + ReviewEngine
+    end note
+    
+    note right of Completed
+        Annotations posted
+        after 5s delay
+    end note
