@@ -8,7 +8,7 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
-use App\Services\Semantic\SemanticAnalyzerService;
+use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -33,7 +33,7 @@ final readonly class SemanticCollector implements ContextCollector
      * Create a new SemanticCollector instance.
      */
     public function __construct(
-        private SemanticAnalyzerService $semanticAnalyzer
+        private SemanticAnalyzerInterface $semanticAnalyzer
     ) {}
 
     /**

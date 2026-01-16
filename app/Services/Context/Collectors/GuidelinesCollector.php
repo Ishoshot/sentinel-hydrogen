@@ -178,7 +178,7 @@ final readonly class GuidelinesCollector implements ContextCollector
     {
         $lowerPath = mb_strtolower($path);
 
-        return array_any(self::ALLOWED_EXTENSIONS, fn ($extension): bool => str_ends_with($lowerPath, '.'.$extension));
+        return array_any(self::ALLOWED_EXTENSIONS, static fn (string $extension): bool => str_ends_with($lowerPath, '.'.$extension));
     }
 
     /**

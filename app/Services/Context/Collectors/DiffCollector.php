@@ -9,6 +9,7 @@ use App\Models\Run;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\GitHubApiService;
+use App\Support\MetadataExtractor;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\Log;
 final readonly class DiffCollector implements ContextCollector
 {
     /**
-     * Create a new DiffCollector instance.
+     * Create a new collector instance.
      */
     public function __construct(private GitHubApiService $gitHubApiService) {}
 
@@ -36,7 +37,7 @@ final readonly class DiffCollector implements ContextCollector
      */
     public function priority(): int
     {
-        return 100; // Highest priority - code diffs are essential
+        return 100;
     }
 
     /**
@@ -60,7 +61,7 @@ final readonly class DiffCollector implements ContextCollector
         /** @var Run $run */
         $run = $params['run'];
 
-        $metadata = $run->metadata ?? [];
+        $metadata = MetadataExtractor::from($run->metadata ?? []);
         $repository->loadMissing('installation');
         $installation = $repository->installation;
 
@@ -83,9 +84,7 @@ final readonly class DiffCollector implements ContextCollector
 
         [$owner, $repo] = explode('/', (string) $fullName, 2);
         $installationId = $installation->installation_id;
-        $pullRequestNumber = is_int($metadata['pull_request_number'] ?? null)
-            ? $metadata['pull_request_number']
-            : 0;
+        $pullRequestNumber = $metadata->int('pull_request_number');
 
         if ($pullRequestNumber <= 0) {
             Log::warning('DiffCollector: Invalid PR number', ['run_id' => $run->id]);
@@ -93,10 +92,8 @@ final readonly class DiffCollector implements ContextCollector
             return;
         }
 
-        // Populate PR metadata from run metadata
         $bag->pullRequest = $this->extractPullRequestData($metadata, $fullName);
 
-        // Fetch files with patches from GitHub
         $files = $this->gitHubApiService->getPullRequestFiles(
             $installationId,
             $owner,
@@ -116,10 +113,8 @@ final readonly class DiffCollector implements ContextCollector
         $bag->files = $this->normalizeFiles($files);
         $bag->metrics = $this->calculateMetrics($bag->files);
 
-        // Store sentinel config for downstream filters
         $repository->loadMissing('settings');
-        $settings = $repository->settings;
-        $sentinelConfig = $settings?->getConfigOrDefault();
+        $sentinelConfig = $repository->settings?->getConfigOrDefault();
 
         if ($sentinelConfig !== null) {
             $bag->metadata['sentinel_config'] = $sentinelConfig->toArray();
@@ -137,25 +132,24 @@ final readonly class DiffCollector implements ContextCollector
     /**
      * Extract PR metadata from run metadata.
      *
-     * @param  array<string, mixed>  $metadata
      * @return array{number: int, title: string, body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, repository_full_name: string, author: array{login: string, avatar_url: string|null}, is_draft: bool, assignees: array<int, array{login: string, avatar_url: string|null}>, reviewers: array<int, array{login: string, avatar_url: string|null}>, labels: array<int, array{name: string, color: string}>}
      */
-    private function extractPullRequestData(array $metadata, string $fullName): array
+    private function extractPullRequestData(MetadataExtractor $metadata, string $fullName): array
     {
         return [
-            'number' => $this->getInt($metadata, 'pull_request_number', 0),
-            'title' => $this->getString($metadata, 'pull_request_title', ''),
-            'body' => $this->getStringOrNull($metadata, 'pull_request_body'),
-            'base_branch' => $this->getString($metadata, 'base_branch', 'main'),
-            'head_branch' => $this->getString($metadata, 'head_branch', ''),
-            'head_sha' => $this->getString($metadata, 'head_sha', ''),
-            'sender_login' => $this->getString($metadata, 'sender_login', ''),
+            'number' => $metadata->int('pull_request_number'),
+            'title' => $metadata->string('pull_request_title'),
+            'body' => $metadata->stringOrNull('pull_request_body'),
+            'base_branch' => $metadata->string('base_branch', 'main'),
+            'head_branch' => $metadata->string('head_branch'),
+            'head_sha' => $metadata->string('head_sha'),
+            'sender_login' => $metadata->string('sender_login'),
             'repository_full_name' => $fullName,
-            'author' => $this->getAuthor($metadata),
-            'is_draft' => $this->getBool($metadata, 'is_draft', false),
-            'assignees' => $this->getUsers($metadata, 'assignees'),
-            'reviewers' => $this->getUsers($metadata, 'reviewers'),
-            'labels' => $this->getLabels($metadata),
+            'author' => $metadata->author(),
+            'is_draft' => $metadata->bool('is_draft'),
+            'assignees' => $metadata->users('assignees'),
+            'reviewers' => $metadata->users('reviewers'),
+            'labels' => $metadata->labels(),
         ];
     }
 
@@ -167,14 +161,18 @@ final readonly class DiffCollector implements ContextCollector
      */
     private function normalizeFiles(array $files): array
     {
-        return array_map(fn (array $file): array => [
-            'filename' => $this->getString($file, 'filename', ''),
-            'status' => $this->getString($file, 'status', 'modified'),
-            'additions' => $this->getInt($file, 'additions', 0),
-            'deletions' => $this->getInt($file, 'deletions', 0),
-            'changes' => $this->getInt($file, 'changes', 0),
-            'patch' => $this->getStringOrNull($file, 'patch'),
-        ], $files);
+        return array_map(function (array $file): array {
+            $extractor = MetadataExtractor::from($file);
+
+            return [
+                'filename' => $extractor->string('filename'),
+                'status' => $extractor->string('status', 'modified'),
+                'additions' => $extractor->int('additions'),
+                'deletions' => $extractor->int('deletions'),
+                'changes' => $extractor->int('changes'),
+                'patch' => $extractor->stringOrNull('patch'),
+            ];
+        }, $files);
     }
 
     /**
@@ -190,123 +188,5 @@ final readonly class DiffCollector implements ContextCollector
             'lines_added' => array_sum(array_column($files, 'additions')),
             'lines_deleted' => array_sum(array_column($files, 'deletions')),
         ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function getString(array $data, string $key, string $default): string
-    {
-        $value = $data[$key] ?? $default;
-
-        return is_string($value) ? $value : $default;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function getStringOrNull(array $data, string $key): ?string
-    {
-        $value = $data[$key] ?? null;
-
-        return is_string($value) ? $value : null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function getInt(array $data, string $key, int $default): int
-    {
-        $value = $data[$key] ?? $default;
-
-        return is_int($value) ? $value : (is_numeric($value) ? (int) $value : $default);
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function getBool(array $data, string $key, bool $default): bool
-    {
-        $value = $data[$key] ?? $default;
-
-        return is_bool($value) ? $value : $default;
-    }
-
-    /**
-     * @param  array<string, mixed>  $metadata
-     * @return array{login: string, avatar_url: string|null}
-     */
-    private function getAuthor(array $metadata): array
-    {
-        $author = $metadata['author'] ?? null;
-        $fallbackLogin = $this->getString($metadata, 'sender_login', '');
-
-        if (is_array($author) && isset($author['login']) && is_string($author['login'])) {
-            return [
-                'login' => $author['login'],
-                'avatar_url' => isset($author['avatar_url']) && is_string($author['avatar_url'])
-                    ? $author['avatar_url']
-                    : null,
-            ];
-        }
-
-        return [
-            'login' => $fallbackLogin,
-            'avatar_url' => null,
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $metadata
-     * @return array<int, array{login: string, avatar_url: string|null}>
-     */
-    private function getUsers(array $metadata, string $key): array
-    {
-        $users = $metadata[$key] ?? [];
-
-        if (! is_array($users)) {
-            return [];
-        }
-
-        $result = [];
-        foreach ($users as $user) {
-            if (is_array($user) && isset($user['login']) && is_string($user['login'])) {
-                $result[] = [
-                    'login' => $user['login'],
-                    'avatar_url' => isset($user['avatar_url']) && is_string($user['avatar_url'])
-                        ? $user['avatar_url']
-                        : null,
-                ];
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param  array<string, mixed>  $metadata
-     * @return array<int, array{name: string, color: string}>
-     */
-    private function getLabels(array $metadata): array
-    {
-        $labels = $metadata['labels'] ?? [];
-
-        if (! is_array($labels)) {
-            return [];
-        }
-
-        $result = [];
-        foreach ($labels as $label) {
-            if (is_array($label) && isset($label['name']) && is_string($label['name'])) {
-                $result[] = [
-                    'name' => $label['name'],
-                    'color' => isset($label['color']) && is_string($label['color'])
-                        ? $label['color']
-                        : 'cccccc',
-                ];
-            }
-        }
-
-        return $result;
     }
 }

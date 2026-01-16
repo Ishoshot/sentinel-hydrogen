@@ -76,12 +76,7 @@ final class BinaryFileFilter implements ContextFilter
             fn (array $file): bool => ! $this->shouldExclude($file['filename'])
         ));
 
-        // Recalculate metrics after filtering
-        $bag->metrics = [
-            'files_changed' => count($bag->files),
-            'lines_added' => array_sum(array_column($bag->files, 'additions')),
-            'lines_deleted' => array_sum(array_column($bag->files, 'deletions')),
-        ];
+        $bag->recalculateMetrics();
     }
 
     /**
