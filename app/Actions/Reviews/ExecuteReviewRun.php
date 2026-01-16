@@ -84,16 +84,18 @@ final readonly class ExecuteReviewRun
         }
 
         $durationMs = (int) round((microtime(true) - $startTime) * 1000);
+        $durationSeconds = (int) round($durationMs / 1000);
         $metrics = $result['metrics'];
         $metrics['duration_ms'] = $durationMs;
 
-        DB::transaction(function () use ($run, $policySnapshot, $result, $metrics): void {
+        DB::transaction(function () use ($run, $policySnapshot, $result, $metrics, $durationSeconds): void {
             $metadata = $run->metadata ?? [];
             $metadata['review_summary'] = $result['summary'];
 
             $run->forceFill([
                 'status' => RunStatus::Completed,
                 'completed_at' => now(),
+                'duration_seconds' => $durationSeconds,
                 'metrics' => $metrics,
                 'policy_snapshot' => $policySnapshot,
                 'metadata' => $metadata,
@@ -155,9 +157,6 @@ final readonly class ExecuteReviewRun
     /**
      * Mark the run as skipped (e.g., no BYOK keys configured).
      *
-     * This is not an error condition - it simply means the repository
-     * has not configured any AI provider keys for reviews.
-     *
      * @param  array<string, mixed>  $policySnapshot
      */
     private function markSkipped(Run $run, array $policySnapshot, NoProviderKeyException $exception): Run
@@ -166,12 +165,7 @@ final readonly class ExecuteReviewRun
         $metadata['skip_reason'] = 'no_provider_keys';
         $metadata['skip_message'] = $exception->getMessage();
 
-        $run->forceFill([
-            'status' => RunStatus::Skipped,
-            'completed_at' => now(),
-            'policy_snapshot' => $policySnapshot,
-            'metadata' => $metadata,
-        ])->save();
+        $this->finalizeRun($run, RunStatus::Skipped, $policySnapshot, $metadata);
 
         Log::info('Review run skipped - no BYOK provider keys configured', [
             'run_id' => $run->id,
@@ -180,7 +174,6 @@ final readonly class ExecuteReviewRun
         ]);
 
         $this->logRunSkipped($run, $exception);
-
         $this->postSkipReasonComment->handle($run, SkipReason::NoProviderKeys);
 
         return $run;
@@ -199,12 +192,7 @@ final readonly class ExecuteReviewRun
             'type' => $exception::class,
         ];
 
-        $run->forceFill([
-            'status' => RunStatus::Failed,
-            'completed_at' => now(),
-            'policy_snapshot' => $policySnapshot,
-            'metadata' => $metadata,
-        ])->save();
+        $this->finalizeRun($run, RunStatus::Failed, $policySnapshot, $metadata);
 
         Log::error('Review run failed', [
             'run_id' => $run->id,
@@ -213,8 +201,28 @@ final readonly class ExecuteReviewRun
         ]);
 
         $this->logRunFailed($run, $exception);
-
         $this->postSkipReasonComment->handle($run, SkipReason::RunFailed, $this->getSimpleErrorType($exception));
+    }
+
+    /**
+     * Finalize a run with the given status and metadata.
+     *
+     * @param  array<string, mixed>  $policySnapshot
+     * @param  array<string, mixed>  $metadata
+     */
+    private function finalizeRun(Run $run, RunStatus $status, array $policySnapshot, array $metadata): void
+    {
+        $durationSeconds = $run->started_at !== null
+            ? (int) now()->diffInSeconds($run->started_at)
+            : null;
+
+        $run->forceFill([
+            'status' => $status,
+            'completed_at' => now(),
+            'duration_seconds' => $durationSeconds,
+            'policy_snapshot' => $policySnapshot,
+            'metadata' => $metadata,
+        ])->save();
     }
 
     /**
@@ -243,31 +251,14 @@ final readonly class ExecuteReviewRun
      */
     private function logRunCompleted(Run $run, array $result): void
     {
-        $run->loadMissing('workspace');
-        $workspace = $run->workspace;
-
-        if ($workspace === null) {
-            return;
-        }
-
-        $metadata = $run->metadata ?? [];
-        $pullRequestNumber = is_int($metadata['pull_request_number'] ?? null) ? $metadata['pull_request_number'] : 0;
-        $repositoryFullName = is_string($metadata['repository_full_name'] ?? null) ? $metadata['repository_full_name'] : 'unknown';
-
-        $this->logActivity->handle(
-            workspace: $workspace,
-            type: ActivityType::RunCompleted,
-            description: sprintf(
-                'Review completed for PR #%d in %s',
-                $pullRequestNumber,
-                $repositoryFullName
-            ),
-            subject: $run,
-            metadata: [
+        $this->logRunActivity(
+            $run,
+            ActivityType::RunCompleted,
+            'Review completed for PR #%d in %s',
+            [
                 'findings_count' => count($result['findings']),
                 'risk_level' => $result['summary']['risk_level'],
-                'pull_request_number' => $pullRequestNumber,
-            ],
+            ]
         );
     }
 
@@ -276,31 +267,14 @@ final readonly class ExecuteReviewRun
      */
     private function logRunFailed(Run $run, Throwable $exception): void
     {
-        $run->loadMissing('workspace');
-        $workspace = $run->workspace;
-
-        if ($workspace === null) {
-            return;
-        }
-
-        $metadata = $run->metadata ?? [];
-        $pullRequestNumber = is_int($metadata['pull_request_number'] ?? null) ? $metadata['pull_request_number'] : 0;
-        $repositoryFullName = is_string($metadata['repository_full_name'] ?? null) ? $metadata['repository_full_name'] : 'unknown';
-
-        $this->logActivity->handle(
-            workspace: $workspace,
-            type: ActivityType::RunFailed,
-            description: sprintf(
-                'Review failed for PR #%d in %s',
-                $pullRequestNumber,
-                $repositoryFullName
-            ),
-            subject: $run,
-            metadata: [
+        $this->logRunActivity(
+            $run,
+            ActivityType::RunFailed,
+            'Review failed for PR #%d in %s',
+            [
                 'error_type' => $exception::class,
                 'error_message' => $exception->getMessage(),
-                'pull_request_number' => $pullRequestNumber,
-            ],
+            ]
         );
     }
 
@@ -308,6 +282,24 @@ final readonly class ExecuteReviewRun
      * Log activity for a skipped run.
      */
     private function logRunSkipped(Run $run, NoProviderKeyException $exception): void
+    {
+        $this->logRunActivity(
+            $run,
+            ActivityType::RunSkipped,
+            'Review skipped for PR #%d in %s - no provider keys configured',
+            [
+                'skip_reason' => 'no_provider_keys',
+                'skip_message' => $exception->getMessage(),
+            ]
+        );
+    }
+
+    /**
+     * Log activity for a run with common metadata extraction.
+     *
+     * @param  array<string, mixed>  $additionalMetadata
+     */
+    private function logRunActivity(Run $run, ActivityType $type, string $descriptionFormat, array $additionalMetadata = []): void
     {
         $run->loadMissing('workspace');
         $workspace = $run->workspace;
@@ -322,18 +314,10 @@ final readonly class ExecuteReviewRun
 
         $this->logActivity->handle(
             workspace: $workspace,
-            type: ActivityType::RunSkipped,
-            description: sprintf(
-                'Review skipped for PR #%d in %s - no provider keys configured',
-                $pullRequestNumber,
-                $repositoryFullName
-            ),
+            type: $type,
+            description: sprintf($descriptionFormat, $pullRequestNumber, $repositoryFullName),
             subject: $run,
-            metadata: [
-                'skip_reason' => 'no_provider_keys',
-                'skip_message' => $exception->getMessage(),
-                'pull_request_number' => $pullRequestNumber,
-            ],
+            metadata: array_merge(['pull_request_number' => $pullRequestNumber], $additionalMetadata),
         );
     }
 }

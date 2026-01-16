@@ -8,6 +8,7 @@ use App\Actions\Activities\LogActivity;
 use App\Enums\ActivityType;
 use App\Enums\AiProvider;
 use App\Enums\PlanFeature;
+use App\Models\AiOption;
 use App\Models\ProviderKey;
 use App\Models\Repository;
 use App\Models\User;
@@ -34,12 +35,14 @@ final readonly class StoreProviderKey
      * Store or update a provider key for the repository.
      *
      * @param  string  $key  The API key (will be encrypted at storage)
+     * @param  int|null  $providerModelId  Optional ID of the selected AI model
      */
     public function handle(
         Repository $repository,
         AiProvider $provider,
         #[SensitiveParameter] string $key,
         ?User $actor = null,
+        ?int $providerModelId = null,
     ): ProviderKey {
         $workspace = $repository->workspace;
 
@@ -55,6 +58,19 @@ final readonly class StoreProviderKey
             }
         }
 
+        // Validate provider model belongs to the selected provider
+        if ($providerModelId !== null) {
+            $aiOption = AiOption::query()
+                ->where('id', $providerModelId)
+                ->where('provider', $provider)
+                ->where('is_active', true)
+                ->first();
+
+            if ($aiOption === null) {
+                throw new InvalidArgumentException('Invalid model selected for this provider.');
+            }
+        }
+
         // Upsert: create or update existing key for this provider
         $providerKey = ProviderKey::updateOrCreate(
             [
@@ -64,6 +80,7 @@ final readonly class StoreProviderKey
             [
                 'workspace_id' => $repository->workspace_id,
                 'encrypted_key' => $key,
+                'provider_model_id' => $providerModelId,
             ]
         );
 

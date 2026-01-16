@@ -7,8 +7,10 @@ namespace App\Actions\Reviews;
 use App\Actions\Activities\LogActivity;
 use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Enums\ActivityType;
+use App\Enums\OAuthProvider;
 use App\Enums\RunStatus;
 use App\Enums\SkipReason;
+use App\Models\ProviderIdentity;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Plans\PlanLimitEnforcer;
@@ -88,6 +90,8 @@ final readonly class CreatePullRequestRun
 
         $status = $skipReason !== null ? RunStatus::Skipped : RunStatus::Queued;
 
+        $initiatedByUserId = $this->findUserIdByGitHubLogin($payload['author']['login']);
+
         $run = Run::query()->firstOrCreate(
             [
                 'workspace_id' => $repository->workspace_id,
@@ -98,6 +102,11 @@ final readonly class CreatePullRequestRun
                 'status' => $status,
                 'started_at' => now(),
                 'completed_at' => $skipReason !== null ? now() : null,
+                'initiated_by_id' => $initiatedByUserId,
+                'pr_number' => $payload['pull_request_number'],
+                'pr_title' => $payload['pull_request_title'],
+                'base_branch' => $payload['base_branch'],
+                'head_branch' => $payload['head_branch'],
                 'metadata' => $metadata,
                 'created_at' => now(),
             ]
@@ -151,5 +160,18 @@ final readonly class CreatePullRequestRun
             subject: $run,
             metadata: $activityMetadata,
         );
+    }
+
+    /**
+     * Find a Sentinel user ID by their GitHub login.
+     */
+    private function findUserIdByGitHubLogin(string $githubLogin): ?int
+    {
+        $identity = ProviderIdentity::query()
+            ->where('provider', OAuthProvider::GitHub)
+            ->where('nickname', $githubLogin)
+            ->first();
+
+        return $identity?->user_id;
     }
 }
