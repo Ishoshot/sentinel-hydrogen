@@ -123,7 +123,9 @@ final class ConnectionController
 
         Gate::authorize('delete', $connection);
 
-        $disconnectConnection->handle($connection, $request->user());
+        /** @var \App\Models\User|null $user */
+        $user = $request->user();
+        $disconnectConnection->handle($connection, $user);
 
         return response()->json([
             'message' => 'GitHub disconnected successfully.',

@@ -52,6 +52,8 @@ final class InvitationController
             abort(401);
         }
 
+        /** @var \App\Models\User $user */
+
         /** @var string $email */
         $email = $request->validated('email');
 
@@ -181,6 +183,7 @@ final class InvitationController
             ], 401);
         }
 
+        /** @var \App\Models\User $user */
         try {
             $acceptInvitation->handle($invitation, $user);
         } catch (InvalidArgumentException $invalidArgumentException) {
