@@ -23,6 +23,7 @@ final class EnsureWorkspaceRole
             abort(404);
         }
 
+        /** @var \App\Models\User|null $user */
         $user = $request->user();
 
         if ($user === null) {

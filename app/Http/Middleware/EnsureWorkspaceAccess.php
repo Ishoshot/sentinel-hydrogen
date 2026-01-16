@@ -22,6 +22,7 @@ final class EnsureWorkspaceAccess
             abort(404);
         }
 
+        /** @var \App\Models\User|null $user */
         $user = $request->user();
 
         if ($user === null || ! $user->belongsToWorkspace($workspace)) {
