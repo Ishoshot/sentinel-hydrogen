@@ -6,6 +6,7 @@ namespace App\Http\Requests\GitHub;
 
 use App\Models\Repository;
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 final class UpdateRepositorySettingsRequest extends FormRequest
 {
@@ -42,6 +43,7 @@ final class UpdateRepositorySettingsRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    #[Override]
     public function messages(): array
     {
         return [

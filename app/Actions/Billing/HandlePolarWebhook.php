@@ -61,6 +61,7 @@ final readonly class HandlePolarWebhook
         $subscriptionId = $checkout['subscription_id'] ?? $checkout['subscription'] ?? null;
         $customerId = $checkout['customer_id'] ?? $checkout['customer'] ?? null;
         $planTier = $metadata['plan_tier'] ?? null;
+        $promotionId = $metadata['promotion_id'] ?? null;
 
         if (! is_string($workspaceId) || ! is_string($subscriptionId) || ! is_string($customerId)) {
             return;
@@ -78,7 +79,7 @@ final readonly class HandlePolarWebhook
             return;
         }
 
-        Subscription::updateOrCreate(
+        $subscription = Subscription::updateOrCreate(
             ['polar_subscription_id' => $subscriptionId],
             [
                 'workspace_id' => $workspace->id,
@@ -94,6 +95,34 @@ final readonly class HandlePolarWebhook
             'plan_id' => $plan->id,
             'subscription_status' => SubscriptionStatus::Active,
         ])->save();
+
+        $this->confirmPromotionUsage($workspace, $subscription, $promotionId);
+    }
+
+    /**
+     * Confirm promotion usage after successful checkout.
+     */
+    private function confirmPromotionUsage(Workspace $workspace, Subscription $subscription, mixed $promotionId): void
+    {
+        if (! is_string($promotionId) || $promotionId === '') {
+            return;
+        }
+
+        $usage = PromotionUsage::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('promotion_id', (int) $promotionId)
+            ->where('status', PromotionUsageStatus::Pending)
+            ->first();
+
+        if ($usage instanceof PromotionUsage) {
+            $usage->confirm($subscription);
+
+            Log::info('Promotion usage confirmed', [
+                'promotion_id' => $promotionId,
+                'workspace_id' => $workspace->id,
+                'subscription_id' => $subscription->id,
+            ]);
+        }
     }
 
     /**

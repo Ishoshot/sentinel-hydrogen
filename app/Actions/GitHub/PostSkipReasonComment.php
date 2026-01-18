@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
+use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Enums\SkipReason;
 use App\Models\Run;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
@@ -14,7 +15,7 @@ use Throwable;
 /**
  * Posts a comment to GitHub explaining why a review was skipped or failed.
  */
-final readonly class PostSkipReasonComment
+final readonly class PostSkipReasonComment implements PostsSkipReasonComment
 {
     /**
      * Create a new action instance.

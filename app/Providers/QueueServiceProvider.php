@@ -13,6 +13,7 @@ use App\Services\Queue\Rules\WebhookJobRule;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
+use Override;
 
 /**
  * Service provider for the queue routing system.
@@ -24,6 +25,7 @@ final class QueueServiceProvider extends ServiceProvider implements DeferrablePr
     /**
      * Register any application services.
      */
+    #[Override]
     public function register(): void
     {
         // Register individual rules
@@ -63,6 +65,7 @@ final class QueueServiceProvider extends ServiceProvider implements DeferrablePr
      *
      * @return array<int, class-string|string>
      */
+    #[Override]
     public function provides(): array
     {
         return [

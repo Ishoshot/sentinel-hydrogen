@@ -33,6 +33,17 @@ jobs:
       - name: Build Assets
         run: npm run build
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: tools/semantic-analyzer/go.sum
+
+      - name: Build Semantic Analyzer
+        run: |
+          cd tools/semantic-analyzer
+          go build -o ../../bin/semantic-analyzer .
+
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 

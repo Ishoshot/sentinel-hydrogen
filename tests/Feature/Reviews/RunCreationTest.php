@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Actions\GitHub\Contracts\PostsAutoReviewDisabledComment;
 use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
+use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Actions\Reviews\CreatePullRequestRun;
 use App\Actions\Reviews\SyncPullRequestRunMetadata;
 use App\Enums\ProviderType;
@@ -20,6 +22,32 @@ use App\Services\GitHub\GitHubWebhookService;
 use App\Services\Queue\QueueResolver;
 use App\Services\SentinelConfig\TriggerRuleEvaluator;
 use Illuminate\Support\Facades\Queue;
+
+use function Pest\Laravel\mock;
+
+beforeEach(function (): void {
+    mock(PostsSkipReasonComment::class)
+        ->shouldReceive('handle')
+        ->andReturnNull();
+
+    mock(PostsAutoReviewDisabledComment::class)
+        ->shouldReceive('handle')
+        ->andReturnNull();
+});
+
+/**
+ * Create a fake auto-review disabled poster.
+ */
+function fakeAutoReviewDisabledPoster(): PostsAutoReviewDisabledComment
+{
+    return new class implements PostsAutoReviewDisabledComment
+    {
+        public function handle(Repository $repository, int $pullRequestNumber): ?int
+        {
+            return null;
+        }
+    };
+}
 
 /**
  * Create a fake config error poster that should not be called.
@@ -95,6 +123,7 @@ it('creates a run for pull request webhook when auto review is enabled', functio
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
         app(QueueResolver::class)
     );
@@ -166,6 +195,7 @@ it('skips run creation when auto review is disabled', function (): void {
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
         app(QueueResolver::class)
     );
@@ -244,6 +274,7 @@ it('syncs metadata when labels are added to an existing run', function (): void 
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
         app(QueueResolver::class)
     );
@@ -326,6 +357,7 @@ it('syncs metadata when reviewers are requested on an existing run', function ()
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
         app(QueueResolver::class)
     );
@@ -397,6 +429,7 @@ it('does not sync metadata when no existing run is found', function (): void {
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
         app(QueueResolver::class)
     );
@@ -482,6 +515,7 @@ it('creates skipped run and posts error comment when repository has config error
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         $fakeConfigErrorPoster,
+        fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
         app(QueueResolver::class)
     );
@@ -567,6 +601,7 @@ it('creates normal run when repository has no config error', function (): void {
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
         app(QueueResolver::class)
     );
@@ -646,6 +681,7 @@ it('creates skipped run when PR target branch does not match trigger rules', fun
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
         app(QueueResolver::class)
     );
@@ -725,6 +761,7 @@ it('creates skipped run when PR author is in skip list', function (): void {
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
         app(QueueResolver::class)
     );
@@ -806,6 +843,7 @@ it('creates skipped run when PR has skip label', function (): void {
         app(SyncPullRequestRunMetadata::class),
         $fakeGreeting,
         fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
         app(QueueResolver::class)
     );

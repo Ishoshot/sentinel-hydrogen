@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Override;
 
 /**
  * @property int $id
@@ -123,6 +124,7 @@ final class Invitation extends Model
     /**
      * Bootstrap the model with creating event handlers.
      */
+    #[Override]
     protected static function booted(): void
     {
         self::creating(function (Invitation $invitation): void {

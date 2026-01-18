@@ -6,6 +6,7 @@ namespace App\Http\Requests\Workspace;
 
 use App\Models\Workspace;
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 final class UpdateWorkspaceRequest extends FormRequest
 {
@@ -36,6 +37,7 @@ final class UpdateWorkspaceRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    #[Override]
     public function messages(): array
     {
         return [

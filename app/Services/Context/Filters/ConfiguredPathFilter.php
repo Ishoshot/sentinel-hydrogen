@@ -124,13 +124,7 @@ final class ConfiguredPathFilter implements ContextFilter
      */
     private function matchesAnyPattern(string $path, array $patterns): bool
     {
-        foreach ($patterns as $pattern) {
-            if ($this->matchesGlob($path, $pattern)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($patterns, fn (string $pattern): bool => $this->matchesGlob($path, $pattern));
     }
 
     /**

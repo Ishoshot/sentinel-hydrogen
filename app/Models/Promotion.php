@@ -101,6 +101,16 @@ final class Promotion extends Model
     }
 
     /**
+     * Get all usages of this promotion.
+     *
+     * @return HasMany<PromotionUsage, $this>
+     */
+    public function usages(): HasMany
+    {
+        return $this->hasMany(PromotionUsage::class);
+    }
+
+    /**
      * Scope to find active and valid promotions.
      *
      * @param  Builder<Promotion>  $query

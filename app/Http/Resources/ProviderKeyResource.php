@@ -7,6 +7,7 @@ namespace App\Http\Resources;
 use App\Enums\AiProvider;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Override;
 
 /**
  * @mixin \App\Models\ProviderKey
@@ -21,6 +22,7 @@ final class ProviderKeyResource extends JsonResource
      *
      * @return array<string, mixed>
      */
+    #[Override]
     public function toArray(Request $request): array
     {
         return [

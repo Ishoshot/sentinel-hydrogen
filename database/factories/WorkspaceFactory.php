@@ -10,6 +10,7 @@ use App\Models\Workspace;
 use Database\Factories\Concerns\RefreshOnCreate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
+use Override;
 
 /**
  * @extends Factory<Workspace>
@@ -42,6 +43,7 @@ final class WorkspaceFactory extends Factory
     /**
      * Configure the factory.
      */
+    #[Override]
     public function configure(): static
     {
         return $this->afterCreating(function (Workspace $workspace): void {

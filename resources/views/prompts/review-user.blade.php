@@ -181,6 +181,73 @@ The following files are provided in full for better understanding of the changes
 @endforeach
 @endif
 
+@if(isset($semantics) && count($semantics) > 0)
+## Semantic Analysis
+
+The following structural information was extracted from the changed files using static analysis:
+
+@foreach($semantics as $filename => $data)
+### `{{ $filename }}`
+**Language:** {{ $data['language'] ?? 'unknown' }}
+
+@if(isset($data['functions']) && count($data['functions']) > 0)
+**Functions:**
+@foreach($data['functions'] as $func)
+- `{{ $func['name'] }}({{ implode(', ', array_column($func['parameters'] ?? [], 'name')) }})` @ lines {{ $func['line_start'] }}-{{ $func['line_end'] }}@if(!empty($func['return_type'])) → `{{ $func['return_type'] }}`@endif
+@endforeach
+
+@endif
+@if(isset($data['classes']) && count($data['classes']) > 0)
+**Classes:**
+@foreach($data['classes'] as $class)
+- `{{ $class['name'] }}`{{ !empty($class['extends']) ? " extends `{$class['extends']}`" : '' }}{{ !empty($class['implements']) ? ' implements ' . implode(', ', array_map(fn($i) => "`$i`", $class['implements'])) : '' }} @ lines {{ $class['line_start'] }}-{{ $class['line_end'] }}
+  @if(isset($class['methods']) && count($class['methods']) > 0)
+  - Methods: @foreach($class['methods'] as $method)`{{ $method['name'] }}()`@if(!$loop->last), @endif @endforeach
+
+  @endif
+@endforeach
+
+@endif
+@if(isset($data['imports']) && count($data['imports']) > 0)
+**Imports ({{ count($data['imports']) }}):**
+@foreach(array_slice($data['imports'], 0, 10) as $import)
+- `{{ $import['module'] }}`@if(!empty($import['symbols'])) ({{ implode(', ', $import['symbols']) }})@endif
+
+@endforeach
+@if(count($data['imports']) > 10)
+_... and {{ count($data['imports']) - 10 }} more imports_
+@endif
+
+@endif
+@if(isset($data['calls']) && count($data['calls']) > 0)
+**Function Calls ({{ count($data['calls']) }} total):**
+@foreach(array_slice($data['calls'], 0, 10) as $call)
+- Line {{ $call['line'] }}: `{{ $call['callee'] }}()`@if($call['is_method_call'] && !empty($call['receiver'])) on `{{ $call['receiver'] }}`@endif
+
+@endforeach
+@if(count($data['calls']) > 10)
+_... and {{ count($data['calls']) - 10 }} more calls_
+@endif
+
+@endif
+@if(isset($data['errors']) && count($data['errors']) > 0)
+**⚠️ Syntax Errors Detected:**
+@foreach($data['errors'] as $error)
+- Line {{ $error['line'] }}: {{ $error['message'] }}
+@endforeach
+
+@endif
+@endforeach
+
+**Use semantic analysis to:**
+- Verify call chains and dependencies
+- Detect type mismatches when return types change
+- Identify unused imports or missing imports
+- Check if removed functions are still being called
+- Validate class inheritance and interface implementations
+
+@endif
+
 ## Review Request
 
 Please review this pull request and provide your analysis in the specified JSON format. Focus on:

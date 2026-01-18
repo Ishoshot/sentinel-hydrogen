@@ -7,6 +7,7 @@ namespace App\Http\Resources;
 use Brick\Money\Money;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Override;
 
 /**
  * @property-read \App\Models\Plan $resource
@@ -18,6 +19,7 @@ final class PlanResource extends JsonResource
      *
      * @return array<string, mixed>
      */
+    #[Override]
     public function toArray(Request $request): array
     {
         /** @var Money|null $priceMonthly */

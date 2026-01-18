@@ -49,11 +49,16 @@
         }
     },
     "scripts": {
+        "build-analyzer": [
+            "@php -r \"if (!file_exists('tools/semantic-analyzer/go.mod')) { echo 'Go module not found. Run: cd tools/semantic-analyzer && go mod download'; exit(1); }\"",
+            "cd tools/semantic-analyzer && go build -o ../../bin/semantic-analyzer ."
+        ],
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
             "@php artisan migrate --force",
+            "@build-analyzer",
             "npm install",
             "npm run build"
         ],

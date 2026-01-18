@@ -8,6 +8,7 @@ use App\Enums\TeamRole;
 use App\Models\Workspace;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Override;
 
 final class UpdateTeamMemberRequest extends FormRequest
 {
@@ -38,6 +39,7 @@ final class UpdateTeamMemberRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    #[Override]
     public function messages(): array
     {
         return [

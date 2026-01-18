@@ -7,6 +7,7 @@ namespace App\Http\Requests\ProviderKey;
 use App\Enums\AiProvider;
 use App\Models\Repository;
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 final class StoreProviderKeyRequest extends FormRequest
 {
@@ -44,6 +45,7 @@ final class StoreProviderKeyRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    #[Override]
     public function messages(): array
     {
         return [

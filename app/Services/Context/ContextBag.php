@@ -26,6 +26,7 @@ final class ContextBag
      * @param  array<int, array{run_id: int, summary: string, findings_count: int, severity_breakdown: array<string, int>, key_findings: array<int, array{severity: string, category: string, title: string, file_path: string|null, line_start: int|null, fingerprint: string}>, created_at: string}>  $reviewHistory
      * @param  array<int, array{path: string, description: string|null, content: string}>  $guidelines
      * @param  array<string, string>  $fileContents  Full file contents for touched files (path => content)
+     * @param  array<string, array<string, mixed>>  $semantics  Semantic analysis data (path => analysis)
      * @param  array<string, mixed>  $metadata
      */
     public function __construct(
@@ -38,6 +39,7 @@ final class ContextBag
         public array $reviewHistory = [],
         public array $guidelines = [],
         public array $fileContents = [],
+        public array $semantics = [],
         public array $metadata = [],
     ) {}
 
@@ -93,6 +95,11 @@ final class ContextBag
             $totalChars += mb_strlen($content);
         }
 
+        // Semantic analysis data
+        foreach ($this->semantics as $data) {
+            $totalChars += mb_strlen(json_encode($data) ?: '');
+        }
+
         return (int) ceil($totalChars * self::TOKENS_PER_CHAR);
     }
 
@@ -121,6 +128,7 @@ final class ContextBag
             'review_history' => $this->reviewHistory,
             'guidelines' => $this->guidelines,
             'file_contents' => $this->fileContents,
+            'semantics' => $this->semantics,
             'metadata' => $this->metadata,
         ];
     }

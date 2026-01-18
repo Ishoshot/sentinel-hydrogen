@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Actions\Reviews\ExecuteReviewRun;
 use App\Enums\ProviderType;
 use App\Enums\RunStatus;
@@ -21,6 +22,10 @@ use function Pest\Laravel\mock;
 
 it('executes a review run and stores findings', function (): void {
     Queue::fake();
+
+    mock(PostsSkipReasonComment::class)
+        ->shouldReceive('handle')
+        ->andReturnNull();
     $provider = Provider::query()->firstOrCreate(
         ['type' => ProviderType::GitHub],
         ['name' => 'GitHub', 'is_active' => true]

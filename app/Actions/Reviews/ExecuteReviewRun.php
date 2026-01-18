@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Reviews;
 
 use App\Actions\Activities\LogActivity;
-use App\Actions\GitHub\PostSkipReasonComment;
+use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Enums\ActivityType;
 use App\Enums\RunStatus;
 use App\Enums\SkipReason;
@@ -31,7 +31,7 @@ final readonly class ExecuteReviewRun
         private ContextEngineContract $contextEngine,
         private ReviewEngine $reviewEngine,
         private LogActivity $logActivity,
-        private PostSkipReasonComment $postSkipReasonComment,
+        private PostsSkipReasonComment $postSkipReasonComment,
     ) {}
 
     /**

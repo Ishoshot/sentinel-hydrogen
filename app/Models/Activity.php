@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Override;
 
 /**
  * @property int $id
@@ -89,6 +90,7 @@ final class Activity extends Model
     /**
      * Boot the model.
      */
+    #[Override]
     protected static function booted(): void
     {
         self::creating(function (Activity $activity): void {
