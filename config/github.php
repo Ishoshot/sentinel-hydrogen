@@ -18,6 +18,8 @@ return [
 
     'app_name' => env('GITHUB_APP_NAME'),
 
+    'private_key' => env('GITHUB_PRIVATE_KEY'),
+
     'private_key_path' => env('GITHUB_PRIVATE_KEY_PATH', storage_path('app/github/private-key.pem')),
 
     'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),

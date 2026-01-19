@@ -8,7 +8,6 @@ use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use DateTimeImmutable;
 use GrahamCampbell\GitHub\GitHubManager;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
@@ -32,23 +31,7 @@ final readonly class GitHubAppService implements GitHubAppServiceContract
      */
     public function generateJwt(): string
     {
-        /** @var string $configPath */
-        $configPath = config('github.private_key_path');
-        $privateKeyPath = str_starts_with($configPath, '/') ? $configPath : base_path($configPath);
-
-        if (! file_exists($privateKeyPath)) {
-            Log::error('GitHub App private key not found', ['path' => $privateKeyPath]);
-
-            throw new RuntimeException('GitHub App private key not found at: '.$privateKeyPath);
-        }
-
-        $privateKey = file_get_contents($privateKeyPath);
-
-        if ($privateKey === false || $privateKey === '') {
-            Log::error('Failed to read GitHub App private key', ['path' => $privateKeyPath]);
-
-            throw new RuntimeException('Failed to read GitHub App private key');
-        }
+        $privateKey = $this->getPrivateKey();
 
         $config = Configuration::forAsymmetricSigner(
             new Sha256,
@@ -165,5 +148,38 @@ final readonly class GitHubAppService implements GitHubAppServiceContract
         }
 
         return sprintf('https://github.com/settings/installations/%d', $installationId);
+    }
+
+    /**
+     * Get the private key from environment variable or file.
+     *
+     * @throws RuntimeException If the private key cannot be read
+     */
+    private function getPrivateKey(): string
+    {
+        $privateKeyFromEnv = config('github.private_key');
+        if (is_string($privateKeyFromEnv) && $privateKeyFromEnv !== '') {
+            return $privateKeyFromEnv;
+        }
+
+        /** @var string $configPath */
+        $configPath = config('github.private_key_path');
+        $privateKeyPath = str_starts_with($configPath, '/') ? $configPath : base_path($configPath);
+
+        if (! file_exists($privateKeyPath)) {
+            Log::error('GitHub App private key not found', ['path' => $privateKeyPath]);
+
+            throw new RuntimeException('GitHub App private key not found at: '.$privateKeyPath);
+        }
+
+        $privateKey = file_get_contents($privateKeyPath);
+
+        if ($privateKey === false || $privateKey === '') {
+            Log::error('Failed to read GitHub App private key', ['path' => $privateKeyPath]);
+
+            throw new RuntimeException('Failed to read GitHub App private key');
+        }
+
+        return $privateKey;
     }
 }
