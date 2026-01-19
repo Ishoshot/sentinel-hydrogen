@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\Analytics\RunActivityTimelineController;
 use App\Http\Controllers\Api\Analytics\SuccessRateController;
 use App\Http\Controllers\Api\Analytics\TokenUsageController;
 use App\Http\Controllers\Api\Analytics\TopCategoriesController;
+use App\Http\Controllers\Api\MarkGettingStartedSeenController;
 use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\Briefings\BriefingController;
 use App\Http\Controllers\Briefings\BriefingDownloadController;
@@ -85,12 +86,15 @@ Route::get('/github/callback', [ConnectionController::class, 'callback'])
 |
 */
 
-Route::get('/briefings/share/{token}', [PublicBriefingController::class, 'show'])
-    ->name('briefings.share.show');
+Route::get('/briefings/share/{token}', [PublicBriefingController::class, 'show'])->name('briefings.share.show');
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/user', [OAuthController::class, 'user'])->name('user');
+    Route::post('/user/mark-getting-started-seen', MarkGettingStartedSeenController::class)->name('user.mark-getting-started-seen');
     Route::post('/logout', [OAuthController::class, 'logout'])->name('logout');
+
+    // Broadcasting auth - must be in API routes to use Sanctum properly
+    Route::post('/broadcasting/auth', [Illuminate\Broadcasting\BroadcastController::class, 'authenticate'])->name('broadcasting.auth');
 
     Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
     Route::get('/ai-options/{provider}', AiOptionController::class)->name('ai-options.index');
