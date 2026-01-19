@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Invitation;
 
 use App\Enums\TeamRole;
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -23,7 +24,13 @@ final class CreateInvitationRequest extends FormRequest
             return false;
         }
 
-        return $this->user()?->roleInWorkspace($workspace)?->canManageMembers() ?? false;
+        $user = $this->user();
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        return $user->roleInWorkspace($workspace)?->canManageMembers() ?? false;
     }
 
     /**

@@ -38,10 +38,10 @@ Current subscription tiers:
 
 | Plan           | Monthly Price | Runs/Month | Team Size   | Support   |
 | -------------- | ------------- | ---------- | ----------- | --------- |
-| **Free**       | $0            | 20         | 2 Members   | Community |
-| **Team**       | $49           | 500        | 5 Members   | Email     |
-| **Business**   | $199          | 2,000      | Unlimited   | Priority  |
-| **Enterprise** | Custom        | Unlimited  | Unlimited   | Dedicated |
+| **Foundation** | $0            | 20         | 2 Members   | Community |
+| **Illuminate** | $20           | 500        | 5 Members   | Email     |
+| **Orchestrate**| $50           | 2,000      | Unlimited   | Priority  |
+| **Sanctum**    | $200          | Unlimited  | Unlimited   | Dedicated |
 
 ---
 
@@ -58,6 +58,17 @@ A **Subscription** represents the active billing state of a Workspace.
 ## Core Limits
 
 Plans may define one or more of the following limits.
+
+### Workspace Creation Rules
+
+Users may create multiple workspaces subject to the following rules:
+
+-   The first workspace is always allowed (can be on any plan, including free)
+-   To create additional workspaces, ALL existing workspaces must be on a paid plan (Illuminate or higher)
+-   If any existing workspace is on the free Foundation plan, new workspace creation is blocked
+-   This ensures users are paying customers before allowing multiple workspaces
+
+---
 
 ### Repository Limit
 

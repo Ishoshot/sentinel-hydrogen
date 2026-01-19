@@ -9,6 +9,8 @@ use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Actions\Reviews\CreatePullRequestRun;
 use App\Actions\Reviews\SyncPullRequestRunMetadata;
+use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
+use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Enums\Queue;
 use App\Jobs\Reviews\ExecuteReviewRun;
 use App\Models\Installation;
@@ -17,6 +19,7 @@ use App\Services\GitHub\GitHubWebhookService;
 use App\Services\Logging\LogContext;
 use App\Services\Queue\JobContext;
 use App\Services\Queue\QueueResolver;
+use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use App\Services\SentinelConfig\TriggerRuleEvaluator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -46,7 +49,9 @@ final class ProcessPullRequestWebhook implements ShouldQueue
         PostsConfigErrorComment $postConfigError,
         PostsAutoReviewDisabledComment $postAutoReviewDisabled,
         TriggerRuleEvaluator $triggerEvaluator,
-        QueueResolver $queueResolver
+        QueueResolver $queueResolver,
+        FetchesSentinelConfig $fetchConfig,
+        SentinelConfigParser $configParser
     ): void {
         $data = $webhookService->parsePullRequestPayload($this->payload);
 
@@ -132,33 +137,37 @@ final class ProcessPullRequestWebhook implements ShouldQueue
             return;
         }
 
-        // Evaluate trigger rules
-        $sentinelConfig = $settings?->getConfigOrDefault();
-        $triggersConfig = $sentinelConfig?->getTriggersOrDefault();
+        // Evaluate trigger rules using branch-aware config (head → base → default)
+        $sentinelConfig = $this->fetchConfigFromBranch(
+            $repository,
+            $data['head_branch'],
+            $data['base_branch'],
+            $fetchConfig,
+            $configParser
+        );
+        $triggersConfig = $sentinelConfig->getTriggersOrDefault();
 
-        if ($triggersConfig !== null) {
-            $labelNames = array_map(
-                fn (array $label): string => $label['name'],
-                $data['labels']
-            );
+        $labelNames = array_map(
+            fn (array $label): string => $label['name'],
+            $data['labels']
+        );
 
-            $triggerResult = $triggerEvaluator->evaluate($triggersConfig, [
-                'base_branch' => $data['base_branch'],
-                'head_branch' => $data['head_branch'],
-                'author_login' => $data['author']['login'],
-                'labels' => $labelNames,
-            ]);
+        $triggerResult = $triggerEvaluator->evaluate($triggersConfig, [
+            'base_branch' => $data['base_branch'],
+            'head_branch' => $data['head_branch'],
+            'author_login' => $data['author']['login'],
+            'labels' => $labelNames,
+        ]);
 
-            if (! $triggerResult['should_trigger']) {
-                Log::info('Review skipped due to trigger rules', array_merge($ctx, [
-                    'reason' => $triggerResult['reason'],
-                ]));
+        if (! $triggerResult['should_trigger']) {
+            Log::info('Review skipped due to trigger rules', array_merge($ctx, [
+                'reason' => $triggerResult['reason'],
+            ]));
 
-                // Create skipped run silently (no PR comment for trigger rules)
-                $createPullRequestRun->handle($repository, $data, null, $triggerResult['reason']);
+            // Create skipped run silently (no PR comment for trigger rules)
+            $createPullRequestRun->handle($repository, $data, null, $triggerResult['reason']);
 
-                return;
-            }
+            return;
         }
 
         // Post greeting comment immediately for low latency feedback
@@ -181,5 +190,54 @@ final class ProcessPullRequestWebhook implements ShouldQueue
             'queue' => $queue->value,
             'greeting_comment_id' => $greetingCommentId,
         ]));
+    }
+
+    /**
+     * Fetch sentinel config with branch fallback: head → base → default.
+     *
+     * Returns default config if not found in any branch.
+     */
+    private function fetchConfigFromBranch(
+        Repository $repository,
+        string $headBranch,
+        string $baseBranch,
+        FetchesSentinelConfig $fetchConfig,
+        SentinelConfigParser $configParser
+    ): SentinelConfig {
+        $defaultBranch = $repository->default_branch;
+
+        // Build ordered list of branches to try (deduplicated)
+        $branches = array_values(array_unique(array_filter([
+            $headBranch,
+            $baseBranch,
+            $defaultBranch,
+        ])));
+
+        foreach ($branches as $branch) {
+            $fetchResult = $fetchConfig->handle($repository, $branch);
+
+            if (! $fetchResult['found'] || $fetchResult['content'] === null) {
+                continue;
+            }
+
+            $parseResult = $configParser->tryParse($fetchResult['content']);
+
+            if ($parseResult['success'] && $parseResult['config'] !== null) {
+                Log::debug('ProcessPullRequestWebhook: Found sentinel config', [
+                    'repository' => $repository->full_name,
+                    'branch' => $branch,
+                    'tried_branches' => $branches,
+                ]);
+
+                return $parseResult['config'];
+            }
+        }
+
+        Log::debug('ProcessPullRequestWebhook: No sentinel config found, using defaults', [
+            'repository' => $repository->full_name,
+            'tried_branches' => $branches,
+        ]);
+
+        return SentinelConfig::default();
     }
 }

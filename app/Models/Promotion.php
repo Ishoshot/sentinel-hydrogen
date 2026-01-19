@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Casts\PromotionValueCast;
 use App\Enums\PromotionValueType;
 use Brick\Money\Money;
 use Carbon\CarbonImmutable;
@@ -11,9 +12,25 @@ use Database\Factories\PromotionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Represents a promotional discount code for subscriptions.
+ *
+ * @property int $id
+ * @property string $name
+ * @property string|null $description
+ * @property string $code
+ * @property PromotionValueType $value_type
+ * @property int|float $value_amount
+ * @property \Carbon\Carbon|null $valid_from
+ * @property \Carbon\Carbon|null $valid_to
+ * @property int|null $max_uses
+ * @property int $times_used
+ * @property bool $is_active
+ * @property string|null $polar_discount_id
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
  */
 final class Promotion extends Model
 {
@@ -34,6 +51,7 @@ final class Promotion extends Model
         'max_uses',
         'times_used',
         'is_active',
+        'polar_discount_id',
     ];
 
     /**
@@ -69,10 +87,10 @@ final class Promotion extends Model
     {
         $minorAmount = $price->getMinorAmount()->toInt();
 
-        if ($this->value_type === PromotionValueType::Percentage->value) {
+        if ($this->value_type === PromotionValueType::Percentage) {
             $discountedMinor = (int) round($minorAmount * (1 - ($this->value_amount / 100)));
         } else {
-            $discountedMinor = max(0, $minorAmount - $this->value_amount);
+            $discountedMinor = max(0, $minorAmount - $this->getValueAmountInCents());
         }
 
         return Money::ofMinor($discountedMinor, $price->getCurrency()->getCurrencyCode());
@@ -83,13 +101,25 @@ final class Promotion extends Model
      */
     public function discountDisplay(): string
     {
-        if ($this->value_type === PromotionValueType::Percentage->value) {
+        if ($this->value_type === PromotionValueType::Percentage) {
             return $this->value_amount.'% off';
         }
 
-        $money = Money::ofMinor($this->value_amount, 'USD');
+        $money = Money::ofMinor($this->getValueAmountInCents(), 'USD');
 
         return $money->formatTo('en_US').' off';
+    }
+
+    /**
+     * Get the value amount in cents (for flat types).
+     * This accesses the raw database value, bypassing the cast.
+     */
+    public function getValueAmountInCents(): int
+    {
+        /** @var int|string|null $raw */
+        $raw = $this->getRawOriginal('value_amount');
+
+        return (int) $raw;
     }
 
     /**
@@ -142,6 +172,7 @@ final class Promotion extends Model
     {
         return [
             'value_type' => PromotionValueType::class,
+            'value_amount' => PromotionValueCast::class,
             'valid_from' => 'datetime',
             'valid_to' => 'datetime',
             'is_active' => 'boolean',

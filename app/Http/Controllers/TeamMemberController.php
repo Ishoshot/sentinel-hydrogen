@@ -55,6 +55,8 @@ final class TeamMemberController
             abort(401);
         }
 
+        /** @var \App\Models\User $user */
+
         /** @var string $role */
         $role = $request->validated('role');
 
@@ -100,6 +102,7 @@ final class TeamMemberController
             abort(401);
         }
 
+        /** @var \App\Models\User $user */
         try {
             $removeTeamMember->handle($member, $user);
         } catch (InvalidArgumentException $invalidArgumentException) {

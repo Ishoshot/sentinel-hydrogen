@@ -41,27 +41,12 @@ final readonly class PostRunAnnotations
     {
         $run->loadMissing(['repository.installation', 'findings', 'workspace']);
 
-        $repository = $run->repository;
-        $installation = $repository?->installation;
-
-        if ($repository === null || $installation === null) {
+        $context = $this->resolveContext($run);
+        if ($context === null) {
             return 0;
         }
 
-        $metadata = $run->metadata ?? [];
-        $pullRequestNumber = $metadata['pull_request_number'] ?? null;
-
-        if ($pullRequestNumber === null || ! is_int($pullRequestNumber)) {
-            return 0;
-        }
-
-        $fullName = $repository->full_name;
-        if ($fullName === null || ! str_contains($fullName, '/')) {
-            return 0;
-        }
-
-        [$owner, $repo] = explode('/', $fullName, 2);
-        $installationId = $installation->installation_id;
+        ['owner' => $owner, 'repo' => $repo, 'pr_number' => $pullRequestNumber, 'installation_id' => $installationId, 'full_name' => $fullName] = $context;
 
         $annotationsConfig = $this->getAnnotationsConfig($run);
         $eligibleFindings = $this->filterEligibleFindings($run, $annotationsConfig);
@@ -75,7 +60,7 @@ final readonly class PostRunAnnotations
         $reviewBody = $this->buildReviewSummary($run);
         $inlineComments = $this->buildInlineComments($eligibleFindings, $annotationsConfig);
 
-        // Get the commit SHA for line-based comments
+        $metadata = $run->metadata ?? [];
         $commitId = is_string($metadata['head_sha'] ?? null) ? $metadata['head_sha'] : null;
 
         /** @var array<string, mixed> $reviewResponse */
@@ -477,23 +462,21 @@ final readonly class PostRunAnnotations
 
         foreach ($findings as $finding) {
             if ($finding->file_path === null) {
+                Log::warning('Finding has no file path', ['finding_id' => $finding?->id]);
+
                 continue;
             }
 
             if ($finding->line_start === null) {
+                Log::warning('Finding has no line start', ['finding_id' => $finding?->id]);
+
                 continue;
             }
 
-            // Multi-line comment with 1 line context before and after
-            // start_line = first line (with context before)
-            // line = last line (with context after)
-            $startLine = max(1, $finding->line_start - 1);
-            $endLine = ($finding->line_end ?? $finding->line_start) + 1;
-
             $comments[] = [
                 'path' => $finding->file_path,
-                'start_line' => $startLine,
-                'line' => $endLine,
+                'start_line' => $finding->line_start,
+                'line' => $finding->line_end ?? $finding->line_start + 1,
                 'start_side' => 'RIGHT',
                 'side' => 'RIGHT',
                 'body' => $this->formatFindingComment($finding, $includeSuggestions),
@@ -614,5 +597,42 @@ final readonly class PostRunAnnotations
                 'created_at' => now(),
             ]);
         }
+    }
+
+    /**
+     * Resolve the GitHub context needed for posting annotations.
+     *
+     * @return array{owner: string, repo: string, pr_number: int, installation_id: int, full_name: string}|null
+     */
+    private function resolveContext(Run $run): ?array
+    {
+        $repository = $run->repository;
+        $installation = $repository?->installation;
+
+        if ($repository === null || $installation === null) {
+            return null;
+        }
+
+        $metadata = $run->metadata ?? [];
+        $pullRequestNumber = $metadata['pull_request_number'] ?? null;
+
+        if (! is_int($pullRequestNumber)) {
+            return null;
+        }
+
+        $fullName = $repository->full_name;
+        if ($fullName === null || ! str_contains($fullName, '/')) {
+            return null;
+        }
+
+        [$owner, $repo] = explode('/', $fullName, 2);
+
+        return [
+            'owner' => $owner,
+            'repo' => $repo,
+            'pr_number' => $pullRequestNumber,
+            'installation_id' => $installation->installation_id,
+            'full_name' => $fullName,
+        ];
     }
 }

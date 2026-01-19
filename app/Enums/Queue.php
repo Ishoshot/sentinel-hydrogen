@@ -26,6 +26,9 @@ enum Queue: string
     case ReviewsPaid = 'reviews-paid';
     case ReviewsDefault = 'reviews-default';
 
+    // Briefings (Priority 45-50)
+    case BriefingsDefault = 'briefings-default';
+
     // Post-processing (Priority 50-60)
     case Annotations = 'annotations';
     case Notifications = 'notifications';
@@ -86,6 +89,7 @@ enum Queue: string
             self::ReviewsEnterprise => 20,
             self::ReviewsPaid => 30,
             self::ReviewsDefault => 40,
+            self::BriefingsDefault => 45,
             self::Annotations => 50,
             self::Notifications => 55,
             self::Sync => 70,
@@ -106,6 +110,7 @@ enum Queue: string
             self::ReviewsEnterprise => 'Reviews (Enterprise)',
             self::ReviewsPaid => 'Reviews (Paid)',
             self::ReviewsDefault => 'Reviews (Default)',
+            self::BriefingsDefault => 'Briefings',
             self::Annotations => 'Annotations',
             self::Notifications => 'Notifications',
             self::Sync => 'Sync',
@@ -126,6 +131,7 @@ enum Queue: string
             self::ReviewsEnterprise => 300,
             self::ReviewsPaid => 300,
             self::ReviewsDefault => 300,
+            self::BriefingsDefault => 300,
             self::Annotations => 60,
             self::Notifications => 30,
             self::Sync => 120,
@@ -146,6 +152,7 @@ enum Queue: string
             self::ReviewsEnterprise => 3,
             self::ReviewsPaid => 3,
             self::ReviewsDefault => 3,
+            self::BriefingsDefault => 3,
             self::Annotations => 3,
             self::Notifications => 3,
             self::Sync => 3,

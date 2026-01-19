@@ -18,20 +18,37 @@ use App\Services\Reviews\Contracts\ProviderKeyResolver;
 final class ProviderKeyResolverService implements ProviderKeyResolver
 {
     /**
-     * Cache of provider keys keyed by repository ID.
+     * Cache of provider keys keyed by repository ID and provider.
      *
-     * @var array<int, array<string, string>>
+     * @var array<int, array<string, ProviderKey>>
      */
     private array $cache = [];
+
+    /**
+     * Track which repositories have been loaded.
+     *
+     * @var array<int, bool>
+     */
+    private array $loaded = [];
 
     /**
      * {@inheritdoc}
      */
     public function resolve(Repository $repository, AiProvider $provider): ?string
     {
-        $keys = $this->loadKeys($repository);
+        $providerKey = $this->getProviderKey($repository, $provider);
 
-        return $keys[$provider->value] ?? null;
+        return $providerKey?->encrypted_key;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getProviderKey(Repository $repository, AiProvider $provider): ?ProviderKey
+    {
+        $this->loadKeys($repository);
+
+        return $this->cache[$repository->id][$provider->value] ?? null;
     }
 
     /**
@@ -39,14 +56,14 @@ final class ProviderKeyResolverService implements ProviderKeyResolver
      */
     public function getFirstAvailableProvider(Repository $repository): ?AiProvider
     {
-        $keys = $this->loadKeys($repository);
+        $this->loadKeys($repository);
 
         // Priority: Anthropic > OpenAI
-        if (isset($keys[AiProvider::Anthropic->value])) {
+        if (isset($this->cache[$repository->id][AiProvider::Anthropic->value])) {
             return AiProvider::Anthropic;
         }
 
-        if (isset($keys[AiProvider::OpenAI->value])) {
+        if (isset($this->cache[$repository->id][AiProvider::OpenAI->value])) {
             return AiProvider::OpenAI;
         }
 
@@ -58,15 +75,15 @@ final class ProviderKeyResolverService implements ProviderKeyResolver
      */
     public function getAvailableProviders(Repository $repository): array
     {
-        $keys = $this->loadKeys($repository);
+        $this->loadKeys($repository);
         $providers = [];
 
         // Maintain priority order: Anthropic > OpenAI
-        if (isset($keys[AiProvider::Anthropic->value])) {
+        if (isset($this->cache[$repository->id][AiProvider::Anthropic->value])) {
             $providers[] = AiProvider::Anthropic;
         }
 
-        if (isset($keys[AiProvider::OpenAI->value])) {
+        if (isset($this->cache[$repository->id][AiProvider::OpenAI->value])) {
             $providers[] = AiProvider::OpenAI;
         }
 
@@ -78,29 +95,31 @@ final class ProviderKeyResolverService implements ProviderKeyResolver
      */
     public function hasProvider(Repository $repository, AiProvider $provider): bool
     {
-        $keys = $this->loadKeys($repository);
+        $this->loadKeys($repository);
 
-        return isset($keys[$provider->value]);
+        return isset($this->cache[$repository->id][$provider->value]);
     }
 
     /**
      * Load and cache provider keys for a repository.
-     *
-     * @return array<string, string> Provider name => decrypted key mapping
      */
-    private function loadKeys(Repository $repository): array
+    private function loadKeys(Repository $repository): void
     {
-        // Single query per repository, cached for request duration
-        if (! isset($this->cache[$repository->id])) {
-            /** @var array<string, string> $keys */
-            $keys = ProviderKey::query()
-                ->where('repository_id', $repository->id)
-                ->pluck('encrypted_key', 'provider')
-                ->toArray();
-
-            $this->cache[$repository->id] = $keys;
+        // Skip if already loaded for this repository
+        if (isset($this->loaded[$repository->id])) {
+            return;
         }
 
-        return $this->cache[$repository->id];
+        $this->loaded[$repository->id] = true;
+        $this->cache[$repository->id] = [];
+
+        $keys = ProviderKey::query()
+            ->with('providerModel')
+            ->where('repository_id', $repository->id)
+            ->get();
+
+        foreach ($keys as $key) {
+            $this->cache[$repository->id][$key->provider->value] = $key;
+        }
     }
 }

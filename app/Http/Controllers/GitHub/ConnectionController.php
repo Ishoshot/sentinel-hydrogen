@@ -65,10 +65,16 @@ final class ConnectionController
             ]);
         }
 
+        // Determine if this is a new installation or configuring an existing one
+        $isConfiguring = $result['state'] === '';
+        $message = $isConfiguring
+            ? 'Redirect to GitHub to configure repository access.'
+            : 'Redirect to GitHub to install the app.';
+
         return response()->json([
             'data' => new ConnectionResource($result['connection']),
             'installation_url' => $result['installation_url'],
-            'message' => 'Redirect to GitHub to install the app.',
+            'message' => $message,
         ]);
     }
 
@@ -123,7 +129,9 @@ final class ConnectionController
 
         Gate::authorize('delete', $connection);
 
-        $disconnectConnection->handle($connection, $request->user());
+        /** @var \App\Models\User|null $user */
+        $user = $request->user();
+        $disconnectConnection->handle($connection, $user);
 
         return response()->json([
             'message' => 'GitHub disconnected successfully.',

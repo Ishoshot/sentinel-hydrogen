@@ -23,18 +23,6 @@ final class PostRunAnnotations implements ShouldQueue
     use Queueable;
 
     /**
-     * The number of times the job may be attempted.
-     */
-    public int $tries = 3;
-
-    /**
-     * The number of seconds to wait before retrying the job.
-     *
-     * @var array<int, int>
-     */
-    public array $backoff = [30, 60, 120];
-
-    /**
      * Create a new job instance.
      */
     public function __construct(public int $runId)

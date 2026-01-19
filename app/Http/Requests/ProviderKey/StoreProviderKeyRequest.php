@@ -6,6 +6,7 @@ namespace App\Http\Requests\ProviderKey;
 
 use App\Enums\AiProvider;
 use App\Models\Repository;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -28,7 +29,13 @@ final class StoreProviderKeyRequest extends FormRequest
             return false;
         }
 
-        return $this->user()?->roleInWorkspace($workspace)?->canManageSettings() ?? false;
+        $user = $this->user();
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        return $user->roleInWorkspace($workspace)?->canManageSettings() ?? false;
     }
 
     /**
@@ -39,6 +46,7 @@ final class StoreProviderKeyRequest extends FormRequest
         return [
             'provider' => ['required', 'string', 'in:'.implode(',', AiProvider::values())],
             'key' => ['required', 'string', 'min:10'],
+            'provider_model_id' => ['nullable', 'integer', 'exists:provider_models,id'],
         ];
     }
 
@@ -53,6 +61,7 @@ final class StoreProviderKeyRequest extends FormRequest
             'provider.in' => 'Invalid AI provider selected.',
             'key.required' => 'Please provide the API key.',
             'key.min' => 'API key must be at least 10 characters.',
+            'provider_model_id.exists' => 'Invalid model selected.',
         ];
     }
 }

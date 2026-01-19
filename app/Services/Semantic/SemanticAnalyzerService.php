@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Semantic;
 
+use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 
-final class SemanticAnalyzerService
+final class SemanticAnalyzerService implements SemanticAnalyzerInterface
 {
     private const string BINARY_PATH = 'bin/semantic-analyzer';
 
@@ -92,11 +93,52 @@ final class SemanticAnalyzerService
     private function isSupported(string $extension): bool
     {
         return in_array($extension, [
-            'php', 'js', 'mjs', 'ts', 'tsx', 'jsx',
-            'py', 'go', 'rs', 'java', 'kt', 'cs',
-            'rb', 'swift', 'c', 'cpp', 'h', 'hpp',
-            'vue', 'svelte', 'html', 'css', 'scss',
-            'sql', 'sh', 'bash', 'yaml', 'yml',
+            // Core languages
+            'php',
+            'js', 'mjs', 'cjs', 'jsx',
+            'ts', 'tsx',
+            'py',
+            'go',
+            'rs',
+            // JVM languages
+            'java',
+            'kt', 'kts',
+            'scala', 'sc',
+            'groovy', 'gvy', 'gy', 'gsh',
+            'clj', 'cljs', 'cljc', 'edn',
+            // .NET
+            'cs',
+            'fs', 'fsi', 'fsx',
+            // Dynamic languages
+            'rb',
+            // Apple ecosystem
+            'swift',
+            'm', 'mm',
+            // Systems languages
+            'c', 'h',
+            'cpp', 'cc', 'cxx', 'hpp', 'hxx',
+            'zig',
+            // Frontend frameworks
+            'vue',
+            'svelte',
+            'dart',
+            // Web fundamentals
+            'html', 'htm',
+            'css', 'scss', 'sass',
+            // Functional languages
+            'ex', 'exs',
+            'hs', 'lhs',
+            'ml', 'mli',
+            // Scripting languages
+            'lua',
+            'pl', 'pm', 't',
+            'r', 'R',
+            'jl',
+            // Data & config
+            'sql',
+            'yaml', 'yml',
+            // Shell
+            'sh', 'bash', 'zsh',
         ], true);
     }
 }

@@ -26,7 +26,10 @@ final class CancelSubscriptionController
     ): JsonResponse {
         Gate::authorize('manageSubscription', $workspace);
 
-        $cancelSubscription->handle($workspace, $request->user());
+        /** @var \App\Models\User|null $user */
+        $user = $request->user();
+
+        $cancelSubscription->handle($workspace, $user);
 
         return response()->json([
             'data' => new SubscriptionResource($workspace->refresh()->load('plan')),

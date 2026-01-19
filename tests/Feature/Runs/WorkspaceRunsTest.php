@@ -415,3 +415,154 @@ it('returns runs from multiple repositories in the workspace', function (): void
         ->assertJsonCount(5, 'data')
         ->assertJsonPath('meta.total', 5);
 });
+
+it('groups runs by pull request', function (): void {
+    Run::factory()->forRepository($this->repository)->create([
+        'pr_number' => 1,
+        'pr_title' => 'First PR',
+        'status' => RunStatus::Completed,
+    ]);
+    Run::factory()->forRepository($this->repository)->create([
+        'pr_number' => 1,
+        'pr_title' => 'First PR',
+        'status' => RunStatus::Completed,
+    ]);
+    Run::factory()->forRepository($this->repository)->create([
+        'pr_number' => 2,
+        'pr_title' => 'Second PR',
+        'status' => RunStatus::InProgress,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson("/api/workspaces/{$this->workspace->id}/runs?group_by=pr");
+
+    $response->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonStructure([
+            'data' => [
+                '*' => [
+                    'pull_request_number',
+                    'pull_request_title',
+                    'repository',
+                    'runs_count',
+                    'latest_run',
+                    'latest_status',
+                    'runs',
+                ],
+            ],
+            'meta' => [
+                'current_page',
+                'per_page',
+                'total',
+                'last_page',
+            ],
+        ]);
+});
+
+it('groups runs by repository', function (): void {
+    $repo2 = Repository::factory()->forInstallation($this->installation)->create([
+        'name' => 'second-repo',
+        'full_name' => 'org/second-repo',
+    ]);
+    RepositorySettings::factory()->forRepository($repo2)->autoReviewEnabled()->create();
+
+    Run::factory()->forRepository($this->repository)->count(3)->create([
+        'pr_number' => 1,
+        'pr_title' => 'Test PR',
+    ]);
+    Run::factory()->forRepository($repo2)->count(2)->create([
+        'pr_number' => 2,
+        'pr_title' => 'Other PR',
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson("/api/workspaces/{$this->workspace->id}/runs?group_by=repository");
+
+    $response->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonStructure([
+            'data' => [
+                '*' => [
+                    'repository',
+                    'pull_requests_count',
+                    'runs_count',
+                    'pull_requests',
+                ],
+            ],
+            'meta' => [
+                'current_page',
+                'per_page',
+                'total',
+                'last_page',
+            ],
+        ]);
+});
+
+it('paginates grouped by PR results at database level', function (): void {
+    for ($i = 1; $i <= 25; $i++) {
+        Run::factory()->forRepository($this->repository)->create([
+            'pr_number' => $i,
+            'pr_title' => "PR {$i}",
+        ]);
+    }
+
+    $response = $this->actingAs($this->user)
+        ->getJson("/api/workspaces/{$this->workspace->id}/runs?group_by=pr&per_page=10");
+
+    $response->assertOk()
+        ->assertJsonCount(10, 'data')
+        ->assertJsonPath('meta.total', 25)
+        ->assertJsonPath('meta.per_page', 10)
+        ->assertJsonPath('meta.last_page', 3);
+});
+
+it('paginates grouped by repository results at database level', function (): void {
+    for ($i = 1; $i <= 15; $i++) {
+        $repo = Repository::factory()->forInstallation($this->installation)->create([
+            'name' => "repo-{$i}",
+            'full_name' => "org/repo-{$i}",
+        ]);
+        RepositorySettings::factory()->forRepository($repo)->autoReviewEnabled()->create();
+        Run::factory()->forRepository($repo)->create([
+            'pr_number' => $i,
+            'pr_title' => "PR {$i}",
+        ]);
+    }
+
+    $response = $this->actingAs($this->user)
+        ->getJson("/api/workspaces/{$this->workspace->id}/runs?group_by=repository&per_page=5");
+
+    $response->assertOk()
+        ->assertJsonCount(5, 'data')
+        ->assertJsonPath('meta.total', 15)
+        ->assertJsonPath('meta.per_page', 5)
+        ->assertJsonPath('meta.last_page', 3);
+});
+
+it('limits runs per PR group', function (): void {
+    for ($i = 0; $i < 15; $i++) {
+        Run::factory()->forRepository($this->repository)->create([
+            'pr_number' => 1,
+            'pr_title' => 'PR with many runs',
+            'created_at' => now()->subMinutes($i),
+        ]);
+    }
+
+    $response = $this->actingAs($this->user)
+        ->getJson("/api/workspaces/{$this->workspace->id}/runs?group_by=pr");
+
+    $response->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.runs_count', 15);
+
+    $runsInResponse = $response->json('data.0.runs');
+    expect(count($runsInResponse))->toBeLessThanOrEqual(10);
+});
+
+it('validates group_by parameter', function (): void {
+    $response = $this->actingAs($this->user)
+        ->getJson("/api/workspaces/{$this->workspace->id}/runs?group_by=invalid");
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['group_by']);
+});

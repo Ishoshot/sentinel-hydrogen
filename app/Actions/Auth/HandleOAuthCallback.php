@@ -107,6 +107,7 @@ final readonly class HandleOAuthCallback
             ],
             [
                 'provider_user_id' => $socialiteUser->getId(),
+                'nickname' => $socialiteUser->getNickname(),
                 'email' => $socialiteUser->getEmail(),
                 'name' => $socialiteUser->getName(),
                 'avatar_url' => $socialiteUser->getAvatar(),

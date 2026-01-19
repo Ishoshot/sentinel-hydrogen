@@ -1,11 +1,14 @@
 {
     "agents": [
         "claude_code",
-        "codex"
+        "codex",
+        "windsurf"
     ],
     "editors": [
         "claude_code",
         "codex"
     ],
-    "guidelines": []
+    "guidelines": [
+        "echolabsdev/prism"
+    ]
 }

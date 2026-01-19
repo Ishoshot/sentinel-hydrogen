@@ -7,6 +7,7 @@ namespace App\Actions\SentinelConfig;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Models\Repository;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Support\RepositoryNameParser;
 use Github\Exception\RuntimeException;
 use Illuminate\Support\Facades\Log;
 
@@ -27,9 +28,11 @@ final readonly class FetchSentinelConfig implements FetchesSentinelConfig
     /**
      * Fetch .sentinel/config.yaml from a repository.
      *
+     * @param  Repository  $repository  The repository to fetch the config from
+     * @param  string|null  $ref  The branch/ref to fetch from (defaults to repository's default branch)
      * @return array{found: bool, content: ?string, sha: ?string, error: ?string}
      */
-    public function handle(Repository $repository): array
+    public function handle(Repository $repository, ?string $ref = null): array
     {
         $installation = $repository->installation;
 
@@ -42,7 +45,19 @@ final readonly class FetchSentinelConfig implements FetchesSentinelConfig
             ];
         }
 
-        [$owner, $repo] = explode('/', $repository->full_name);
+        $parsed = RepositoryNameParser::parse($repository->full_name);
+        if ($parsed === null) {
+            return [
+                'found' => false,
+                'content' => null,
+                'sha' => null,
+                'error' => 'Invalid repository full_name format',
+            ];
+        }
+        ['owner' => $owner, 'repo' => $repo] = $parsed;
+
+        // Use provided ref or fall back to repository's default branch
+        $branch = $ref ?? $repository->default_branch;
 
         try {
             $response = $this->github->getFileContents(
@@ -50,7 +65,7 @@ final readonly class FetchSentinelConfig implements FetchesSentinelConfig
                 $owner,
                 $repo,
                 self::CONFIG_PATH,
-                $repository->default_branch
+                $branch
             );
 
             // Handle the response - it could be an array with content or direct string

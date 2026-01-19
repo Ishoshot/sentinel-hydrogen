@@ -57,12 +57,7 @@ final class VendorPathFilter implements ContextFilter
             fn (array $file): bool => ! $this->shouldExclude($file['filename'])
         ));
 
-        // Recalculate metrics after filtering
-        $bag->metrics = [
-            'files_changed' => count($bag->files),
-            'lines_added' => array_sum(array_column($bag->files, 'additions')),
-            'lines_deleted' => array_sum(array_column($bag->files, 'deletions')),
-        ];
+        $bag->recalculateMetrics();
     }
 
     /**
@@ -70,6 +65,6 @@ final class VendorPathFilter implements ContextFilter
      */
     private function shouldExclude(string $path): bool
     {
-        return array_any(self::EXCLUDED_PATTERNS, fn ($pattern): bool => preg_match($pattern, $path) === 1);
+        return array_any(self::EXCLUDED_PATTERNS, static fn (string $pattern): bool => preg_match($pattern, $path) === 1);
     }
 }

@@ -3,9 +3,9 @@ package languages
 import (
 	"strings"
 
+	"github.com/sentinel/tools/semantic-analyzer/types"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/php"
-	"github.com/sentinel/tools/semantic-analyzer/types"
 )
 
 // AnalyzePHP analyzes PHP source code and extracts semantic information

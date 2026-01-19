@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\SubscriptionStatus;
+use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -146,4 +148,72 @@ it('only lists workspaces user belongs to', function (): void {
     $response->assertOk()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.id', $userWorkspace->id);
+});
+
+it('blocks additional workspace creation when existing workspace is on free plan', function (): void {
+    $foundationPlan = Plan::factory()->create(); // Foundation is free
+
+    $user = User::factory()->create();
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $foundationPlan->id,
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->postJson(route('workspaces.store'), [
+            'name' => 'Second Workspace',
+        ]);
+
+    $response->assertForbidden()
+        ->assertJsonPath('error', 'paid_plan_required');
+});
+
+it('allows additional workspace creation when all existing workspaces are on paid plans', function (): void {
+    $illuminatePlan = Plan::factory()->illuminate()->create();
+
+    $user = User::factory()->create();
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $illuminatePlan->id,
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->postJson(route('workspaces.store'), [
+            'name' => 'Second Workspace',
+        ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('data.name', 'Second Workspace');
+});
+
+it('blocks workspace creation when any existing workspace is on free plan', function (): void {
+    $foundationPlan = Plan::factory()->create(); // Foundation is free
+    $illuminatePlan = Plan::factory()->illuminate()->create();
+
+    $user = User::factory()->create();
+
+    // Create workspace with paid plan
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $illuminatePlan->id,
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
+
+    // Create workspace with free plan
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $foundationPlan->id,
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
+
+    // Should be blocked because one workspace is on free plan
+    $response = $this->actingAs($user, 'sanctum')
+        ->postJson(route('workspaces.store'), [
+            'name' => 'Third Workspace',
+        ]);
+
+    $response->assertForbidden()
+        ->assertJsonPath('error', 'paid_plan_required');
 });

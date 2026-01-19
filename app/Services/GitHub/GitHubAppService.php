@@ -146,4 +146,24 @@ final readonly class GitHubAppService implements GitHubAppServiceContract
 
         return $appName;
     }
+
+    /**
+     * Get the URL to configure an existing GitHub App installation.
+     *
+     * @param  int  $installationId  The GitHub installation ID
+     * @param  string  $accountLogin  The GitHub account login (user or org name)
+     * @param  bool  $isOrganization  Whether this is an organization installation
+     */
+    public function getInstallationConfigureUrl(int $installationId, string $accountLogin, bool $isOrganization): string
+    {
+        if ($isOrganization) {
+            return sprintf(
+                'https://github.com/organizations/%s/settings/installations/%d',
+                urlencode($accountLogin),
+                $installationId
+            );
+        }
+
+        return sprintf('https://github.com/settings/installations/%d', $installationId);
+    }
 }

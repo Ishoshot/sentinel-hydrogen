@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\Billing;
 
 use App\Enums\PlanTier;
+use App\Enums\PromotionUsageStatus;
 use App\Enums\SubscriptionStatus;
 use App\Models\Plan;
+use App\Models\PromotionUsage;
 use App\Models\Subscription;
 use App\Models\Workspace;
 use App\Services\Billing\PolarBillingService;
@@ -105,6 +107,15 @@ final readonly class HandlePolarWebhook
     private function confirmPromotionUsage(Workspace $workspace, Subscription $subscription, mixed $promotionId): void
     {
         if (! is_string($promotionId) || $promotionId === '') {
+            return;
+        }
+
+        if (! ctype_digit($promotionId)) {
+            Log::warning('Invalid promotion_id format in webhook metadata', [
+                'promotion_id' => $promotionId,
+                'workspace_id' => $workspace->id,
+            ]);
+
             return;
         }
 

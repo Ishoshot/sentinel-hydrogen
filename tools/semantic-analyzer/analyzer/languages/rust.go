@@ -1,9 +1,9 @@
 package languages
 
 import (
+	"github.com/sentinel/tools/semantic-analyzer/types"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/rust"
-	"github.com/sentinel/tools/semantic-analyzer/types"
 )
 
 // AnalyzeRust analyzes Rust source code

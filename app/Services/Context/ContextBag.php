@@ -112,6 +112,18 @@ final class ContextBag
     }
 
     /**
+     * Recalculate metrics based on current files.
+     */
+    public function recalculateMetrics(): void
+    {
+        $this->metrics = [
+            'files_changed' => count($this->files),
+            'lines_added' => array_sum(array_column($this->files, 'additions')),
+            'lines_deleted' => array_sum(array_column($this->files, 'deletions')),
+        ];
+    }
+
+    /**
      * Convert the context bag to an array.
      *
      * @return array<string, mixed>

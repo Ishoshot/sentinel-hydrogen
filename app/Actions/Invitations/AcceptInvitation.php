@@ -9,6 +9,7 @@ use App\Enums\ActivityType;
 use App\Models\Invitation;
 use App\Models\TeamMember;
 use App\Models\User;
+use App\Services\Plans\PlanLimitEnforcer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -20,6 +21,7 @@ final readonly class AcceptInvitation
      */
     public function __construct(
         private LogActivity $logActivity,
+        private PlanLimitEnforcer $planLimitEnforcer,
     ) {}
 
     /**
@@ -59,6 +61,15 @@ final readonly class AcceptInvitation
             Log::info('Invitation acceptance rejected - already a member', $ctx);
 
             throw new InvalidArgumentException('You are already a member of this workspace.');
+        }
+
+        // Check team size limit before accepting
+        $limitCheck = $this->planLimitEnforcer->ensureCanInviteMember($workspace);
+
+        if (! $limitCheck->allowed) {
+            Log::info('Invitation acceptance rejected - team size limit reached', $ctx);
+
+            throw new InvalidArgumentException($limitCheck->message ?? 'This workspace has reached its team size limit.');
         }
 
         return DB::transaction(function () use ($invitation, $user, $workspace): TeamMember {

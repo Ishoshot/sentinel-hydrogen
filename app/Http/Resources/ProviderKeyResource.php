@@ -29,6 +29,11 @@ final class ProviderKeyResource extends JsonResource
             'id' => $this->id,
             'provider' => $this->provider->value,
             'provider_label' => $this->getProviderLabel(),
+            'ai_model' => $this->whenLoaded('providerModel', fn (): ?array => $this->providerModel !== null ? [
+                'id' => $this->providerModel->id,
+                'identifier' => $this->providerModel->identifier,
+                'name' => $this->providerModel->name,
+            ] : null),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

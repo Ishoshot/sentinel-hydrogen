@@ -36,6 +36,7 @@ final class ProviderIdentity extends Model
         'user_id',
         'provider',
         'provider_user_id',
+        'nickname',
         'email',
         'name',
         'avatar_url',

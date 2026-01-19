@@ -14,6 +14,10 @@ use App\Actions\GitHub\PostPullRequestGreeting;
 use App\Actions\GitHub\PostSkipReasonComment;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\FetchSentinelConfig;
+use App\Services\Briefings\BriefingDataCollectorService;
+use App\Services\Briefings\Contracts\BriefingDataCollector;
+use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
+use App\Services\Briefings\NarrativeGeneratorService;
 use App\Services\Context\Collectors\DiffCollector;
 use App\Services\Context\Collectors\FileContextCollector;
 use App\Services\Context\Collectors\GuidelinesCollector;
@@ -38,6 +42,8 @@ use App\Services\Reviews\Contracts\ProviderKeyResolver;
 use App\Services\Reviews\Contracts\ReviewEngine;
 use App\Services\Reviews\PrismReviewEngine;
 use App\Services\Reviews\ProviderKeyResolverService;
+use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
+use App\Services\Semantic\SemanticAnalyzerService;
 use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use App\Services\SentinelConfig\SentinelConfigParserService;
 use Illuminate\Support\ServiceProvider;
@@ -98,6 +104,13 @@ final class AppServiceProvider extends ServiceProvider
 
         // Register Sentinel Config Parser
         $this->app->bind(SentinelConfigParser::class, SentinelConfigParserService::class);
+
+        // Register Semantic Analyzer
+        $this->app->bind(SemanticAnalyzerInterface::class, SemanticAnalyzerService::class);
+
+        // Register Briefing Services
+        $this->app->bind(BriefingDataCollector::class, BriefingDataCollectorService::class);
+        $this->app->bind(BriefingNarrativeGenerator::class, NarrativeGeneratorService::class);
     }
 
     /**

@@ -33,16 +33,24 @@ final readonly class InitiateGitHubConnection
             $provider = Provider::where('type', ProviderType::GitHub)->firstOrFail();
 
             // Check for existing connection
-            $existingConnection = Connection::where('workspace_id', $workspace->id)
+            $existingConnection = Connection::with('installation')
+                ->where('workspace_id', $workspace->id)
                 ->where('provider_id', $provider->id)
                 ->first();
 
             if ($existingConnection !== null) {
-                // If active, return existing
-                if ($existingConnection->isActive()) {
+                // If active, return configuration URL to add/remove repositories
+                if ($existingConnection->isActive() && $existingConnection->installation !== null) {
+                    $installation = $existingConnection->installation;
+                    $configureUrl = $this->gitHubAppService->getInstallationConfigureUrl(
+                        $installation->installation_id,
+                        $installation->account_login,
+                        $installation->isOrganization()
+                    );
+
                     return [
                         'connection' => $existingConnection,
-                        'installation_url' => '',
+                        'installation_url' => $configureUrl,
                         'state' => '',
                     ];
                 }

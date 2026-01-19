@@ -8,6 +8,7 @@ use App\Actions\GitHub\Contracts\PostsAutoReviewDisabledComment;
 use App\Models\Repository;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\SentinelMessageService;
+use App\Support\RepositoryNameParser;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -43,7 +44,16 @@ final readonly class PostAutoReviewDisabledComment implements PostsAutoReviewDis
                 return null;
             }
 
-            [$owner, $repo] = explode('/', $repository->full_name);
+            $parsed = RepositoryNameParser::parse($repository->full_name);
+            if ($parsed === null) {
+                Log::warning('Invalid repository full_name format', [
+                    'repository_id' => $repository->id,
+                    'full_name' => $repository->full_name,
+                ]);
+
+                return null;
+            }
+            ['owner' => $owner, 'repo' => $repo] = $parsed;
 
             $comment = $this->messageService->buildAutoReviewDisabledComment();
 
@@ -54,6 +64,15 @@ final readonly class PostAutoReviewDisabledComment implements PostsAutoReviewDis
                 number: $pullRequestNumber,
                 body: $comment
             );
+
+            if (! isset($response['id'])) {
+                Log::error('GitHub API response missing comment id', [
+                    'repository' => $repository->full_name,
+                    'pr_number' => $pullRequestNumber,
+                ]);
+
+                return null;
+            }
 
             /** @var int $commentId */
             $commentId = $response['id'];

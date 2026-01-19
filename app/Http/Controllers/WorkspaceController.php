@@ -28,6 +28,7 @@ final class WorkspaceController
             abort(401);
         }
 
+        /** @var \App\Models\User $user */
         $workspaces = Workspace::query()
             ->forUser($user)
             ->with(['team', 'owner'])
@@ -52,6 +53,8 @@ final class WorkspaceController
         if ($user === null) {
             abort(401);
         }
+
+        /** @var \App\Models\User $user */
 
         /** @var string $name */
         $name = $request->validated('name');
@@ -99,6 +102,8 @@ final class WorkspaceController
             abort(401);
         }
 
+        /** @var \App\Models\User $user */
+
         /** @var string $name */
         $name = $request->validated('name');
 
@@ -140,6 +145,7 @@ final class WorkspaceController
      */
     public function switch(Request $request, Workspace $workspace): JsonResponse
     {
+        /** @var \App\Models\User|null $user */
         $user = $request->user();
 
         if ($user === null || ! $user->belongsToWorkspace($workspace)) {

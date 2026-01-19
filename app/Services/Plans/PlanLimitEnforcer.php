@@ -12,6 +12,7 @@ use App\Enums\RunStatus;
 use App\Enums\SubscriptionStatus;
 use App\Models\Plan;
 use App\Models\Run;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PlanDefaults;
 use Carbon\CarbonImmutable;
@@ -122,6 +123,41 @@ final readonly class PlanLimitEnforcer
         ]);
 
         return PlanLimitResult::deny($message, 'team_size_limit');
+    }
+
+    /**
+     * Ensure the user can create a new workspace.
+     *
+     * Rules:
+     * - First workspace is always allowed (can be on any plan including free)
+     * - Additional workspaces require ALL existing workspaces to be on paid plans (Illuminate+)
+     */
+    public function ensureCanCreateWorkspace(User $user): PlanLimitResult
+    {
+        $ownedWorkspaces = Workspace::query()
+            ->where('owner_id', $user->id)
+            ->with('plan')
+            ->get();
+
+        // First workspace is always allowed
+        if ($ownedWorkspaces->isEmpty()) {
+            return PlanLimitResult::allow();
+        }
+
+        // Check if all existing workspaces are on paid plans (Illuminate or higher)
+        foreach ($ownedWorkspaces as $workspace) {
+            $plan = $workspace->plan;
+            $tier = $plan !== null ? PlanTier::tryFrom($plan->tier) : PlanTier::Foundation;
+
+            // Foundation is free (rank 1), paid plans are Illuminate+ (rank 2+)
+            if ($tier === null || $tier->isFree()) {
+                $message = 'To create additional workspaces, all your existing workspaces must be on a paid plan (Illuminate or higher).';
+
+                return PlanLimitResult::deny($message, 'paid_plan_required');
+            }
+        }
+
+        return PlanLimitResult::allow();
     }
 
     /**

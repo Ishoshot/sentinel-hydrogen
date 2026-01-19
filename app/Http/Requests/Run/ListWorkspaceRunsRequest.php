@@ -36,6 +36,7 @@ final class ListWorkspaceRunsRequest extends FormRequest
             'sort_by' => ['sometimes', Rule::in(['created_at', 'completed_at', 'findings_count'])],
             'sort_order' => ['sometimes', Rule::in(['asc', 'desc'])],
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'group_by' => ['sometimes', 'nullable', Rule::in(['pr', 'repository'])],
         ];
     }
 
@@ -52,6 +53,7 @@ final class ListWorkspaceRunsRequest extends FormRequest
             'sort_by.in' => 'The selected sort field is invalid.',
             'sort_order.in' => 'The selected sort order is invalid.',
             'to_date.after_or_equal' => 'The to date must be after or equal to the from date.',
+            'group_by.in' => 'The selected grouping option is invalid.',
         ];
     }
 
@@ -83,5 +85,15 @@ final class ListWorkspaceRunsRequest extends FormRequest
         $sortOrder = $this->validated('sort_order');
 
         return is_string($sortOrder) ? $sortOrder : 'desc';
+    }
+
+    /**
+     * Get validated grouping option.
+     */
+    public function groupBy(): ?string
+    {
+        $groupBy = $this->validated('group_by');
+
+        return is_string($groupBy) ? $groupBy : null;
     }
 }

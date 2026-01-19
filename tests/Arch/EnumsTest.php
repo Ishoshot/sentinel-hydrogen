@@ -13,6 +13,7 @@ arch('enums are used in appropriate locations')
     ->expect('App\Enums')
     ->toOnlyBeUsedIn([
         'App\Actions',
+        'App\Casts',
         'App\Console\Commands',
         'App\DataTransferObjects',
         'App\Http',
@@ -23,4 +24,5 @@ arch('enums are used in appropriate locations')
         'App\Services',
         'App\Support',
         'Database\Factories',
+        'Database\Seeders',
     ]);

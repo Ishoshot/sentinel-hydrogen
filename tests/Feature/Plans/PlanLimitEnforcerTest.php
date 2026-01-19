@@ -73,3 +73,96 @@ it('blocks invitations when team size limit is reached', function (): void {
     expect($result->allowed)->toBeFalse()
         ->and($result->code)->toBe('team_size_limit');
 });
+
+it('allows first workspace creation for new users', function (): void {
+    $user = User::factory()->create();
+
+    $enforcer = app(PlanLimitEnforcer::class);
+    $result = $enforcer->ensureCanCreateWorkspace($user);
+
+    expect($result->allowed)->toBeTrue();
+});
+
+it('blocks additional workspace creation when existing workspace is on free plan', function (): void {
+    $foundationPlan = Plan::factory()->create(); // Foundation is free
+
+    $user = User::factory()->create();
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $foundationPlan->id,
+        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+    ]);
+
+    $enforcer = app(PlanLimitEnforcer::class);
+    $result = $enforcer->ensureCanCreateWorkspace($user);
+
+    expect($result->allowed)->toBeFalse()
+        ->and($result->code)->toBe('paid_plan_required');
+});
+
+it('allows additional workspace creation when all existing workspaces are on paid plans', function (): void {
+    $illuminatePlan = Plan::factory()->illuminate()->create();
+
+    $user = User::factory()->create();
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $illuminatePlan->id,
+        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+    ]);
+
+    $enforcer = app(PlanLimitEnforcer::class);
+    $result = $enforcer->ensureCanCreateWorkspace($user);
+
+    expect($result->allowed)->toBeTrue();
+});
+
+it('allows multiple workspaces when all are on paid plans', function (): void {
+    $illuminatePlan = Plan::factory()->illuminate()->create();
+    $orchestratePlan = Plan::factory()->orchestrate()->create();
+
+    $user = User::factory()->create();
+
+    // Multiple workspaces on paid plans
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $illuminatePlan->id,
+        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+    ]);
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $orchestratePlan->id,
+        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+    ]);
+
+    $enforcer = app(PlanLimitEnforcer::class);
+    $result = $enforcer->ensureCanCreateWorkspace($user);
+
+    expect($result->allowed)->toBeTrue();
+});
+
+it('blocks workspace creation when any existing workspace is on free plan', function (): void {
+    $foundationPlan = Plan::factory()->create(); // Foundation is free
+    $illuminatePlan = Plan::factory()->illuminate()->create();
+
+    $user = User::factory()->create();
+
+    // One paid workspace
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $illuminatePlan->id,
+        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+    ]);
+
+    // One free workspace
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $foundationPlan->id,
+        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+    ]);
+
+    $enforcer = app(PlanLimitEnforcer::class);
+    $result = $enforcer->ensureCanCreateWorkspace($user);
+
+    expect($result->allowed)->toBeFalse()
+        ->and($result->code)->toBe('paid_plan_required');
+});

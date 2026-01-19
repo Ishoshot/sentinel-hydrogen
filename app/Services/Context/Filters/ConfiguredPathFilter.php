@@ -46,9 +46,7 @@ final class ConfiguredPathFilter implements ContextFilter
         }
 
         $originalCount = count($bag->files);
-        $sensitiveCount = 0;
 
-        // Apply ignore patterns
         if ($pathsConfig->ignore !== []) {
             $bag->files = array_values(array_filter(
                 $bag->files,
@@ -56,7 +54,6 @@ final class ConfiguredPathFilter implements ContextFilter
             ));
         }
 
-        // Apply include patterns (allowlist mode)
         if ($pathsConfig->include !== []) {
             $bag->files = array_values(array_filter(
                 $bag->files,
@@ -64,32 +61,8 @@ final class ConfiguredPathFilter implements ContextFilter
             ));
         }
 
-        // Mark sensitive files
-        if ($pathsConfig->sensitive !== []) {
-            $sensitiveFiles = [];
-            $bag->files = array_map(function (array $file) use ($pathsConfig, &$sensitiveFiles): array {
-                $isSensitive = $this->matchesAnyPattern($file['filename'], $pathsConfig->sensitive);
-                if ($isSensitive) {
-                    $file['is_sensitive'] = true;
-                    $sensitiveFiles[] = $file['filename'];
-                }
-
-                return $file;
-            }, $bag->files);
-
-            $sensitiveCount = count($sensitiveFiles);
-
-            if ($sensitiveCount > 0) {
-                $bag->metadata['sensitive_files'] = $sensitiveFiles;
-            }
-        }
-
-        // Recalculate metrics after filtering
-        $bag->metrics = [
-            'files_changed' => count($bag->files),
-            'lines_added' => array_sum(array_column($bag->files, 'additions')),
-            'lines_deleted' => array_sum(array_column($bag->files, 'deletions')),
-        ];
+        $sensitiveCount = $this->markSensitiveFiles($bag, $pathsConfig);
+        $bag->recalculateMetrics();
 
         $removedCount = $originalCount - count($bag->files);
         if ($removedCount > 0 || $sensitiveCount > 0) {
@@ -100,6 +73,32 @@ final class ConfiguredPathFilter implements ContextFilter
                 'remaining_files' => count($bag->files),
             ]);
         }
+    }
+
+    /**
+     * Mark files matching sensitive patterns.
+     */
+    private function markSensitiveFiles(ContextBag $bag, PathsConfig $pathsConfig): int
+    {
+        if ($pathsConfig->sensitive === []) {
+            return 0;
+        }
+
+        $sensitiveFiles = [];
+        $bag->files = array_map(function (array $file) use ($pathsConfig, &$sensitiveFiles): array {
+            if ($this->matchesAnyPattern($file['filename'], $pathsConfig->sensitive)) {
+                $file['is_sensitive'] = true;
+                $sensitiveFiles[] = $file['filename'];
+            }
+
+            return $file;
+        }, $bag->files);
+
+        if ($sensitiveFiles !== []) {
+            $bag->metadata['sensitive_files'] = $sensitiveFiles;
+        }
+
+        return count($sensitiveFiles);
     }
 
     /**

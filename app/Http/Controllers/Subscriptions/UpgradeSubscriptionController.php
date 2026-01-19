@@ -82,7 +82,7 @@ final class UpgradeSubscriptionController
                     'promotion_id' => $promotion->id,
                     'workspace_id' => $workspace->id,
                     'status' => PromotionUsageStatus::Pending,
-                    'checkout_session_id' => $checkoutUrl,
+                    'checkout_url' => $checkoutUrl,
                 ]);
             }
 
@@ -99,7 +99,9 @@ final class UpgradeSubscriptionController
             ]);
         }
 
-        $subscription = $upgradeSubscription->handle($workspace, $tier, $request->user());
+        /** @var \App\Models\User|null $user */
+        $user = $request->user();
+        $subscription = $upgradeSubscription->handle($workspace, $tier, $user);
 
         if ($promotion instanceof Promotion) {
             PromotionUsage::create([

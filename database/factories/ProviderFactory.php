@@ -8,6 +8,8 @@ use App\Enums\ProviderType;
 use App\Models\Provider;
 use Database\Factories\Concerns\RefreshOnCreate;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Model;
+use Override;
 
 /**
  * @extends Factory<Provider>
@@ -30,6 +32,32 @@ final class ProviderFactory extends Factory
             'is_active' => true,
             'settings' => null,
         ];
+    }
+
+    /**
+     * Create a model instance, reusing existing provider if type already exists.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    #[Override]
+    public function create($attributes = [], ?Model $parent = null): Provider
+    {
+        $type = $attributes['type'] ?? ProviderType::GitHub;
+
+        if ($type instanceof ProviderType) {
+            $type = $type->value;
+        }
+
+        $existing = Provider::query()->where('type', $type)->first();
+
+        if ($existing instanceof Provider) {
+            return $existing;
+        }
+
+        /** @var Provider $created */
+        $created = parent::create($attributes, $parent);
+
+        return $created;
     }
 
     /**

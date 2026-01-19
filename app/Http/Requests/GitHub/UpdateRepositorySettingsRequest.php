@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\GitHub;
 
 use App\Models\Repository;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -27,7 +28,13 @@ final class UpdateRepositorySettingsRequest extends FormRequest
             return false;
         }
 
-        return $this->user()?->roleInWorkspace($workspace)?->canManageSettings() ?? false;
+        $user = $this->user();
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        return $user->roleInWorkspace($workspace)?->canManageSettings() ?? false;
     }
 
     /**

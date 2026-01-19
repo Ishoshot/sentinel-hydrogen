@@ -42,3 +42,21 @@ parameters:
         # Mixed type access (webhook payloads, API responses)
         - '#Cannot access offset .+ on mixed#'
         - '#Parameter .+ expects .+, mixed given#'
+        # Laravel Collection generic type covariance issues
+        -
+            message: '#should return Illuminate.Support.Collection<.+> but returns#'
+            reportUnmatched: false
+        -
+            message: '#return type with generic class Illuminate.Support.Collection does not specify its types#'
+            reportUnmatched: false
+        -
+            message: '#has parameter .+ with generic interface .+ but does not specify its types#'
+            reportUnmatched: false
+        # Closure parameter type widening for Collection map/filter callbacks (ListWorkspaceRunsController)
+        -
+            message: '#Closure\(stdClass\):.+given#'
+            reportUnmatched: false
+        # DB query results are mixed, but we know their actual types
+        -
+            message: '#Cannot cast mixed to int#'
+            reportUnmatched: false

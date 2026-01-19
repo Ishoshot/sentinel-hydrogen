@@ -49,12 +49,14 @@ final class PromotionFactory extends Factory
 
     /**
      * Create a flat amount discount promotion.
+     *
+     * @param  float  $dollars  The discount amount in dollars (e.g., 10.00 for $10)
      */
-    public function flat(int $cents = 1000): static
+    public function flat(float $dollars = 10.00): static
     {
         return $this->state(fn (array $attributes): array => [
             'value_type' => PromotionValueType::Flat->value,
-            'value_amount' => $cents,
+            'value_amount' => $dollars,
         ]);
     }
 

@@ -71,7 +71,10 @@ final class RepositoryController
         /** @var array{auto_review_enabled?: bool, review_rules?: array<string, mixed>|null} $validated */
         $validated = $request->validated();
 
-        $updateSettings->handle($repository, $validated, $request->user());
+        /** @var \App\Models\User|null $user */
+        $user = $request->user();
+
+        $updateSettings->handle($repository, $validated, $user);
 
         $repository->refresh();
         $repository->load('settings');
@@ -103,6 +106,9 @@ final class RepositoryController
 
         $result = $syncRepositories->handle($installation);
 
+        /** @var \App\Models\User|null $user */
+        $user = $request->user();
+
         $logActivity->handle(
             workspace: $workspace,
             type: ActivityType::RepositoriesSynced,
@@ -112,7 +118,7 @@ final class RepositoryController
                 $result['updated'],
                 $result['removed']
             ),
-            actor: $request->user(),
+            actor: $user,
             metadata: $result,
         );
 

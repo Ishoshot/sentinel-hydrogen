@@ -102,19 +102,13 @@ final class RelevanceFilter implements ContextFilter
             return;
         }
 
-        // Calculate relevance scores and sort
         $scoredFiles = array_map(
-            fn (array $file): array => [
-                ...$file,
-                '_score' => $this->calculateRelevanceScore($file),
-            ],
+            fn (array $file): array => [...$file, '_score' => $this->calculateRelevanceScore($file)],
             $bag->files
         );
 
-        // Sort by score descending (most relevant first)
         usort($scoredFiles, fn (array $a, array $b): int => $b['_score'] <=> $a['_score']);
 
-        // Remove internal score and limit file count
         $bag->files = array_map(
             function (array $file): array {
                 unset($file['_score']);
@@ -124,12 +118,7 @@ final class RelevanceFilter implements ContextFilter
             array_slice($scoredFiles, 0, self::MAX_FILES)
         );
 
-        // Update metrics after filtering
-        $bag->metrics = [
-            'files_changed' => count($bag->files),
-            'lines_added' => array_sum(array_column($bag->files, 'additions')),
-            'lines_deleted' => array_sum(array_column($bag->files, 'deletions')),
-        ];
+        $bag->recalculateMetrics();
     }
 
     /**
