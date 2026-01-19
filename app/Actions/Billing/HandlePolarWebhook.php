@@ -110,6 +110,15 @@ final readonly class HandlePolarWebhook
             return;
         }
 
+        if (! ctype_digit($promotionId)) {
+            Log::warning('Invalid promotion_id format in webhook metadata', [
+                'promotion_id' => $promotionId,
+                'workspace_id' => $workspace->id,
+            ]);
+
+            return;
+        }
+
         $usage = PromotionUsage::query()
             ->where('workspace_id', $workspace->id)
             ->where('promotion_id', (int) $promotionId)
