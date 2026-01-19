@@ -18,16 +18,6 @@ final class RenderBriefingPdf implements ShouldQueue
     use Queueable;
 
     /**
-     * The number of times the job may be attempted.
-     */
-    public int $tries = 3;
-
-    /**
-     * The number of seconds the job can run before timing out.
-     */
-    public int $timeout = 120;
-
-    /**
      * Create a new job instance.
      *
      * @param  BriefingGeneration  $generation  The generation to render

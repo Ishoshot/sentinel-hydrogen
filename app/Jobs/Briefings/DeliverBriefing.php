@@ -20,11 +20,6 @@ final class DeliverBriefing implements ShouldQueue
     use Queueable;
 
     /**
-     * The number of times the job may be attempted.
-     */
-    public int $tries = 3;
-
-    /**
      * Create a new job instance.
      *
      * @param  BriefingGeneration  $generation  The generation to deliver

@@ -23,12 +23,6 @@ final class ProcessBriefingGeneration implements ShouldQueue
 {
     use Queueable;
 
-    /** @var int The number of times the job may be attempted */
-    public int $tries = 3;
-
-    /** @var int The number of seconds the job can run before timing out */
-    public int $timeout = 300;
-
     /** @param BriefingGeneration $generation The generation to process */
     public function __construct(
         public BriefingGeneration $generation,
