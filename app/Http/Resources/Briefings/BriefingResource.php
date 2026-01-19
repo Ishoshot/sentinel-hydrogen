@@ -31,7 +31,6 @@ final class BriefingResource extends JsonResource
             'target_roles' => $this->target_roles,
             'parameter_schema' => $this->parameter_schema,
             'requires_ai' => $this->requires_ai,
-            'estimated_duration_seconds' => $this->estimated_duration_seconds,
             'output_formats' => $this->output_formats,
             'is_schedulable' => $this->is_schedulable,
             'is_system' => $this->is_system,

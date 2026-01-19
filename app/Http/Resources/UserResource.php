@@ -25,6 +25,7 @@ final class UserResource extends JsonResource
             'email' => $this->email,
             'avatar_url' => $this->avatar_url,
             'email_verified_at' => $this->email_verified_at?->toISOString(),
+            'has_seen_getting_started' => $this->has_seen_getting_started,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
