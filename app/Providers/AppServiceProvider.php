@@ -42,6 +42,8 @@ use App\Services\Reviews\Contracts\ProviderKeyResolver;
 use App\Services\Reviews\Contracts\ReviewEngine;
 use App\Services\Reviews\PrismReviewEngine;
 use App\Services\Reviews\ProviderKeyResolverService;
+use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
+use App\Services\Semantic\SemanticAnalyzerService;
 use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use App\Services\SentinelConfig\SentinelConfigParserService;
 use Illuminate\Support\ServiceProvider;
@@ -102,6 +104,9 @@ final class AppServiceProvider extends ServiceProvider
 
         // Register Sentinel Config Parser
         $this->app->bind(SentinelConfigParser::class, SentinelConfigParserService::class);
+
+        // Register Semantic Analyzer
+        $this->app->bind(SemanticAnalyzerInterface::class, SemanticAnalyzerService::class);
 
         // Register Briefing Services
         $this->app->bind(BriefingDataCollector::class, BriefingDataCollectorService::class);
