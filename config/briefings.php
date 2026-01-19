@@ -62,8 +62,8 @@ return [
     |
     */
     'storage' => [
-        // Storage disk for generated files (should be R2 or S3-compatible)
-        'disk' => env('BRIEFINGS_DISK', 'r2'),
+        // Storage disk for generated files (should be S3-compatible like R2, Spaces, etc.)
+        'disk' => env('BRIEFINGS_DISK', 's3'),
 
         // Base path within the disk
         'path' => 'briefings',

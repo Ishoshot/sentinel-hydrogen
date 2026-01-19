@@ -105,6 +105,7 @@ return [
         'redis:'.Queue::ReviewsEnterprise->value => 30,
         'redis:'.Queue::ReviewsPaid->value => 45,
         'redis:'.Queue::ReviewsDefault->value => 60,
+        'redis:'.Queue::BriefingsDefault->value => 60,
         'redis:'.Queue::Annotations->value => 30,
         'redis:'.Queue::Notifications->value => 60,
         'redis:'.Queue::Sync->value => 120,
@@ -209,7 +210,7 @@ return [
     |
     | Supervisor Design:
     | - supervisor-critical: System and webhook jobs (fast, isolated)
-    | - supervisor-reviews: AI review execution (resource-intensive)
+    | - supervisor-reviews: AI review and briefing execution (resource-intensive)
     | - supervisor-default: General purpose workloads
     | - supervisor-background: Long-running and bulk operations
     |
@@ -239,6 +240,7 @@ return [
                 Queue::ReviewsEnterprise->value,
                 Queue::ReviewsPaid->value,
                 Queue::ReviewsDefault->value,
+                Queue::BriefingsDefault->value,
                 Queue::Annotations->value,
             ],
             'balance' => false, // Strict priority order for tier-based queues
