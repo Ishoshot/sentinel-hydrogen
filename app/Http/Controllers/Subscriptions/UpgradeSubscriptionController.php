@@ -82,7 +82,7 @@ final class UpgradeSubscriptionController
                     'promotion_id' => $promotion->id,
                     'workspace_id' => $workspace->id,
                     'status' => PromotionUsageStatus::Pending,
-                    'checkout_session_id' => $checkoutUrl,
+                    'checkout_url' => $checkoutUrl,
                 ]);
             }
 
