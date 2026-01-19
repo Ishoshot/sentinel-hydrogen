@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\DTOs\Briefings\BriefingPropertyFormat;
+use App\DTOs\Briefings\BriefingSchema;
+use App\DTOs\Briefings\BriefingSchemaBuilder;
+use App\DTOs\Briefings\BriefingSchemaProperty;
 use App\Enums\BriefingOutputFormat;
 use App\Models\Briefing;
 use Illuminate\Database\Seeder;
@@ -39,30 +43,22 @@ final class BriefingSeeder extends Seeder
                 'description' => "A quick summary of yesterday's activity to share with your team during standup.",
                 'icon' => 'ph:sun-bold',
                 'target_roles' => ['engineer', 'lead', 'manager'],
-                'parameter_schema' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'repository_ids' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'integer'],
-                            'description' => 'Filter by specific repositories',
-                        ],
-                        'start_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'Start of the period (defaults to yesterday)',
-                        ],
-                        'end_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'End of the period (defaults to today)',
-                        ],
-                    ],
-                ],
+                'parameter_schema' => $this->baseParameterSchema()
+                    ->optionalString(
+                        'start_date',
+                        description: 'Start of the period (defaults to yesterday)',
+                        format: BriefingPropertyFormat::Date,
+                    )
+                    ->optionalString(
+                        'end_date',
+                        description: 'End of the period (defaults to today)',
+                        format: BriefingPropertyFormat::Date,
+                    )
+                    ->build()
+                    ->toArray(),
                 'prompt_path' => 'briefings.prompts.standup-update',
                 'requires_ai' => true,
                 'eligible_plan_ids' => null,
-                'estimated_duration_seconds' => 30,
                 'output_formats' => [
                     BriefingOutputFormat::Html->value,
                     BriefingOutputFormat::Markdown->value,
@@ -78,30 +74,22 @@ final class BriefingSeeder extends Seeder
                 'description' => 'Comprehensive weekly summary of team activity, metrics, and achievements.',
                 'icon' => 'ph:calendar-check-bold',
                 'target_roles' => ['lead', 'manager', 'executive'],
-                'parameter_schema' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'repository_ids' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'integer'],
-                            'description' => 'Filter by specific repositories',
-                        ],
-                        'start_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'Start of the week',
-                        ],
-                        'end_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'End of the week',
-                        ],
-                    ],
-                ],
+                'parameter_schema' => $this->baseParameterSchema()
+                    ->optionalString(
+                        'start_date',
+                        description: 'Start of the week',
+                        format: BriefingPropertyFormat::Date,
+                    )
+                    ->optionalString(
+                        'end_date',
+                        description: 'End of the week',
+                        format: BriefingPropertyFormat::Date,
+                    )
+                    ->build()
+                    ->toArray(),
                 'prompt_path' => 'briefings.prompts.weekly-team-summary',
                 'requires_ai' => true,
                 'eligible_plan_ids' => null,
-                'estimated_duration_seconds' => 45,
                 'output_formats' => [
                     BriefingOutputFormat::Html->value,
                     BriefingOutputFormat::Pdf->value,
@@ -118,30 +106,10 @@ final class BriefingSeeder extends Seeder
                 'description' => 'Analyze team throughput and delivery cadence with velocity metrics.',
                 'icon' => 'ph:chart-line-up-bold',
                 'target_roles' => ['lead', 'manager', 'executive'],
-                'parameter_schema' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'repository_ids' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'integer'],
-                            'description' => 'Filter by specific repositories',
-                        ],
-                        'start_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'Start of the period',
-                        ],
-                        'end_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'End of the period',
-                        ],
-                    ],
-                ],
+                'parameter_schema' => $this->periodParameterSchema()->toArray(),
                 'prompt_path' => 'briefings.prompts.delivery-velocity',
                 'requires_ai' => true,
                 'eligible_plan_ids' => null,
-                'estimated_duration_seconds' => 40,
                 'output_formats' => [
                     BriefingOutputFormat::Html->value,
                     BriefingOutputFormat::Pdf->value,
@@ -158,30 +126,10 @@ final class BriefingSeeder extends Seeder
                 'description' => 'Recognize and celebrate individual contributor achievements.',
                 'icon' => 'ph:star-bold',
                 'target_roles' => ['lead', 'manager'],
-                'parameter_schema' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'repository_ids' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'integer'],
-                            'description' => 'Filter by specific repositories',
-                        ],
-                        'start_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'Start of the period',
-                        ],
-                        'end_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'End of the period',
-                        ],
-                    ],
-                ],
+                'parameter_schema' => $this->periodParameterSchema()->toArray(),
                 'prompt_path' => 'briefings.prompts.engineer-spotlight',
                 'requires_ai' => true,
                 'eligible_plan_ids' => null,
-                'estimated_duration_seconds' => 35,
                 'output_formats' => [
                     BriefingOutputFormat::Html->value,
                     BriefingOutputFormat::Markdown->value,
@@ -197,30 +145,10 @@ final class BriefingSeeder extends Seeder
                 'description' => 'Executive-level summary of engineering activity for company-wide updates.',
                 'icon' => 'ph:buildings-bold',
                 'target_roles' => ['executive', 'manager'],
-                'parameter_schema' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'repository_ids' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'integer'],
-                            'description' => 'Filter by specific repositories',
-                        ],
-                        'start_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'Start of the period',
-                        ],
-                        'end_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'End of the period',
-                        ],
-                    ],
-                ],
+                'parameter_schema' => $this->periodParameterSchema()->toArray(),
                 'prompt_path' => 'briefings.prompts.company-update',
                 'requires_ai' => true,
                 'eligible_plan_ids' => null,
-                'estimated_duration_seconds' => 50,
                 'output_formats' => [
                     BriefingOutputFormat::Html->value,
                     BriefingOutputFormat::Pdf->value,
@@ -237,38 +165,24 @@ final class BriefingSeeder extends Seeder
                 'description' => 'Data-driven sprint retrospective summary with metrics and insights.',
                 'icon' => 'ph:arrows-clockwise-bold',
                 'target_roles' => ['engineer', 'lead', 'manager'],
-                'parameter_schema' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'repository_ids' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'integer'],
-                            'description' => 'Filter by specific repositories',
-                        ],
-                        'sprint_number' => [
-                            'type' => 'integer',
-                            'description' => 'Sprint number for reference',
-                        ],
-                        'sprint_goal' => [
-                            'type' => 'string',
-                            'description' => 'The sprint goal to evaluate against',
-                        ],
-                        'start_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'Sprint start date',
-                        ],
-                        'end_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'Sprint end date',
-                        ],
-                    ],
-                ],
+                'parameter_schema' => $this->baseParameterSchema()
+                    ->optionalInteger('sprint_number', description: 'Sprint number for reference')
+                    ->optionalString('sprint_goal', description: 'The sprint goal to evaluate against')
+                    ->optionalString(
+                        'start_date',
+                        description: 'Sprint start date',
+                        format: BriefingPropertyFormat::Date,
+                    )
+                    ->optionalString(
+                        'end_date',
+                        description: 'Sprint end date',
+                        format: BriefingPropertyFormat::Date,
+                    )
+                    ->build()
+                    ->toArray(),
                 'prompt_path' => 'briefings.prompts.sprint-retrospective',
                 'requires_ai' => true,
                 'eligible_plan_ids' => null,
-                'estimated_duration_seconds' => 45,
                 'output_formats' => [
                     BriefingOutputFormat::Html->value,
                     BriefingOutputFormat::Pdf->value,
@@ -285,30 +199,10 @@ final class BriefingSeeder extends Seeder
                 'description' => 'Technical assessment of code quality and health metrics.',
                 'icon' => 'ph:heartbeat-bold',
                 'target_roles' => ['engineer', 'lead'],
-                'parameter_schema' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'repository_ids' => [
-                            'type' => 'array',
-                            'items' => ['type' => 'integer'],
-                            'description' => 'Filter by specific repositories',
-                        ],
-                        'start_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'Start of the period',
-                        ],
-                        'end_date' => [
-                            'type' => 'string',
-                            'format' => 'date',
-                            'description' => 'End of the period',
-                        ],
-                    ],
-                ],
+                'parameter_schema' => $this->periodParameterSchema()->toArray(),
                 'prompt_path' => 'briefings.prompts.code-health',
                 'requires_ai' => true,
                 'eligible_plan_ids' => null,
-                'estimated_duration_seconds' => 40,
                 'output_formats' => [
                     BriefingOutputFormat::Html->value,
                     BriefingOutputFormat::Pdf->value,
@@ -320,5 +214,37 @@ final class BriefingSeeder extends Seeder
                 'is_active' => true,
             ],
         ];
+    }
+
+    /**
+     * Create a base schema builder with repository filter.
+     */
+    private function baseParameterSchema(): BriefingSchemaBuilder
+    {
+        return BriefingSchema::make()
+            ->optionalArray(
+                'repository_ids',
+                BriefingSchemaProperty::integer(description: 'Repository ID'),
+                description: 'Filter by specific repositories',
+            );
+    }
+
+    /**
+     * Create a standard period-based parameter schema.
+     */
+    private function periodParameterSchema(): BriefingSchema
+    {
+        return $this->baseParameterSchema()
+            ->optionalString(
+                'start_date',
+                description: 'Start of the period',
+                format: BriefingPropertyFormat::Date,
+            )
+            ->optionalString(
+                'end_date',
+                description: 'End of the period',
+                format: BriefingPropertyFormat::Date,
+            )
+            ->build();
     }
 }

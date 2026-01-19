@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\DTOs\Briefings\BriefingPropertyFormat;
+use App\DTOs\Briefings\BriefingSchema;
+use App\DTOs\Briefings\BriefingSchemaProperty;
 use App\Models\Briefing;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -31,17 +34,27 @@ final class BriefingFactory extends Factory
             'description' => fake()->sentence(),
             'icon' => fake()->randomElement(['chart-bar', 'users', 'trophy', 'clock', 'code']),
             'target_roles' => ['engineering_manager', 'developer'],
-            'parameter_schema' => [
-                'type' => 'object',
-                'properties' => [
-                    'date_from' => ['type' => 'string', 'format' => 'date'],
-                    'date_to' => ['type' => 'string', 'format' => 'date'],
-                ],
-            ],
+            'parameter_schema' => BriefingSchema::make()
+                ->optionalArray(
+                    'repository_ids',
+                    BriefingSchemaProperty::integer(description: 'Repository ID'),
+                    description: 'Filter by specific repositories',
+                )
+                ->optionalString(
+                    'start_date',
+                    description: 'Start of the period',
+                    format: BriefingPropertyFormat::Date,
+                )
+                ->optionalString(
+                    'end_date',
+                    description: 'End of the period',
+                    format: BriefingPropertyFormat::Date,
+                )
+                ->build()
+                ->toArray(),
             'prompt_path' => 'briefings.prompts.default',
             'requires_ai' => true,
             'eligible_plan_ids' => null,
-            'estimated_duration_seconds' => 60,
             'output_formats' => ['html', 'pdf'],
             'is_schedulable' => true,
             'is_system' => true,
