@@ -8,6 +8,7 @@ use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Models\Repository;
 use App\Services\GitHub\GitHubApiService;
 use App\Services\SentinelMessageService;
+use App\Support\RepositoryNameParser;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -43,7 +44,16 @@ final readonly class PostPullRequestGreeting implements PostsGreetingComment
                 return null;
             }
 
-            [$owner, $repo] = explode('/', $repository->full_name);
+            $parsed = RepositoryNameParser::parse($repository->full_name);
+            if ($parsed === null) {
+                Log::warning('Invalid repository full_name format', [
+                    'repository_id' => $repository->id,
+                    'full_name' => $repository->full_name,
+                ]);
+
+                return null;
+            }
+            ['owner' => $owner, 'repo' => $repo] = $parsed;
 
             $comment = $this->messageService->buildGreetingComment();
 
@@ -54,6 +64,15 @@ final readonly class PostPullRequestGreeting implements PostsGreetingComment
                 number: $pullRequestNumber,
                 body: $comment
             );
+
+            if (! isset($response['id'])) {
+                Log::error('GitHub API response missing comment id', [
+                    'repository' => $repository->full_name,
+                    'pr_number' => $pullRequestNumber,
+                ]);
+
+                return null;
+            }
 
             /** @var int $commentId */
             $commentId = $response['id'];
