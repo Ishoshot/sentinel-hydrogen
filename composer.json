@@ -16,9 +16,11 @@
         "graham-campbell/github": "^13.0",
         "laravel/framework": "^12.0",
         "laravel/horizon": "^5.42",
+        "laravel/reverb": "^1.7",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^2.10.1",
+        "league/flysystem-aws-s3-v3": "^3.0",
         "resend/resend-laravel": "^1.1",
         "spatie/browsershot": "^5.2"
     },
