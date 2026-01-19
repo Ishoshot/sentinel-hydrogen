@@ -213,7 +213,7 @@ final readonly class ExecuteReviewRun
     private function finalizeRun(Run $run, RunStatus $status, array $policySnapshot, array $metadata): void
     {
         $durationSeconds = $run->started_at !== null
-            ? (int) now()->diffInSeconds($run->started_at)
+            ? (int) now()->diffInSeconds($run->started_at, absolute: true)
             : null;
 
         $run->forceFill([
