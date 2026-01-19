@@ -8,6 +8,7 @@ use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Actions\Reviews\CreatePullRequestRun;
 use App\Actions\Reviews\SyncPullRequestRunMetadata;
+use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Enums\ProviderType;
 use App\Enums\RunStatus;
 use App\Jobs\GitHub\ProcessPullRequestWebhook;
@@ -20,8 +21,10 @@ use App\Models\RepositorySettings;
 use App\Models\Run;
 use App\Services\GitHub\GitHubWebhookService;
 use App\Services\Queue\QueueResolver;
+use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use App\Services\SentinelConfig\TriggerRuleEvaluator;
 use Illuminate\Support\Facades\Queue;
+use Symfony\Component\Yaml\Yaml;
 
 use function Pest\Laravel\mock;
 
@@ -34,6 +37,32 @@ beforeEach(function (): void {
         ->shouldReceive('handle')
         ->andReturnNull();
 });
+
+/**
+ * Create a mock FetchesSentinelConfig that returns config from repository settings.
+ */
+function mockFetchConfigFromSettings(): FetchesSentinelConfig
+{
+    return new class implements FetchesSentinelConfig
+    {
+        public function handle(Repository $repository, ?string $ref = null): array
+        {
+            $repository->loadMissing('settings');
+            $config = $repository->settings?->sentinel_config;
+
+            if ($config === null) {
+                return ['found' => false, 'content' => null, 'sha' => null, 'error' => null];
+            }
+
+            return [
+                'found' => true,
+                'content' => Yaml::dump($config),
+                'sha' => 'test-sha',
+                'error' => null,
+            ];
+        }
+    };
+}
 
 /**
  * Create a fake auto-review disabled poster.
@@ -125,7 +154,9 @@ it('creates a run for pull request webhook when auto review is enabled', functio
         fakeConfigErrorPoster(),
         fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class)
+        app(QueueResolver::class),
+        mockFetchConfigFromSettings(),
+        app(SentinelConfigParser::class)
     );
 
     $run = Run::query()->first();
@@ -197,7 +228,9 @@ it('skips run creation when auto review is disabled', function (): void {
         fakeConfigErrorPoster(),
         fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class)
+        app(QueueResolver::class),
+        mockFetchConfigFromSettings(),
+        app(SentinelConfigParser::class)
     );
 
     expect(Run::query()->count())->toBe(0);
@@ -276,7 +309,9 @@ it('syncs metadata when labels are added to an existing run', function (): void 
         fakeConfigErrorPoster(),
         fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class)
+        app(QueueResolver::class),
+        mockFetchConfigFromSettings(),
+        app(SentinelConfigParser::class)
     );
 
     $existingRun->refresh();
@@ -359,7 +394,9 @@ it('syncs metadata when reviewers are requested on an existing run', function ()
         fakeConfigErrorPoster(),
         fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class)
+        app(QueueResolver::class),
+        mockFetchConfigFromSettings(),
+        app(SentinelConfigParser::class)
     );
 
     $existingRun->refresh();
@@ -431,7 +468,9 @@ it('does not sync metadata when no existing run is found', function (): void {
         fakeConfigErrorPoster(),
         fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class)
+        app(QueueResolver::class),
+        mockFetchConfigFromSettings(),
+        app(SentinelConfigParser::class)
     );
 
     // No runs should exist and no review should be triggered
@@ -517,7 +556,9 @@ it('creates skipped run and posts error comment when repository has config error
         $fakeConfigErrorPoster,
         fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class)
+        app(QueueResolver::class),
+        mockFetchConfigFromSettings(),
+        app(SentinelConfigParser::class)
     );
 
     $run = Run::query()->first();
@@ -603,7 +644,9 @@ it('creates normal run when repository has no config error', function (): void {
         fakeConfigErrorPoster(),
         fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class)
+        app(QueueResolver::class),
+        mockFetchConfigFromSettings(),
+        app(SentinelConfigParser::class)
     );
 
     $run = Run::query()->first();
@@ -683,7 +726,9 @@ it('creates skipped run when PR target branch does not match trigger rules', fun
         fakeConfigErrorPoster(),
         fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class)
+        app(QueueResolver::class),
+        mockFetchConfigFromSettings(),
+        app(SentinelConfigParser::class)
     );
 
     $run = Run::query()->first();
@@ -763,7 +808,9 @@ it('creates skipped run when PR author is in skip list', function (): void {
         fakeConfigErrorPoster(),
         fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class)
+        app(QueueResolver::class),
+        mockFetchConfigFromSettings(),
+        app(SentinelConfigParser::class)
     );
 
     $run = Run::query()->first();
@@ -845,7 +892,9 @@ it('creates skipped run when PR has skip label', function (): void {
         fakeConfigErrorPoster(),
         fakeAutoReviewDisabledPoster(),
         app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class)
+        app(QueueResolver::class),
+        mockFetchConfigFromSettings(),
+        app(SentinelConfigParser::class)
     );
 
     $run = Run::query()->first();
@@ -853,6 +902,225 @@ it('creates skipped run when PR has skip label', function (): void {
     expect($run)->not->toBeNull()
         ->and($run?->status)->toBe(RunStatus::Skipped)
         ->and($run?->metadata['skip_reason'])->toContain('no-review');
+
+    Queue::assertNotPushed(ExecuteReviewRun::class);
+});
+
+it('uses config from head branch when available (branch-aware trigger rules)', function (): void {
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forProvider($provider)->active()->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 12345678,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'github_id' => 987654,
+        'full_name' => 'org/repo',
+        'name' => 'repo',
+        'default_branch' => 'main',
+    ]);
+    // No sentinel_config in settings (simulating no config in default branch)
+    RepositorySettings::factory()->forRepository($repository)->autoReviewEnabled()->create([
+        'sentinel_config' => null,
+    ]);
+
+    Queue::fake();
+
+    $payload = [
+        'action' => 'opened',
+        'installation' => ['id' => 12345678],
+        'repository' => [
+            'id' => 987654,
+            'full_name' => 'org/repo',
+        ],
+        'pull_request' => [
+            'number' => 42,
+            'title' => 'Test PR',
+            'body' => 'Test body',
+            'draft' => false,
+            'user' => ['login' => 'testuser', 'avatar_url' => null],
+            'base' => ['ref' => 'dev'],
+            'head' => ['ref' => 'feature/my-branch', 'sha' => 'abc123'],
+            'assignees' => [],
+            'requested_reviewers' => [],
+            'labels' => [],
+        ],
+        'sender' => ['login' => 'testuser'],
+    ];
+
+    // Create a mock that returns config allowing all branches from the "head" branch
+    $mockFetchConfig = new class implements FetchesSentinelConfig
+    {
+        public ?string $lastRequestedBranch = null;
+
+        public function handle(Repository $repository, ?string $ref = null): array
+        {
+            $this->lastRequestedBranch = $ref;
+
+            // Simulate config only exists in the head branch
+            if ($ref === 'feature/my-branch') {
+                return [
+                    'found' => true,
+                    'content' => Yaml::dump([
+                        'version' => 1,
+                        'triggers' => [
+                            'target_branches' => ['*'], // Allow all branches
+                        ],
+                    ]),
+                    'sha' => 'test-sha',
+                    'error' => null,
+                ];
+            }
+
+            // Not found in other branches
+            return ['found' => false, 'content' => null, 'sha' => null, 'error' => null];
+        }
+    };
+
+    $fakeGreeting = new class implements PostsGreetingComment
+    {
+        public bool $wasCalled = false;
+
+        public function handle(Repository $repository, int $pullRequestNumber): ?int
+        {
+            $this->wasCalled = true;
+
+            return 12345;
+        }
+    };
+
+    $job = new ProcessPullRequestWebhook($payload);
+    $job->handle(
+        app(GitHubWebhookService::class),
+        app(CreatePullRequestRun::class),
+        app(SyncPullRequestRunMetadata::class),
+        $fakeGreeting,
+        fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class),
+        $mockFetchConfig,
+        app(SentinelConfigParser::class)
+    );
+
+    $run = Run::query()->first();
+
+    // The PR to 'dev' should NOT be skipped because config from head branch has target_branches: ["*"]
+    expect($fakeGreeting->wasCalled)->toBeTrue()
+        ->and($run)->not->toBeNull()
+        ->and($run?->status)->toBe(RunStatus::Queued)
+        ->and($run?->metadata)->not->toHaveKey('skip_reason');
+
+    Queue::assertPushed(ExecuteReviewRun::class);
+});
+
+it('falls back to default branch config when head and base have no config', function (): void {
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forProvider($provider)->active()->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 12345678,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'github_id' => 987654,
+        'full_name' => 'org/repo',
+        'name' => 'repo',
+        'default_branch' => 'main',
+    ]);
+    RepositorySettings::factory()->forRepository($repository)->autoReviewEnabled()->create([
+        'sentinel_config' => null,
+    ]);
+
+    Queue::fake();
+
+    $payload = [
+        'action' => 'opened',
+        'installation' => ['id' => 12345678],
+        'repository' => [
+            'id' => 987654,
+            'full_name' => 'org/repo',
+        ],
+        'pull_request' => [
+            'number' => 42,
+            'title' => 'Test PR',
+            'body' => 'Test body',
+            'draft' => false,
+            'user' => ['login' => 'testuser', 'avatar_url' => null],
+            'base' => ['ref' => 'dev'],
+            'head' => ['ref' => 'feature/my-branch', 'sha' => 'abc123'],
+            'assignees' => [],
+            'requested_reviewers' => [],
+            'labels' => [],
+        ],
+        'sender' => ['login' => 'testuser'],
+    ];
+
+    // Create a mock that returns config only from the default branch
+    $mockFetchConfig = new class implements FetchesSentinelConfig
+    {
+        /** @var array<string> */
+        public array $requestedBranches = [];
+
+        public function handle(Repository $repository, ?string $ref = null): array
+        {
+            $this->requestedBranches[] = $ref;
+
+            // Simulate config only exists in the default branch (main)
+            if ($ref === 'main') {
+                return [
+                    'found' => true,
+                    'content' => Yaml::dump([
+                        'version' => 1,
+                        'triggers' => [
+                            'target_branches' => ['main'], // Only allow main
+                        ],
+                    ]),
+                    'sha' => 'test-sha',
+                    'error' => null,
+                ];
+            }
+
+            // Not found in head or base branches
+            return ['found' => false, 'content' => null, 'sha' => null, 'error' => null];
+        }
+    };
+
+    $fakeGreeting = new class implements PostsGreetingComment
+    {
+        public function handle(Repository $repository, int $pullRequestNumber): ?int
+        {
+            throw new Exception('Greeting should not be called when trigger rules skip');
+        }
+    };
+
+    $job = new ProcessPullRequestWebhook($payload);
+    $job->handle(
+        app(GitHubWebhookService::class),
+        app(CreatePullRequestRun::class),
+        app(SyncPullRequestRunMetadata::class),
+        $fakeGreeting,
+        fakeConfigErrorPoster(),
+        fakeAutoReviewDisabledPoster(),
+        app(TriggerRuleEvaluator::class),
+        app(QueueResolver::class),
+        $mockFetchConfig,
+        app(SentinelConfigParser::class)
+    );
+
+    $run = Run::query()->first();
+
+    // Verify the fallback order: head -> base -> default
+    expect($mockFetchConfig->requestedBranches)->toBe(['feature/my-branch', 'dev', 'main']);
+
+    // The PR to 'dev' should be skipped because config from main has target_branches: ["main"]
+    expect($run)->not->toBeNull()
+        ->and($run?->status)->toBe(RunStatus::Skipped)
+        ->and($run?->metadata['skip_reason'])->toContain('dev')
+        ->and($run?->metadata['skip_reason'])->toContain('does not match');
 
     Queue::assertNotPushed(ExecuteReviewRun::class);
 });
