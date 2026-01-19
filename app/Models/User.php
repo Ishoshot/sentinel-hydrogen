@@ -19,6 +19,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string|null $password
  * @property string|null $avatar_url
  * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property bool $has_seen_getting_started
  * @property string|null $remember_token
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -129,6 +130,7 @@ final class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'has_seen_getting_started' => 'boolean',
             'password' => 'hashed',
         ];
     }

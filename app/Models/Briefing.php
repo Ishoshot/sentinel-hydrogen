@@ -25,7 +25,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $prompt_path
  * @property bool $requires_ai
  * @property array<int>|null $eligible_plan_ids
- * @property int $estimated_duration_seconds
  * @property array<string> $output_formats
  * @property bool $is_schedulable
  * @property bool $is_system
@@ -53,7 +52,6 @@ final class Briefing extends Model
         'prompt_path',
         'requires_ai',
         'eligible_plan_ids',
-        'estimated_duration_seconds',
         'output_formats',
         'is_schedulable',
         'is_system',

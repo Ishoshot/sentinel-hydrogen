@@ -23,7 +23,7 @@ final class PromotionUsage extends Model
         'workspace_id',
         'subscription_id',
         'status',
-        'checkout_session_id',
+        'checkout_url',
         'confirmed_at',
     ];
 
