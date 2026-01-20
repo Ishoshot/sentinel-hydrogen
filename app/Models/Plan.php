@@ -24,6 +24,7 @@ final class Plan extends Model
         'tier',
         'description',
         'monthly_runs_limit',
+        'monthly_commands_limit',
         'team_size_limit',
         'features',
         'price_monthly',
