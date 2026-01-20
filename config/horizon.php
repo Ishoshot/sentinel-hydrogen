@@ -106,10 +106,12 @@ return [
         'redis:'.Queue::ReviewsPaid->value => 45,
         'redis:'.Queue::ReviewsDefault->value => 60,
         'redis:'.Queue::BriefingsDefault->value => 60,
+        'redis:'.Queue::Commands->value => 60,
         'redis:'.Queue::Annotations->value => 30,
         'redis:'.Queue::Notifications->value => 60,
         'redis:'.Queue::Sync->value => 120,
         'redis:'.Queue::Default->value => 60,
+        'redis:'.Queue::CodeIndexing->value => 120,
         'redis:'.Queue::LongRunning->value => 300,
         'redis:'.Queue::Bulk->value => 600,
     ],
@@ -241,6 +243,7 @@ return [
                 Queue::ReviewsPaid->value,
                 Queue::ReviewsDefault->value,
                 Queue::BriefingsDefault->value,
+                Queue::Commands->value,
                 Queue::Annotations->value,
             ],
             'balance' => false, // Strict priority order for tier-based queues
@@ -276,6 +279,7 @@ return [
         'supervisor-background' => [
             'connection' => 'redis',
             'queue' => [
+                Queue::CodeIndexing->value,
                 Queue::LongRunning->value,
                 Queue::Bulk->value,
             ],
