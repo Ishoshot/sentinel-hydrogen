@@ -109,14 +109,11 @@ final class RelevanceFilter implements ContextFilter
 
         usort($scoredFiles, fn (array $a, array $b): int => $b['_score'] <=> $a['_score']);
 
-        $bag->files = array_map(
-            function (array $file): array {
-                unset($file['_score']);
+        $bag->files = array_map(function (array $file): array {
+            unset($file['_score']);
 
-                return $file;
-            },
-            array_slice($scoredFiles, 0, self::MAX_FILES)
-        );
+            return $file;
+        }, array_slice($scoredFiles, 0, self::MAX_FILES));
 
         $bag->recalculateMetrics();
     }

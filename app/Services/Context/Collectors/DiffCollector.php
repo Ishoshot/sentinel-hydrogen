@@ -120,8 +120,8 @@ final readonly class DiffCollector implements ContextCollector
         $bag->metrics = $this->calculateMetrics($bag->files);
 
         // Fetch sentinel config with fallback: head_branch -> base_branch -> default_branch
-        $headBranch = $bag->pullRequest['head_branch'] ?? null;
-        $baseBranch = $bag->pullRequest['base_branch'] ?? null;
+        $headBranch = $bag->pullRequest['head_branch'];
+        $baseBranch = $bag->pullRequest['base_branch'];
         $defaultBranch = $repository->default_branch;
 
         $configResult = $this->fetchConfigWithFallback($repository, $headBranch, $baseBranch, $defaultBranch);

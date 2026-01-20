@@ -86,19 +86,12 @@ final class BinaryFileFilter implements ContextFilter
     {
         $filename = basename($path);
 
-        // Check exact filename matches
         if (in_array($filename, self::EXCLUDED_FILENAMES, true)) {
             return true;
         }
 
-        // Check extension matches
         $extension = mb_strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-        if (in_array($extension, self::EXCLUDED_EXTENSIONS, true)) {
-            return true;
-        }
-
-        // Check compound extensions (e.g., .min.js)
-        return str_ends_with(mb_strtolower($path), '.min.js') || str_ends_with(mb_strtolower($path), '.min.css');
+        return in_array($extension, self::EXCLUDED_EXTENSIONS, true);
     }
 }
