@@ -215,8 +215,11 @@ final class ProcessPullRequestWebhook implements ShouldQueue
 
         foreach ($branches as $branch) {
             $fetchResult = $fetchConfig->handle($repository, $branch);
+            if (! $fetchResult['found']) {
+                continue;
+            }
 
-            if (! $fetchResult['found'] || $fetchResult['content'] === null) {
+            if ($fetchResult['content'] === null) {
                 continue;
             }
 

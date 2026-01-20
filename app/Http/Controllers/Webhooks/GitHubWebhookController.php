@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Webhooks;
 use App\Enums\GitHubWebhookEvent;
 use App\Jobs\GitHub\ProcessInstallationRepositoriesWebhook;
 use App\Jobs\GitHub\ProcessInstallationWebhook;
+use App\Jobs\GitHub\ProcessIssueCommentWebhook;
 use App\Jobs\GitHub\ProcessPullRequestWebhook;
 use App\Jobs\GitHub\ProcessPushWebhook;
 use App\Services\GitHub\GitHubWebhookService;
@@ -78,6 +79,7 @@ final readonly class GitHubWebhookController
         match ($event) {
             GitHubWebhookEvent::Installation => ProcessInstallationWebhook::dispatch($data),
             GitHubWebhookEvent::InstallationRepositories => ProcessInstallationRepositoriesWebhook::dispatch($data),
+            GitHubWebhookEvent::IssueComment => ProcessIssueCommentWebhook::dispatch($data),
             GitHubWebhookEvent::PullRequest => ProcessPullRequestWebhook::dispatch($data),
             GitHubWebhookEvent::Push => ProcessPushWebhook::dispatch($data),
             default => null,
