@@ -53,6 +53,7 @@ final readonly class PostAutoReviewDisabledComment implements PostsAutoReviewDis
 
                 return null;
             }
+
             ['owner' => $owner, 'repo' => $repo] = $parsed;
 
             $comment = $this->messageService->buildAutoReviewDisabledComment();
