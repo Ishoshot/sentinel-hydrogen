@@ -18,10 +18,21 @@ use App\Services\Briefings\BriefingDataCollectorService;
 use App\Services\Briefings\Contracts\BriefingDataCollector;
 use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
 use App\Services\Briefings\NarrativeGeneratorService;
+use App\Services\CodeIndexing\CodeIndexingService;
+use App\Services\CodeIndexing\CodeSearchService;
+use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;
+use App\Services\CodeIndexing\Contracts\CodeSearchServiceContract;
+use App\Services\CodeIndexing\Contracts\EmbeddingServiceContract;
+use App\Services\CodeIndexing\EmbeddingService;
+use App\Services\Commands\CommandAgentService;
+use App\Services\Commands\Contracts\CommandAgentServiceContract;
+use App\Services\Commands\Contracts\PullRequestContextServiceContract;
+use App\Services\Commands\PullRequestContextService;
 use App\Services\Context\Collectors\DiffCollector;
 use App\Services\Context\Collectors\FileContextCollector;
 use App\Services\Context\Collectors\GuidelinesCollector;
 use App\Services\Context\Collectors\LinkedIssueCollector;
+use App\Services\Context\Collectors\ProjectContextCollector;
 use App\Services\Context\Collectors\PullRequestCommentCollector;
 use App\Services\Context\Collectors\RepositoryContextCollector;
 use App\Services\Context\Collectors\ReviewHistoryCollector;
@@ -80,6 +91,7 @@ final class AppServiceProvider extends ServiceProvider
             $engine->registerCollector(app(LinkedIssueCollector::class));       // Priority 80
             $engine->registerCollector(app(PullRequestCommentCollector::class)); // Priority 70
             $engine->registerCollector(app(ReviewHistoryCollector::class));     // Priority 60
+            $engine->registerCollector(app(ProjectContextCollector::class));    // Priority 55
             $engine->registerCollector(app(RepositoryContextCollector::class)); // Priority 50
             $engine->registerCollector(app(GuidelinesCollector::class));        // Priority 45
 
@@ -111,6 +123,17 @@ final class AppServiceProvider extends ServiceProvider
         // Register Briefing Services
         $this->app->bind(BriefingDataCollector::class, BriefingDataCollectorService::class);
         $this->app->bind(BriefingNarrativeGenerator::class, NarrativeGeneratorService::class);
+
+        // Register Code Indexing Services
+        $this->app->bind(CodeIndexingServiceContract::class, CodeIndexingService::class);
+        $this->app->bind(CodeSearchServiceContract::class, CodeSearchService::class);
+        $this->app->bind(EmbeddingServiceContract::class, EmbeddingService::class);
+
+        // Register Command Agent Service
+        $this->app->bind(CommandAgentServiceContract::class, CommandAgentService::class);
+
+        // Register Pull Request Context Service
+        $this->app->bind(PullRequestContextServiceContract::class, PullRequestContextService::class);
     }
 
     /**
@@ -118,6 +141,7 @@ final class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Manually register pgvector Schema helper (package auto-discovery disabled to avoid migration loading)
+        \Pgvector\Laravel\Schema::register();
     }
 }
