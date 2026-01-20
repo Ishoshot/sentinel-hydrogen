@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('promotion_usages', function (Blueprint $table) {
+        Schema::table('promotion_usages', function (Blueprint $table): void {
             $table->renameColumn('checkout_session_id', 'checkout_url');
         });
     }
@@ -23,7 +23,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('promotion_usages', function (Blueprint $table) {
+        Schema::table('promotion_usages', function (Blueprint $table): void {
             $table->renameColumn('checkout_url', 'checkout_session_id');
         });
     }

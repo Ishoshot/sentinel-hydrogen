@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('briefings', function (Blueprint $table) {
+        Schema::table('briefings', function (Blueprint $table): void {
             $table->dropColumn('estimated_duration_seconds');
         });
     }
@@ -23,7 +23,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('briefings', function (Blueprint $table) {
+        Schema::table('briefings', function (Blueprint $table): void {
             $table->unsignedInteger('estimated_duration_seconds')->default(30)->after('requires_ai');
         });
     }
