@@ -29,6 +29,9 @@ enum Queue: string
     // Briefings (Priority 45-50)
     case BriefingsDefault = 'briefings-default';
 
+    // Commands (Priority 48 - between briefings and annotations)
+    case Commands = 'commands';
+
     // Post-processing (Priority 50-60)
     case Annotations = 'annotations';
     case Notifications = 'notifications';
@@ -36,6 +39,9 @@ enum Queue: string
     // General (Priority 70-80)
     case Sync = 'sync';
     case Default = 'default';
+
+    // Code Indexing (Priority 85)
+    case CodeIndexing = 'code-indexing';
 
     // Long-running & Bulk (Priority 90-100)
     case LongRunning = 'long-running';
@@ -90,10 +96,12 @@ enum Queue: string
             self::ReviewsPaid => 30,
             self::ReviewsDefault => 40,
             self::BriefingsDefault => 45,
+            self::Commands => 48,
             self::Annotations => 50,
             self::Notifications => 55,
             self::Sync => 70,
             self::Default => 80,
+            self::CodeIndexing => 85,
             self::LongRunning => 90,
             self::Bulk => 100,
         };
@@ -111,10 +119,12 @@ enum Queue: string
             self::ReviewsPaid => 'Reviews (Paid)',
             self::ReviewsDefault => 'Reviews (Default)',
             self::BriefingsDefault => 'Briefings',
+            self::Commands => 'Commands',
             self::Annotations => 'Annotations',
             self::Notifications => 'Notifications',
             self::Sync => 'Sync',
             self::Default => 'Default',
+            self::CodeIndexing => 'Code Indexing',
             self::LongRunning => 'Long Running',
             self::Bulk => 'Bulk Operations',
         };
@@ -132,10 +142,12 @@ enum Queue: string
             self::ReviewsPaid => 300,
             self::ReviewsDefault => 300,
             self::BriefingsDefault => 300,
+            self::Commands => 300,
             self::Annotations => 60,
             self::Notifications => 30,
             self::Sync => 120,
             self::Default => 60,
+            self::CodeIndexing => 300,
             self::LongRunning => 600,
             self::Bulk => 900,
         };
@@ -153,10 +165,12 @@ enum Queue: string
             self::ReviewsPaid => 3,
             self::ReviewsDefault => 3,
             self::BriefingsDefault => 3,
+            self::Commands => 2,
             self::Annotations => 3,
             self::Notifications => 3,
             self::Sync => 3,
             self::Default => 3,
+            self::CodeIndexing => 2,
             self::LongRunning => 2,
             self::Bulk => 2,
         };
