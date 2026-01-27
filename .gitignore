@@ -27,7 +27,6 @@ Thumbs.db
 # Semantic analyzer binary (built in CI)
 /bin/semantic-analyzer
 /bin/semantic-analyzer-*
-/tools/semantic-analyzer/go.sum
 
 .windsurf
 .playwright-mcp
