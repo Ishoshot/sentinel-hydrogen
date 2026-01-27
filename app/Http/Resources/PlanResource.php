@@ -32,6 +32,7 @@ final class PlanResource extends JsonResource
             'tier' => $this->resource->tier,
             'description' => $this->resource->description,
             'monthly_runs_limit' => $this->resource->monthly_runs_limit,
+            'monthly_commands_limit' => $this->resource->monthly_commands_limit,
             'team_size_limit' => $this->resource->team_size_limit,
             'features' => $this->resource->features ?? [],
             'price_monthly_cents' => $priceMonthly?->getMinorAmount()->toInt(),
