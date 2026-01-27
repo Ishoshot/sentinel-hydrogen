@@ -205,7 +205,16 @@ final class ProcessIssueCommentWebhook implements ShouldQueue
         int $prNumber,
         string $message
     ): void {
-        [$owner, $repo] = explode('/', $repositoryFullName);
+        $parts = explode('/', $repositoryFullName, 2);
+        if (count($parts) !== 2) {
+            Log::warning('Invalid repository full name format', [
+                'repository' => $repositoryFullName,
+            ]);
+
+            return;
+        }
+
+        [$owner, $repo] = $parts;
 
         try {
             $githubApi->createIssueComment(
@@ -238,7 +247,16 @@ final class ProcessIssueCommentWebhook implements ShouldQueue
             return;
         }
 
-        [$owner, $repo] = explode('/', $repositoryFullName);
+        $parts = explode('/', $repositoryFullName, 2);
+        if (count($parts) !== 2) {
+            Log::warning('Invalid repository full name format', [
+                'repository' => $repositoryFullName,
+            ]);
+
+            return;
+        }
+
+        [$owner, $repo] = $parts;
 
         try {
             $githubApi->createIssueComment(
