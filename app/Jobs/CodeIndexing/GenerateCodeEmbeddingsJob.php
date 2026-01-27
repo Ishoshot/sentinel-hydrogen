@@ -45,26 +45,27 @@ final class GenerateCodeEmbeddingsJob implements ShouldQueue
             'code_index_count' => count($this->codeIndexIds),
         ]);
 
-        $codeIndexes = CodeIndex::whereIn('id', $this->codeIndexIds)->get();
-
         $totalEmbeddings = 0;
 
-        foreach ($codeIndexes as $codeIndex) {
-            try {
-                $embeddingsCreated = $this->processCodeIndex($codeIndex, $embeddingService);
-                $totalEmbeddings += $embeddingsCreated;
-            } catch (Throwable $e) {
-                Log::warning('Failed to generate embeddings for file', [
-                    'code_index_id' => $codeIndex->id,
-                    'file_path' => $codeIndex->file_path,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
+        // Process in chunks to avoid memory issues with large batches
+        CodeIndex::whereIn('id', $this->codeIndexIds)
+            ->lazyById(100, 'id')
+            ->each(function (CodeIndex $codeIndex) use ($embeddingService, &$totalEmbeddings): void {
+                try {
+                    $embeddingsCreated = $this->processCodeIndex($codeIndex, $embeddingService);
+                    $totalEmbeddings += $embeddingsCreated;
+                } catch (Throwable $e) {
+                    Log::warning('Failed to generate embeddings for file', [
+                        'code_index_id' => $codeIndex->id,
+                        'file_path' => $codeIndex->file_path,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            });
 
         Log::info('Completed embedding generation', [
             'repository_id' => $this->repository->id,
-            'files_processed' => $codeIndexes->count(),
+            'files_processed' => count($this->codeIndexIds),
             'embeddings_created' => $totalEmbeddings,
         ]);
     }
@@ -74,9 +75,6 @@ final class GenerateCodeEmbeddingsJob implements ShouldQueue
      */
     private function processCodeIndex(CodeIndex $codeIndex, EmbeddingServiceContract $embeddingService): int
     {
-        // Delete existing embeddings for this file
-        CodeEmbedding::where('code_index_id', $codeIndex->id)->delete();
-
         $chunks = $this->extractChunks($codeIndex);
 
         if ($chunks === []) {
@@ -97,41 +95,69 @@ final class GenerateCodeEmbeddingsJob implements ShouldQueue
             return 0;
         }
 
-        // Insert embeddings
-        $insertData = [];
-        $now = now();
+        // Wrap delete and insert in a transaction to maintain data consistency
+        return DB::transaction(function () use ($codeIndex, $chunks, $embeddings): int {
+            // Delete existing embeddings for this file
+            CodeEmbedding::where('code_index_id', $codeIndex->id)->delete();
 
-        foreach ($chunks as $index => $chunk) {
-            $insertData[] = [
-                'code_index_id' => $codeIndex->id,
-                'repository_id' => $codeIndex->repository_id,
-                'chunk_type' => $chunk['type']->value,
-                'symbol_name' => $chunk['symbol_name'],
-                'content' => $chunk['content'],
-                'metadata' => json_encode($chunk['metadata']),
-                'created_at' => $now,
-            ];
-        }
+            // Insert embeddings
+            $insertData = [];
+            $now = now();
 
-        // Batch insert without embeddings first
-        CodeEmbedding::insert($insertData);
+            foreach ($chunks as $chunk) {
+                $insertData[] = [
+                    'code_index_id' => $codeIndex->id,
+                    'repository_id' => $codeIndex->repository_id,
+                    'chunk_type' => $chunk['type']->value,
+                    'symbol_name' => $chunk['symbol_name'],
+                    'content' => $chunk['content'],
+                    'metadata' => json_encode($chunk['metadata']),
+                    'created_at' => $now,
+                ];
+            }
 
-        // Update with embeddings using raw SQL for pgvector
-        $insertedEmbeddings = CodeEmbedding::where('code_index_id', $codeIndex->id)
-            ->orderBy('id')
-            ->get();
+            // Batch insert without embeddings first
+            CodeEmbedding::insert($insertData);
 
-        foreach ($insertedEmbeddings as $index => $embedding) {
-            if (isset($embeddings[$index])) {
+            // Update with embeddings using batch SQL for pgvector
+            $insertedEmbeddings = CodeEmbedding::where('code_index_id', $codeIndex->id)
+                ->orderBy('id')
+                ->get();
+
+            // Build a single batch update query using CASE statement
+            $cases = [];
+            $ids = [];
+
+            foreach ($insertedEmbeddings as $index => $embedding) {
+                if (! isset($embeddings[$index])) {
+                    continue;
+                }
+
+                // Validate embedding is an array before using implode
+                if (! is_array($embeddings[$index])) {
+                    Log::warning('Invalid embedding format, skipping', [
+                        'code_index_id' => $codeIndex->id,
+                        'index' => $index,
+                    ]);
+
+                    continue;
+                }
+
                 $vectorString = '['.implode(',', $embeddings[$index]).']';
+                $cases[] = "WHEN id = {$embedding->id} THEN '{$vectorString}'::vector";
+                $ids[] = $embedding->id;
+            }
+
+            if ($cases !== []) {
+                $caseStatement = implode(' ', $cases);
+                $idList = implode(',', $ids);
                 DB::statement(
-                    'UPDATE code_embeddings SET embedding = ? WHERE id = ?',
-                    [$vectorString, $embedding->id]
+                    "UPDATE code_embeddings SET embedding = CASE {$caseStatement} END WHERE id IN ({$idList})"
                 );
             }
-        }
 
-        return count($insertData);
+            return count($insertData);
+        });
     }
 
     /**
