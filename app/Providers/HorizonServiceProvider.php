@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Models\User;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Http\Request;
 use Laravel\Horizon\Horizon;
 use Laravel\Horizon\HorizonApplicationServiceProvider;
 use Override;
@@ -24,21 +23,27 @@ final class HorizonServiceProvider extends HorizonApplicationServiceProvider
     }
 
     /**
-     * Register the Horizon gate.
+     * Register the Horizon authorization callback.
      *
-     * This gate determines who can access Horizon in non-local environments.
+     * This determines who can access Horizon in non-local environments.
      */
     #[Override]
-    protected function gate(): void
+    protected function authorization(): void
     {
-        Gate::define('viewHorizon', function (?User $user = null): bool {
+        $this->gate();
+
+        Horizon::auth(function (Request $request): bool {
+            if (app()->environment('local')) {
+                return true;
+            }
+
             $expectedToken = config('horizon.access_token');
 
             if ($expectedToken === null || $expectedToken === '') {
                 return false;
             }
 
-            $queryToken = request()->query('token');
+            $queryToken = $request->query('token');
             if ($queryToken === $expectedToken) {
                 session(['horizon_authenticated' => true]);
 
