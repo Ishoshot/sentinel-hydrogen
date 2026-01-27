@@ -32,7 +32,20 @@ final class HorizonServiceProvider extends HorizonApplicationServiceProvider
     protected function gate(): void
     {
         Gate::define('viewHorizon', function (?User $user = null): bool {
-            return request()->query('token') === config('horizon.access_token');
+            $expectedToken = config('horizon.access_token');
+
+            if ($expectedToken === null || $expectedToken === '') {
+                return false;
+            }
+
+            $queryToken = request()->query('token');
+            if ($queryToken === $expectedToken) {
+                session(['horizon_authenticated' => true]);
+
+                return true;
+            }
+
+            return session('horizon_authenticated') === true;
         });
     }
 }
