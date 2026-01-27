@@ -6,6 +6,7 @@ use App\Jobs\Briefings\CleanupExpiredBriefings;
 use App\Jobs\Briefings\GenerateScheduledBriefings;
 use Illuminate\Support\Facades\Schedule;
 
+Schedule::command('horizon:snapshot')->everyFiveMinutes()->onOneServer();
 Schedule::command('usage:aggregate')->hourly()->withoutOverlapping()->onOneServer();
 
 // Briefings scheduled jobs
