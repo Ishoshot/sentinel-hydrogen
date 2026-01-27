@@ -202,6 +202,13 @@ MD;
         $message = preg_replace('/sk-[a-zA-Z0-9]{20,}/', '[REDACTED]', $message) ?? $message;
         $message = preg_replace('/Bearer [a-zA-Z0-9\-_.]+/', 'Bearer [REDACTED]', $message) ?? $message;
 
+        // Escape markdown special characters to prevent injection
+        $message = str_replace(
+            ['[', ']', '(', ')', '*', '_', '`', '<', '>'],
+            ['\\[', '\\]', '\\(', '\\)', '\\*', '\\_', '\\`', '&lt;', '&gt;'],
+            $message
+        );
+
         // Truncate long messages
         if (mb_strlen($message) > 200) {
             return mb_substr($message, 0, 200).'...';
