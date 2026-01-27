@@ -41,8 +41,8 @@ final readonly class BriefingGenerationController
 
         // Search by briefing title
         if ($search = $request->getSearch()) {
-            $query->whereHas('briefing', function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%");
+            $query->whereHas('briefing', function (\Illuminate\Database\Eloquent\Builder $q) use ($search): void {
+                $q->where('title', 'like', sprintf('%%%s%%', $search));
             });
         }
 

@@ -147,4 +147,48 @@ interface GitHubApiServiceContract
         ?string $summary = null,
         array $annotations = []
     ): array;
+
+    /**
+     * Get the repository tree (list of files) at a specific commit.
+     *
+     * @param  int  $installationId  The GitHub App installation ID
+     * @param  string  $owner  The repository owner
+     * @param  string  $repo  The repository name
+     * @param  string  $sha  The commit SHA or branch name
+     * @param  bool  $recursive  Whether to get the tree recursively
+     * @return array{sha: string, url: string, tree: array<int, array{path: string, mode: string, type: string, sha: string, size?: int}>, truncated: bool}
+     */
+    public function getRepositoryTree(
+        int $installationId,
+        string $owner,
+        string $repo,
+        string $sha,
+        bool $recursive = false
+    ): array;
+
+    /**
+     * Create a comment on an issue.
+     *
+     * @return array<string, mixed> The comment response
+     */
+    public function createIssueComment(
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $number,
+        string $body
+    ): array;
+
+    /**
+     * Update an existing issue comment.
+     *
+     * @return array<string, mixed> The updated comment response
+     */
+    public function updateIssueComment(
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $commentId,
+        string $body
+    ): array;
 }

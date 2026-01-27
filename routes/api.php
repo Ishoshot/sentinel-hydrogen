@@ -67,14 +67,11 @@ Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept
 |
 */
 
-Route::post('/webhooks/github', [GitHubWebhookController::class, 'handle'])
-    ->name('webhooks.github');
+Route::post('/webhooks/github', [GitHubWebhookController::class, 'handle'])->name('webhooks.github');
 
-Route::post('/webhooks/polar', [PolarWebhookController::class, 'handle'])
-    ->name('webhooks.polar');
+Route::post('/webhooks/polar', [PolarWebhookController::class, 'handle'])->name('webhooks.polar');
 
-Route::get('/github/callback', [ConnectionController::class, 'callback'])
-    ->name('github.callback');
+Route::get('/github/callback', [ConnectionController::class, 'callback'])->name('github.callback');
 
 /*
 |--------------------------------------------------------------------------

@@ -6,10 +6,12 @@ namespace App\Services\Plans;
 
 use App\Actions\Activities\LogActivity;
 use App\Enums\ActivityType;
+use App\Enums\CommandRunStatus;
 use App\Enums\PlanFeature;
 use App\Enums\PlanTier;
 use App\Enums\RunStatus;
 use App\Enums\SubscriptionStatus;
+use App\Models\CommandRun;
 use App\Models\Plan;
 use App\Models\Run;
 use App\Models\User;
@@ -91,6 +93,55 @@ final readonly class PlanLimitEnforcer
         ]);
 
         return PlanLimitResult::deny($message, 'runs_limit');
+    }
+
+    /**
+     * Ensure the workspace can execute a new command within its plan limits.
+     */
+    public function ensureCommandAllowed(Workspace $workspace): PlanLimitResult
+    {
+        $activeCheck = $this->ensureActiveSubscription($workspace);
+
+        if (! $activeCheck->allowed) {
+            return $activeCheck;
+        }
+
+        $plan = $this->resolvePlan($workspace);
+        $limit = $plan->monthly_commands_limit;
+
+        if ($limit === null) {
+            return PlanLimitResult::allow();
+        }
+
+        [$start, $end] = $this->currentPeriod();
+
+        $commandsCount = CommandRun::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereBetween('created_at', [$start->toDateTimeString(), $end->toDateTimeString()])
+            ->whereIn('status', [
+                CommandRunStatus::Queued,
+                CommandRunStatus::InProgress,
+                CommandRunStatus::Completed,
+                CommandRunStatus::Failed,
+            ])
+            ->count();
+
+        if ($commandsCount < $limit) {
+            return PlanLimitResult::allow();
+        }
+
+        $message = sprintf(
+            'Command limit reached (%d/%d). Upgrade your plan to run more commands.',
+            $commandsCount,
+            $limit
+        );
+
+        $this->logLimitEvent($workspace, 'commands_limit', $message, [
+            'commands_count' => $commandsCount,
+            'limit' => $limit,
+        ]);
+
+        return PlanLimitResult::deny($message, 'commands_limit');
     }
 
     /**

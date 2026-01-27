@@ -56,7 +56,9 @@ final class ListBriefingGenerationsRequest extends FormRequest
      */
     public function getSearch(): ?string
     {
-        return $this->input('search');
+        $search = $this->input('search');
+
+        return is_string($search) ? $search : null;
     }
 
     /**
@@ -66,7 +68,15 @@ final class ListBriefingGenerationsRequest extends FormRequest
      */
     public function getStatuses(): ?array
     {
-        return $this->input('status');
+        $status = $this->input('status');
+
+        if (! is_array($status)) {
+            return null;
+        }
+
+        $filtered = array_filter($status, is_string(...));
+
+        return array_values($filtered);
     }
 
     /**
@@ -82,7 +92,9 @@ final class ListBriefingGenerationsRequest extends FormRequest
      */
     public function getDateFrom(): ?string
     {
-        return $this->input('date_from');
+        $dateFrom = $this->input('date_from');
+
+        return is_string($dateFrom) ? $dateFrom : null;
     }
 
     /**
@@ -90,7 +102,9 @@ final class ListBriefingGenerationsRequest extends FormRequest
      */
     public function getDateTo(): ?string
     {
-        return $this->input('date_to');
+        $dateTo = $this->input('date_to');
+
+        return is_string($dateTo) ? $dateTo : null;
     }
 
     /**
@@ -98,7 +112,9 @@ final class ListBriefingGenerationsRequest extends FormRequest
      */
     public function getSort(): string
     {
-        return $this->input('sort', 'created_at');
+        $sort = $this->input('sort', 'created_at');
+
+        return is_string($sort) ? $sort : 'created_at';
     }
 
     /**
@@ -106,7 +122,9 @@ final class ListBriefingGenerationsRequest extends FormRequest
      */
     public function getDirection(): string
     {
-        return $this->input('direction', 'desc');
+        $direction = $this->input('direction', 'desc');
+
+        return is_string($direction) ? $direction : 'desc';
     }
 
     /**

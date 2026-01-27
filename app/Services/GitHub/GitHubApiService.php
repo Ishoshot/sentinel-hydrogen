@@ -343,6 +343,80 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
     }
 
     /**
+     * Get the repository tree (list of files) at a specific commit.
+     *
+     * @return array{sha: string, url: string, tree: array<int, array{path: string, mode: string, type: string, sha: string, size?: int}>, truncated: bool}
+     */
+    public function getRepositoryTree(
+        int $installationId,
+        string $owner,
+        string $repo,
+        string $sha,
+        bool $recursive = false
+    ): array {
+        $this->authenticateWithInstallationToken($installationId);
+
+        /** @var array{sha: string, url: string, tree: array<int, array{path: string, mode: string, type: string, sha: string, size?: int}>, truncated: bool} $tree */
+        $tree = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->git()->trees()->show(
+                $owner,
+                $repo,
+                $sha,
+                $recursive
+            ),
+            sprintf('getRepositoryTree(%s/%s@%s)', $owner, $repo, mb_substr($sha, 0, 7))
+        );
+
+        return $tree;
+    }
+
+    /**
+     * Create a comment on an issue.
+     *
+     * @return array<string, mixed> The comment response
+     */
+    public function createIssueComment(
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $number,
+        string $body
+    ): array {
+        $this->authenticateWithInstallationToken($installationId);
+
+        /** @var array<string, mixed> $comment */
+        $comment = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->issue()->comments()->create($owner, $repo, $number, ['body' => $body]),
+            sprintf('createIssueComment(%s/%s#%d)', $owner, $repo, $number)
+        );
+
+        return $comment;
+    }
+
+    /**
+     * Update an existing issue comment.
+     *
+     * @return array<string, mixed> The updated comment response
+     */
+    public function updateIssueComment(
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $commentId,
+        string $body
+    ): array {
+        $this->authenticateWithInstallationToken($installationId);
+
+        /** @var array<string, mixed> $comment */
+        $comment = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->issue()->comments()->update($owner, $repo, $commentId, ['body' => $body]),
+            sprintf('updateIssueComment(%s/%s#%d)', $owner, $repo, $commentId)
+        );
+
+        return $comment;
+    }
+
+    /**
      * Authenticate with JWT (for app-level operations).
      */
     private function authenticateWithJwt(): void

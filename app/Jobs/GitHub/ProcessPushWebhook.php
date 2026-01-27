@@ -8,6 +8,7 @@ use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
 use App\Enums\Queue;
 use App\Models\Installation;
 use App\Models\Repository;
+use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;
 use App\Services\Logging\LogContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -36,6 +37,7 @@ final class ProcessPushWebhook implements ShouldQueue
      */
     public function handle(
         SyncRepositorySentinelConfig $syncConfig,
+        CodeIndexingServiceContract $indexingService,
     ): void {
         $ref = $this->payload['ref'] ?? '';
 
@@ -83,7 +85,7 @@ final class ProcessPushWebhook implements ShouldQueue
         // Check if push is to the default branch
         $expectedRef = sprintf('refs/heads/%s', $repository->default_branch);
         if ($ref !== $expectedRef) {
-            Log::debug('Push is not to default branch, skipping config sync', array_merge($ctx, [
+            Log::debug('Push is not to default branch, skipping processing', array_merge($ctx, [
                 'ref' => $ref,
                 'default_branch' => $repository->default_branch,
             ]));
@@ -91,7 +93,10 @@ final class ProcessPushWebhook implements ShouldQueue
             return;
         }
 
-        // Check if any commits modified .sentinel/ files
+        // Trigger incremental code indexing for ALL pushes to default branch
+        $this->triggerCodeIndexing($repository, $indexingService);
+
+        // Only sync config if .sentinel/ files were modified
         if (! $this->hasConfigChanges()) {
             Log::debug('No .sentinel/ changes in push, skipping config sync', $ctx);
 
@@ -111,6 +116,101 @@ final class ProcessPushWebhook implements ShouldQueue
                 'error' => $result['error'],
             ]));
         }
+    }
+
+    /**
+     * Trigger incremental code indexing for changed files.
+     */
+    private function triggerCodeIndexing(Repository $repository, CodeIndexingServiceContract $indexingService): void
+    {
+        $commitSha = $this->payload['after'] ?? null;
+        if ($commitSha === null) {
+            return;
+        }
+
+        // Extract changed files from commits
+        $changedFiles = $this->extractChangedFiles();
+
+        $totalChanges = count($changedFiles['added'])
+            + count($changedFiles['modified'])
+            + count($changedFiles['removed']);
+
+        if ($totalChanges === 0) {
+            Log::debug('No changed files detected in push, skipping indexing', [
+                'repository_id' => $repository->id,
+            ]);
+
+            return;
+        }
+
+        Log::info('Triggering incremental code indexing', [
+            'repository_id' => $repository->id,
+            'commit_sha' => $commitSha,
+            'added' => count($changedFiles['added']),
+            'modified' => count($changedFiles['modified']),
+            'removed' => count($changedFiles['removed']),
+        ]);
+
+        $indexingService->indexChangedFiles($repository, $commitSha, $changedFiles);
+    }
+
+    /**
+     * Extract changed files from the push webhook payload.
+     *
+     * @return array{added: array<string>, modified: array<string>, removed: array<string>}
+     */
+    private function extractChangedFiles(): array
+    {
+        $added = [];
+        $modified = [];
+        $removed = [];
+
+        $commits = $this->payload['commits'] ?? [];
+
+        if (! is_array($commits)) {
+            return ['added' => [], 'modified' => [], 'removed' => []];
+        }
+
+        // GitHub sends up to 20 commits in payload
+        foreach ($commits as $commit) {
+            if (! is_array($commit)) {
+                continue;
+            }
+
+            $commitAdded = $commit['added'] ?? [];
+            $commitModified = $commit['modified'] ?? [];
+            $commitRemoved = $commit['removed'] ?? [];
+
+            if (is_array($commitAdded)) {
+                foreach ($commitAdded as $file) {
+                    if (is_string($file)) {
+                        $added[] = $file;
+                    }
+                }
+            }
+
+            if (is_array($commitModified)) {
+                foreach ($commitModified as $file) {
+                    if (is_string($file)) {
+                        $modified[] = $file;
+                    }
+                }
+            }
+
+            if (is_array($commitRemoved)) {
+                foreach ($commitRemoved as $file) {
+                    if (is_string($file)) {
+                        $removed[] = $file;
+                    }
+                }
+            }
+        }
+
+        return [
+            'added' => array_unique($added),
+            'modified' => array_unique($modified),
+            'removed' => array_unique($removed),
+        ];
     }
 
     /**

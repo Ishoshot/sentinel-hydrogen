@@ -132,6 +132,56 @@ The following documents define how code should be written in this repository. Vi
 @endif
 @endif
 
+@if(isset($project_context) && (!empty($project_context['languages']) || !empty($project_context['frameworks']) || !empty($project_context['dependencies'])))
+## Project Technology Stack
+
+This section provides version-specific context about the project's dependencies. Use this to provide version-appropriate guidance.
+
+@if(isset($project_context['runtime']) && $project_context['runtime'])
+**Runtime:** {{ $project_context['runtime']['name'] }} {{ $project_context['runtime']['version'] }}
+@endif
+
+@if(isset($project_context['languages']) && count($project_context['languages']) > 0)
+**Languages:** {{ implode(', ', array_map('ucfirst', $project_context['languages'])) }}
+@endif
+
+@if(isset($project_context['frameworks']) && count($project_context['frameworks']) > 0)
+**Frameworks:**
+@foreach($project_context['frameworks'] as $framework)
+- {{ $framework['name'] }} {{ $framework['version'] }}
+@endforeach
+
+@endif
+@if(isset($project_context['dependencies']) && count($project_context['dependencies']) > 0)
+@php
+$mainDeps = array_filter($project_context['dependencies'], fn($d) => !($d['dev'] ?? false));
+$devDeps = array_filter($project_context['dependencies'], fn($d) => $d['dev'] ?? false);
+@endphp
+@if(count($mainDeps) > 0)
+**Key Dependencies ({{ count($mainDeps) }}):**
+@foreach(array_slice($mainDeps, 0, 25) as $dep)
+- `{{ $dep['name'] }}` {{ $dep['version'] }}
+@endforeach
+@if(count($mainDeps) > 25)
+_... and {{ count($mainDeps) - 25 }} more dependencies_
+@endif
+
+@endif
+@if(count($devDeps) > 0)
+**Dev Dependencies ({{ count($devDeps) }}):**
+@foreach(array_slice($devDeps, 0, 10) as $dep)
+- `{{ $dep['name'] }}` {{ $dep['version'] }}
+@endforeach
+@if(count($devDeps) > 10)
+_... and {{ count($devDeps) - 10 }} more dev dependencies_
+@endif
+
+@endif
+@endif
+**Important:** When reviewing code, consider version-specific behaviors, APIs, and best practices for the detected frameworks and libraries. Avoid suggesting patterns deprecated in the versions shown above.
+
+@endif
+
 @if(isset($sensitive_files) && count($sensitive_files) > 0)
 ## Security-Sensitive Files
 

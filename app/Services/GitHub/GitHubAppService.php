@@ -8,6 +8,7 @@ use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use DateTimeImmutable;
 use GrahamCampbell\GitHub\GitHubManager;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
@@ -32,6 +33,10 @@ final readonly class GitHubAppService implements GitHubAppServiceContract
     public function generateJwt(): string
     {
         $privateKey = $this->getPrivateKey();
+
+        if ($privateKey === '') {
+            throw new RuntimeException('GitHub App private key is empty');
+        }
 
         $config = Configuration::forAsymmetricSigner(
             new Sha256,

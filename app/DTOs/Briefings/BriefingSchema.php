@@ -64,7 +64,7 @@ final readonly class BriefingSchema
      */
     public function hasProperties(): bool
     {
-        return count($this->properties) > 0;
+        return $this->properties !== [];
     }
 
     /**
@@ -111,7 +111,7 @@ final readonly class BriefingSchema
             'properties' => $properties,
         ];
 
-        if (count($this->required) > 0) {
+        if ($this->required !== []) {
             $schema['required'] = $this->required;
         }
 

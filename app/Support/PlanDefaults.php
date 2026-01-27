@@ -18,6 +18,7 @@ final class PlanDefaults
             PlanTier::Foundation->value => [
                 'description' => 'For individual developers and small projects getting started with trusted code review.',
                 'monthly_runs_limit' => 20,
+                'monthly_commands_limit' => 50,
                 'team_size_limit' => 2,
                 'features' => [
                     PlanFeature::ByokEnabled->value => true,
@@ -33,6 +34,7 @@ final class PlanDefaults
             PlanTier::Illuminate->value => [
                 'description' => 'For growing teams that want deeper insight and consistent code quality across projects.',
                 'monthly_runs_limit' => 500,
+                'monthly_commands_limit' => 200,
                 'team_size_limit' => 5,
                 'features' => [
                     PlanFeature::ByokEnabled->value => true,
@@ -48,6 +50,7 @@ final class PlanDefaults
             PlanTier::Orchestrate->value => [
                 'description' => 'For professional teams coordinating code quality at scale across multiple repositories.',
                 'monthly_runs_limit' => 2000,
+                'monthly_commands_limit' => 1000,
                 'team_size_limit' => null,
                 'features' => [
                     PlanFeature::ByokEnabled->value => true,
@@ -63,6 +66,7 @@ final class PlanDefaults
             PlanTier::Sanctum->value => [
                 'description' => 'For organizations that require governance, security, and reliability guarantees.',
                 'monthly_runs_limit' => null,
+                'monthly_commands_limit' => null,
                 'team_size_limit' => null,
                 'features' => [
                     PlanFeature::ByokEnabled->value => true,

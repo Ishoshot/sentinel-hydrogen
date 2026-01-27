@@ -170,8 +170,7 @@ final readonly class PostRunAnnotations
         bool $grouped
     ): array {
         if ($grouped) {
-            /** @var array<string, mixed> $response */
-            $response = $this->gitHubApiService->createPullRequestReview(
+            return $this->gitHubApiService->createPullRequestReview(
                 $installationId,
                 $owner,
                 $repo,
@@ -181,11 +180,8 @@ final readonly class PostRunAnnotations
                 $inlineComments,
                 $commitId
             );
-
-            return $response;
         }
 
-        // Post summary first, then individual review comments
         /** @var array<string, mixed> $response */
         $response = $this->gitHubApiService->createPullRequestReview(
             $installationId,
@@ -198,7 +194,6 @@ final readonly class PostRunAnnotations
             $commitId
         );
 
-        // Post individual comments as separate single-comment reviews
         foreach ($inlineComments as $comment) {
             $this->gitHubApiService->createPullRequestReview(
                 $installationId,
@@ -536,15 +531,9 @@ final readonly class PostRunAnnotations
      */
     private function formatCodeSuggestion(array $metadata): string
     {
-        $replacementCode = isset($metadata['replacement_code']) && is_string($metadata['replacement_code'])
-            ? $metadata['replacement_code']
-            : null;
+        $replacementCode = is_string($metadata['replacement_code'] ?? null) ? $metadata['replacement_code'] : null;
+        $explanation = is_string($metadata['explanation'] ?? null) ? $metadata['explanation'] : null;
 
-        $explanation = isset($metadata['explanation']) && is_string($metadata['explanation'])
-            ? $metadata['explanation']
-            : null;
-
-        // If we have replacement code, use GitHub's suggestion block
         if ($replacementCode !== null && $replacementCode !== '') {
             $body = "\n";
 
@@ -552,10 +541,8 @@ final readonly class PostRunAnnotations
                 $body .= "**Why:** {$explanation}\n\n";
             }
 
-            // GitHub suggestion block - allows one-click apply
-            $body .= "```suggestion\n";
-            $body .= $replacementCode;
-            // Ensure the suggestion ends with a newline
+            $body .= "```suggestion\n".$replacementCode;
+
             if (! str_ends_with($replacementCode, "\n")) {
                 $body .= "\n";
             }
@@ -563,10 +550,7 @@ final readonly class PostRunAnnotations
             return $body."```\n";
         }
 
-        // Fallback to text suggestion if no code replacement
-        $suggestion = isset($metadata['suggestion']) && is_string($metadata['suggestion'])
-            ? $metadata['suggestion']
-            : null;
+        $suggestion = is_string($metadata['suggestion'] ?? null) ? $metadata['suggestion'] : null;
 
         if ($suggestion !== null && $suggestion !== '') {
             return "\n**Suggestion:** {$suggestion}\n";

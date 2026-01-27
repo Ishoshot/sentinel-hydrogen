@@ -27,6 +27,7 @@ final class ContextBag
      * @param  array<int, array{path: string, description: string|null, content: string}>  $guidelines
      * @param  array<string, string>  $fileContents  Full file contents for touched files (path => content)
      * @param  array<string, array<string, mixed>>  $semantics  Semantic analysis data (path => analysis)
+     * @param  array{languages?: array<string>, runtime?: array{name: string, version: string}|null, frameworks?: array<int, array{name: string, version: string}>, dependencies?: array<int, array{name: string, version: string, dev?: bool}>}  $projectContext  Project dependencies and versions
      * @param  array<string, mixed>  $metadata
      */
     public function __construct(
@@ -40,6 +41,7 @@ final class ContextBag
         public array $guidelines = [],
         public array $fileContents = [],
         public array $semantics = [],
+        public array $projectContext = [],
         public array $metadata = [],
     ) {}
 
@@ -100,6 +102,9 @@ final class ContextBag
             $totalChars += mb_strlen(json_encode($data) ?: '');
         }
 
+        // Project context
+        $totalChars += mb_strlen(json_encode($this->projectContext) ?: '');
+
         return (int) ceil($totalChars * self::TOKENS_PER_CHAR);
     }
 
@@ -108,7 +113,7 @@ final class ContextBag
      */
     public function getFilesWithPatchCount(): int
     {
-        return count(array_filter($this->files, fn (array $file): bool => ($file['patch'] ?? null) !== null));
+        return count(array_filter($this->files, fn (array $file): bool => isset($file['patch'])));
     }
 
     /**
@@ -141,6 +146,7 @@ final class ContextBag
             'guidelines' => $this->guidelines,
             'file_contents' => $this->fileContents,
             'semantics' => $this->semantics,
+            'project_context' => $this->projectContext,
             'metadata' => $this->metadata,
         ];
     }

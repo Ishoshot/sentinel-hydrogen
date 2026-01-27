@@ -53,6 +53,7 @@ final readonly class PostPullRequestGreeting implements PostsGreetingComment
 
                 return null;
             }
+
             ['owner' => $owner, 'repo' => $repo] = $parsed;
 
             $comment = $this->messageService->buildGreetingComment();

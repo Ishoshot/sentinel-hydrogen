@@ -21,6 +21,7 @@
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.0",
+        "pgvector/pgvector": "^0.2.2",
         "resend/resend-laravel": "^1.1",
         "spatie/browsershot": "^5.2"
     },
@@ -134,7 +135,9 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": [
+                "pgvector/pgvector"
+            ]
         }
     },
     "config": {

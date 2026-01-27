@@ -44,6 +44,8 @@ final readonly class BriefingSchemaProperty
 
     /**
      * Create a string property.
+     *
+     * @param  array<int, string|int|float|bool>|null  $enum
      */
     public static function string(
         ?string $description = null,
@@ -66,6 +68,8 @@ final readonly class BriefingSchemaProperty
 
     /**
      * Create an integer property.
+     *
+     * @param  array<int, string|int|float|bool>|null  $enum
      */
     public static function integer(
         ?string $description = null,
@@ -86,6 +90,8 @@ final readonly class BriefingSchemaProperty
 
     /**
      * Create a number property.
+     *
+     * @param  array<int, string|int|float|bool>|null  $enum
      */
     public static function number(
         ?string $description = null,
@@ -120,6 +126,8 @@ final readonly class BriefingSchemaProperty
 
     /**
      * Create an array property.
+     *
+     * @param  array<mixed>|null  $default
      */
     public static function array(
         self $items,
@@ -153,7 +161,7 @@ final readonly class BriefingSchemaProperty
             $schema['description'] = $this->description;
         }
 
-        if ($this->format !== null) {
+        if ($this->format instanceof BriefingPropertyFormat) {
             $schema['format'] = $this->format->value;
         }
 
@@ -161,7 +169,7 @@ final readonly class BriefingSchemaProperty
             $schema['enum'] = $this->enum;
         }
 
-        if ($this->items !== null) {
+        if ($this->items instanceof self) {
             $schema['items'] = $this->items->toArray();
         }
 

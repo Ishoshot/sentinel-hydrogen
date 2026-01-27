@@ -54,6 +54,7 @@ final readonly class FetchSentinelConfig implements FetchesSentinelConfig
                 'error' => 'Invalid repository full_name format',
             ];
         }
+
         ['owner' => $owner, 'repo' => $repo] = $parsed;
 
         // Use provided ref or fall back to repository's default branch

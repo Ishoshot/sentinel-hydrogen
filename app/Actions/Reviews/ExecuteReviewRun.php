@@ -230,8 +230,7 @@ final readonly class ExecuteReviewRun
      */
     private function getSimpleErrorType(Throwable $exception): string
     {
-        $className = $exception::class;
-        $shortName = class_basename($className);
+        $shortName = class_basename($exception::class);
 
         return match (true) {
             str_contains($shortName, 'Timeout') => 'Request Timeout',

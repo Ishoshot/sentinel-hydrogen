@@ -161,7 +161,6 @@ final class BriefingSchemaBuilder
     /**
      * Add a required array property.
      *
-     * @param  array<mixed>|null  $default
      * @return $this
      */
     public function requiredArray(

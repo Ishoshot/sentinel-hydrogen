@@ -60,3 +60,8 @@ parameters:
         -
             message: '#Cannot cast mixed to int#'
             reportUnmatched: false
+        # False positive in ProcessIssueCommentWebhook - $result is always defined
+        -
+            message: '#Variable \$result might not be defined#'
+            path: app/Jobs/GitHub/ProcessIssueCommentWebhook.php
+            reportUnmatched: false

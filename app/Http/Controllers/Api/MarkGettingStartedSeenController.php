@@ -14,6 +14,7 @@ final class MarkGettingStartedSeenController
      */
     public function __invoke(Request $request): JsonResponse
     {
+        /** @var \App\Models\User|null $user */
         $user = $request->user();
 
         if (! $user) {

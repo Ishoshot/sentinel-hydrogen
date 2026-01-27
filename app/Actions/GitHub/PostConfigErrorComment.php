@@ -53,6 +53,7 @@ final readonly class PostConfigErrorComment implements PostsConfigErrorComment
 
                 return null;
             }
+
             ['owner' => $owner, 'repo' => $repo] = $parsed;
 
             $comment = $this->messageService->buildConfigErrorComment($error);
