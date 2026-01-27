@@ -1,6 +1,4 @@
 <x-mail::message>
-<img src="{{ asset('images/sentinel-logo-wordmark.png') }}" alt="Sentinel" style="height: 40px; margin-bottom: 24px;">
-
 Hey {{ $userName }},
 
 My name is Tobi — I'm the founder of Sentinel.

@@ -1,5 +1,4 @@
 <x-mail::message>
-<img src="{{ asset('images/sentinel-logo-wordmark.png') }}" alt="Sentinel" style="height: 40px; margin-bottom: 24px;">
 
 # You've Been Invited
 
