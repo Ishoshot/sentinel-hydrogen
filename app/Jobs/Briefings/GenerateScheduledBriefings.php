@@ -16,6 +16,10 @@ final class GenerateScheduledBriefings implements ShouldQueue
 {
     use Queueable;
 
+    private const int CHUNK_SIZE = 50;
+
+    private const int MAX_SUBSCRIPTIONS = 500;
+
     /** Create a new job instance. */
     public function __construct()
     {
@@ -25,18 +29,28 @@ final class GenerateScheduledBriefings implements ShouldQueue
     /** Execute the job. */
     public function handle(GenerateBriefing $generateBriefing): void
     {
-        $subscriptions = BriefingSubscription::query()
+        $processed = 0;
+
+        BriefingSubscription::query()
             ->with(['workspace', 'briefing', 'user'])
             ->due()
-            ->get();
+            ->orderBy('next_run_at')
+            ->limit(self::MAX_SUBSCRIPTIONS)
+            ->chunkById(self::CHUNK_SIZE, function ($subscriptions) use ($generateBriefing, &$processed): void {
+                Log::info('Processing scheduled briefings chunk', [
+                    'chunk_size' => $subscriptions->count(),
+                    'processed_so_far' => $processed,
+                ]);
 
-        Log::info('Processing scheduled briefings', [
-            'subscription_count' => $subscriptions->count(),
+                foreach ($subscriptions as $subscription) {
+                    $this->processSubscription($subscription, $generateBriefing);
+                    $processed++;
+                }
+            });
+
+        Log::info('Completed processing scheduled briefings', [
+            'total_processed' => $processed,
         ]);
-
-        foreach ($subscriptions as $subscription) {
-            $this->processSubscription($subscription, $generateBriefing);
-        }
     }
 
     /** Process a single subscription. */
