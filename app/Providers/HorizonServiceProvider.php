@@ -32,11 +32,7 @@ final class HorizonServiceProvider extends HorizonApplicationServiceProvider
     protected function gate(): void
     {
         Gate::define('viewHorizon', function (?User $user = null): bool {
-            if (! $user instanceof User) {
-                return false;
-            }
-
-            return $user->email === 'ishoshot@gmail.com';
+            return request()->query('token') === config('horizon.access_token');
         });
     }
 }

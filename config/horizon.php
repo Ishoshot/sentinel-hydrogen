@@ -20,6 +20,8 @@ return [
 
     'name' => env('HORIZON_NAME', 'Sentinel'),
 
+    'access_token' => env('HORIZON_ACCESS_TOKEN'),
+
     /*
     |--------------------------------------------------------------------------
     | Horizon Domain
