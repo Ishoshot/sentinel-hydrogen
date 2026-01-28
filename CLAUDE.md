@@ -1,3 +1,8 @@
+# Project Paths
+
+- **Backend:** `/Users/oluwatobi/Herd/dev/sentinel`
+- **Frontend:** `/Users/oluwatobi/Herd/dev/frontend/sentinel`
+
 <laravel-boost-guidelines>
 === .ai/sentinel-context rules ===
 
