@@ -10,6 +10,7 @@ enum SubscriptionStatus: string
     case Trialing = 'trialing';
     case PastDue = 'past_due';
     case Canceled = 'canceled';
+    case Revoked = 'revoked';
 
     /**
      * Get all subscription status values.
