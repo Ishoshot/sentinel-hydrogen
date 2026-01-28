@@ -54,11 +54,11 @@ final class GenerateCodeEmbeddingsJob implements ShouldQueue
                 try {
                     $embeddingsCreated = $this->processCodeIndex($codeIndex, $embeddingService);
                     $totalEmbeddings += $embeddingsCreated;
-                } catch (Throwable $e) {
+                } catch (Throwable $throwable) {
                     Log::warning('Failed to generate embeddings for file', [
                         'code_index_id' => $codeIndex->id,
                         'file_path' => $codeIndex->file_path,
-                        'error' => $e->getMessage(),
+                        'error' => $throwable->getMessage(),
                     ]);
                 }
             });
@@ -133,18 +133,8 @@ final class GenerateCodeEmbeddingsJob implements ShouldQueue
                     continue;
                 }
 
-                // Validate embedding is an array before using implode
-                if (! is_array($embeddings[$index])) {
-                    Log::warning('Invalid embedding format, skipping', [
-                        'code_index_id' => $codeIndex->id,
-                        'index' => $index,
-                    ]);
-
-                    continue;
-                }
-
                 $vectorString = '['.implode(',', $embeddings[$index]).']';
-                $cases[] = "WHEN id = {$embedding->id} THEN '{$vectorString}'::vector";
+                $cases[] = sprintf("WHEN id = %s THEN '%s'::vector", $embedding->id, $vectorString);
                 $ids[] = $embedding->id;
             }
 
@@ -152,7 +142,7 @@ final class GenerateCodeEmbeddingsJob implements ShouldQueue
                 $caseStatement = implode(' ', $cases);
                 $idList = implode(',', $ids);
                 DB::statement(
-                    "UPDATE code_embeddings SET embedding = CASE {$caseStatement} END WHERE id IN ({$idList})"
+                    sprintf('UPDATE code_embeddings SET embedding = CASE %s END WHERE id IN (%s)', $caseStatement, $idList)
                 );
             }
 
