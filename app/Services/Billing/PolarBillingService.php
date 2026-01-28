@@ -48,6 +48,7 @@ final class PolarBillingService
         BillingInterval $interval = BillingInterval::Monthly,
         ?Promotion $promotion = null,
         ?string $successUrl = null,
+        ?string $customerEmail = null,
     ): string {
 
         $accessToken = (string) config('services.polar.access_token');
@@ -97,6 +98,10 @@ final class PolarBillingService
             $payload['discount_id'] = $promotion->polar_discount_id;
         }
 
+        if ($customerEmail !== null && $customerEmail !== '') {
+            $payload['customer_email'] = $customerEmail;
+        }
+
         $response = Http::withToken($accessToken)
             ->post($baseUrl.'/v1/checkouts', $payload);
 
@@ -127,6 +132,101 @@ final class PolarBillingService
         ));
 
         return $checkoutUrl;
+    }
+
+    /**
+     * Update an existing Polar subscription to a different product.
+     *
+     * Calls PATCH /v1/subscriptions/{id} with the new product ID.
+     */
+    public function updateSubscription(
+        Workspace $workspace,
+        string $polarSubscriptionId,
+        Plan $plan,
+        BillingInterval $interval = BillingInterval::Monthly,
+    ): void {
+
+        $accessToken = (string) config('services.polar.access_token');
+
+        if ($accessToken === '') {
+            Log::error('Polar access token not configured', LogContext::fromWorkspace($workspace));
+
+            throw new InvalidArgumentException('Polar access token is not configured.');
+        }
+
+        $productId = $this->getProductId($plan->tier, $interval);
+
+        if ($productId === null) {
+            Log::error('Polar product ID not configured', LogContext::merge(
+                LogContext::fromWorkspace($workspace),
+                ['plan_tier' => $plan->tier, 'interval' => $interval->value]
+            ));
+
+            throw new InvalidArgumentException(
+                sprintf('Polar product ID is not configured for %s %s plan.', $interval->value, $plan->tier)
+            );
+        }
+
+        $baseUrl = (string) config('services.polar.api_url', 'https://api.polar.sh');
+
+        $response = Http::withToken($accessToken)
+            ->patch($baseUrl.'/v1/subscriptions/'.$polarSubscriptionId, [
+                'product_id' => $productId,
+                'proration_behavior' => 'invoice',
+            ]);
+
+        if (! $response->successful()) {
+            Log::error('Polar subscription update failed', LogContext::merge(
+                LogContext::fromWorkspace($workspace),
+                ['response_status' => $response->status(), 'response_body' => $response->body()]
+            ));
+
+            throw new RuntimeException(
+                sprintf('Failed to update Polar subscription: %s', $response->body())
+            );
+        }
+
+        Log::info('Polar subscription updated', LogContext::merge(
+            LogContext::fromWorkspace($workspace),
+            ['plan_tier' => $plan->tier, 'interval' => $interval->value, 'polar_subscription_id' => $polarSubscriptionId]
+        ));
+    }
+
+    /**
+     * Revoke (cancel) an existing Polar subscription.
+     *
+     * Calls DELETE /v1/subscriptions/{id}.
+     */
+    public function revokeSubscription(Workspace $workspace, string $polarSubscriptionId): void
+    {
+        $accessToken = (string) config('services.polar.access_token');
+
+        if ($accessToken === '') {
+            Log::error('Polar access token not configured', LogContext::fromWorkspace($workspace));
+
+            throw new InvalidArgumentException('Polar access token is not configured.');
+        }
+
+        $baseUrl = (string) config('services.polar.api_url', 'https://api.polar.sh');
+
+        $response = Http::withToken($accessToken)
+            ->delete($baseUrl.'/v1/subscriptions/'.$polarSubscriptionId);
+
+        if (! $response->successful()) {
+            Log::error('Polar subscription revocation failed', LogContext::merge(
+                LogContext::fromWorkspace($workspace),
+                ['response_status' => $response->status(), 'response_body' => $response->body()]
+            ));
+
+            throw new RuntimeException(
+                sprintf('Failed to revoke Polar subscription: %s', $response->body())
+            );
+        }
+
+        Log::info('Polar subscription revoked', LogContext::merge(
+            LogContext::fromWorkspace($workspace),
+            ['polar_subscription_id' => $polarSubscriptionId]
+        ));
     }
 
     /**
