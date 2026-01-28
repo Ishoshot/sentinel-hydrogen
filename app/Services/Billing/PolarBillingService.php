@@ -73,14 +73,19 @@ final class PolarBillingService
 
         $baseUrl = (string) config('services.polar.api_url', 'https://api.polar.sh');
 
+        $metadata = [
+            'workspace_id' => (string) $workspace->id,
+            'plan_tier' => $plan->tier,
+            'billing_interval' => $interval->value,
+        ];
+
+        if ($promotion?->id !== null) {
+            $metadata['promotion_id'] = (string) $promotion->id;
+        }
+
         $payload = [
             'products' => [$productId],
-            'metadata' => [
-                'workspace_id' => (string) $workspace->id,
-                'plan_tier' => $plan->tier,
-                'billing_interval' => $interval->value,
-                'promotion_id' => $promotion?->id !== null ? (string) $promotion->id : null,
-            ],
+            'metadata' => $metadata,
             'allow_discount_codes' => true,
         ];
 
@@ -88,8 +93,8 @@ final class PolarBillingService
             $payload['success_url'] = $successUrl;
         }
 
-        if ($promotion instanceof Promotion && $promotion->isValid()) {
-            $payload['discount_id'] = $promotion->polar_discount_id ?? null;
+        if ($promotion instanceof Promotion && $promotion->isValid() && $promotion->polar_discount_id !== null) {
+            $payload['discount_id'] = $promotion->polar_discount_id;
         }
 
         $response = Http::withToken($accessToken)
