@@ -19,6 +19,11 @@ final class PolarWebhookController
      */
     public function handle(Request $request, HandlePolarWebhook $handler): JsonResponse
     {
+        Log::info('Polar webhook received', [
+            'headers' => $request->headers->all(),
+            'payload' => $request->getContent(),
+        ]);
+
         $headers = [
             'webhook-id' => (string) $request->header('webhook-id', ''),
             'webhook-signature' => (string) $request->header('webhook-signature', ''),
