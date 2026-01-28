@@ -37,6 +37,7 @@ enum ActivityType: string
     // Billing
     case SubscriptionCreated = 'subscription.created';
     case SubscriptionUpgraded = 'subscription.upgraded';
+    case SubscriptionDowngraded = 'subscription.downgraded';
     case SubscriptionCanceled = 'subscription.canceled';
     case PlanLimitReached = 'plan.limit_reached';
 
@@ -74,6 +75,7 @@ enum ActivityType: string
             self::ProviderKeyDeleted => 'Provider Key Deleted',
             self::SubscriptionCreated => 'Subscription Created',
             self::SubscriptionUpgraded => 'Subscription Upgraded',
+            self::SubscriptionDowngraded => 'Subscription Downgraded',
             self::SubscriptionCanceled => 'Subscription Canceled',
             self::PlanLimitReached => 'Plan Limit Reached',
         };
@@ -105,6 +107,7 @@ enum ActivityType: string
             self::ProviderKeyDeleted => 'key',
             self::SubscriptionCreated => 'credit-card',
             self::SubscriptionUpgraded => 'arrow-up-right',
+            self::SubscriptionDowngraded => 'arrow-down-right',
             self::SubscriptionCanceled => 'x-circle',
             self::PlanLimitReached => 'alert-triangle',
         };
@@ -136,6 +139,7 @@ enum ActivityType: string
             self::ProviderKeyDeleted => 'settings',
             self::SubscriptionCreated,
             self::SubscriptionUpgraded,
+            self::SubscriptionDowngraded,
             self::SubscriptionCanceled,
             self::PlanLimitReached => 'billing',
         };
