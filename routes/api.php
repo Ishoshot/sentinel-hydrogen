@@ -32,11 +32,10 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProviderKeyController;
 use App\Http\Controllers\RunController;
-use App\Http\Controllers\Subscriptions\CancelSubscriptionController;
+use App\Http\Controllers\Subscriptions\ChangeSubscriptionController;
 use App\Http\Controllers\Subscriptions\ShowSubscriptionController;
 use App\Http\Controllers\Subscriptions\SubscriptionPortalController;
 use App\Http\Controllers\Subscriptions\SubscriptionUsageController;
-use App\Http\Controllers\Subscriptions\UpgradeSubscriptionController;
 use App\Http\Controllers\TeamMemberController;
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
 use App\Http\Controllers\Webhooks\PolarWebhookController;
@@ -146,8 +145,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         // Subscription & Usage
         Route::get('/subscription', ShowSubscriptionController::class)->name('subscriptions.show');
-        Route::post('/subscription/upgrade', UpgradeSubscriptionController::class)->name('subscriptions.upgrade');
-        Route::post('/subscription/cancel', CancelSubscriptionController::class)->name('subscriptions.cancel');
+        Route::post('/subscription/change', ChangeSubscriptionController::class)->name('subscriptions.change');
         Route::post('/subscription/portal', SubscriptionPortalController::class)->name('subscriptions.portal');
         Route::get('/usage', SubscriptionUsageController::class)->name('usage.show');
 
