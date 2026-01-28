@@ -33,6 +33,7 @@ final class PromotionFactory extends Factory
             'max_uses' => null,
             'times_used' => 0,
             'is_active' => true,
+            'polar_discount_id' => fake()->uuid(),
         ];
     }
 
@@ -111,6 +112,16 @@ final class PromotionFactory extends Factory
         return $this->state(fn (array $attributes): array => [
             'max_uses' => 10,
             'times_used' => 10,
+        ]);
+    }
+
+    /**
+     * Create a promotion not synced to Polar.
+     */
+    public function notSynced(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'polar_discount_id' => null,
         ]);
     }
 }

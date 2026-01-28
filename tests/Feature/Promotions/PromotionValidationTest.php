@@ -98,3 +98,15 @@ it('trims whitespace from promo codes', function (): void {
 
     expect($result['valid'])->toBeTrue();
 });
+
+it('rejects a promo code not synced to Polar', function (): void {
+    Promotion::factory()->notSynced()->create([
+        'code' => 'NOTSYNCED',
+    ]);
+
+    $action = app(ValidatePromotion::class);
+    $result = $action->handle('NOTSYNCED');
+
+    expect($result['valid'])->toBeFalse()
+        ->and($result['message'])->toBe('This promotion code is not activated.');
+});

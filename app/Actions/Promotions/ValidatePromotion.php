@@ -70,6 +70,14 @@ final readonly class ValidatePromotion
             ];
         }
 
+        if ($promotion->polar_discount_id === null) {
+            return [
+                'valid' => false,
+                'promotion' => null,
+                'message' => 'This promotion code is not activated.',
+            ];
+        }
+
         return [
             'valid' => true,
             'promotion' => $promotion,
