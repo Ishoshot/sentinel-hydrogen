@@ -22,12 +22,16 @@ final class SubscriptionFactory extends Factory
      */
     public function definition(): array
     {
+        $periodStart = now()->subDays(fake()->numberBetween(1, 15));
+
         return [
             'workspace_id' => Workspace::factory(),
             'plan_id' => Plan::factory(),
             'status' => SubscriptionStatus::Active,
-            'started_at' => now()->subDay(),
+            'started_at' => $periodStart,
             'ends_at' => null,
+            'current_period_start' => $periodStart,
+            'current_period_end' => $periodStart->copy()->addMonth(),
             'polar_customer_id' => null,
             'polar_subscription_id' => null,
         ];

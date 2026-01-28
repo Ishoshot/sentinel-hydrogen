@@ -8,6 +8,7 @@ use App\Http\Resources\UsageResource;
 use App\Models\Annotation;
 use App\Models\Finding;
 use App\Models\Run;
+use App\Models\Subscription;
 use App\Models\UsageRecord;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
@@ -26,8 +27,20 @@ final class SubscriptionUsageController
     {
         Gate::authorize('view', $workspace);
 
-        $periodStart = CarbonImmutable::now()->startOfMonth();
-        $periodEnd = $periodStart->endOfMonth();
+        // Get billing period from subscription, fall back to calendar month
+        $subscription = Subscription::query()
+            ->where('workspace_id', $workspace->id)
+            ->latest()
+            ->first();
+
+        if ($subscription?->current_period_start !== null && $subscription?->current_period_end !== null) {
+            $periodStart = CarbonImmutable::parse($subscription->current_period_start);
+            $periodEnd = CarbonImmutable::parse($subscription->current_period_end);
+        } else {
+            // Fall back to calendar month for workspaces without billing period data
+            $periodStart = CarbonImmutable::now()->startOfMonth();
+            $periodEnd = $periodStart->endOfMonth();
+        }
 
         $usage = UsageRecord::query()
             ->where('workspace_id', $workspace->id)

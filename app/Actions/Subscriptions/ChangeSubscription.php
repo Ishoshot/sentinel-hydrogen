@@ -354,12 +354,18 @@ final readonly class ChangeSubscription
                 'subscription_status' => $status,
             ])->save();
 
+            // Set initial billing period (one month from now for local/dev)
+            $periodStart = now();
+            $periodEnd = now()->addMonth();
+
             $subscription = Subscription::create([
                 'workspace_id' => $workspace->id,
                 'plan_id' => $plan->id,
                 'status' => $status,
                 'started_at' => now(),
                 'ends_at' => null,
+                'current_period_start' => $periodStart,
+                'current_period_end' => $periodEnd,
             ]);
 
             $this->logActivity->handle(

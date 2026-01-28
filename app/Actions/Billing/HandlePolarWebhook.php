@@ -190,6 +190,19 @@ final readonly class HandlePolarWebhook
                 $subscriptionAttributes['billing_interval'] = $billingInterval;
             }
 
+            // Extract billing period from subscription data
+            if (is_array($subscriptionData)) {
+                $periodStart = $this->timestampToDateTime($subscriptionData['current_period_start'] ?? null);
+                $periodEnd = $this->timestampToDateTime($subscriptionData['current_period_end'] ?? null);
+
+                if ($periodStart !== null) {
+                    $subscriptionAttributes['current_period_start'] = $periodStart;
+                }
+                if ($periodEnd !== null) {
+                    $subscriptionAttributes['current_period_end'] = $periodEnd;
+                }
+            }
+
             $subscription = Subscription::updateOrCreate(
                 ['polar_subscription_id' => $subscriptionId],
                 $subscriptionAttributes
@@ -570,6 +583,10 @@ final readonly class HandlePolarWebhook
         $subscriptionTyped = $subscription;
         $billingInterval = $this->extractBillingInterval($subscriptionTyped, null);
 
+        // Extract billing period
+        $periodStart = $this->timestampToDateTime($subscription['current_period_start'] ?? null);
+        $periodEnd = $this->timestampToDateTime($subscription['current_period_end'] ?? null);
+
         // Build update attributes
         $updateAttributes = ['status' => $status];
 
@@ -579,6 +596,14 @@ final readonly class HandlePolarWebhook
 
         if ($billingInterval !== null) {
             $updateAttributes['billing_interval'] = $billingInterval;
+        }
+
+        if ($periodStart !== null) {
+            $updateAttributes['current_period_start'] = $periodStart;
+        }
+
+        if ($periodEnd !== null) {
+            $updateAttributes['current_period_end'] = $periodEnd;
         }
 
         $existingSubscription->forceFill($updateAttributes)->save();
@@ -603,6 +628,8 @@ final readonly class HandlePolarWebhook
             'status' => $status->value,
             'plan_tier' => $plan?->tier,
             'billing_interval' => $billingInterval?->value,
+            'current_period_start' => $periodStart?->toIso8601String(),
+            'current_period_end' => $periodEnd?->toIso8601String(),
         ]);
     }
 

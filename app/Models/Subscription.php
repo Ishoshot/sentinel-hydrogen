@@ -26,6 +26,8 @@ final class Subscription extends Model
         'status',
         'started_at',
         'ends_at',
+        'current_period_start',
+        'current_period_end',
         'polar_customer_id',
         'polar_subscription_id',
     ];
@@ -56,6 +58,8 @@ final class Subscription extends Model
             'status' => SubscriptionStatus::class,
             'started_at' => 'datetime',
             'ends_at' => 'datetime',
+            'current_period_start' => 'datetime',
+            'current_period_end' => 'datetime',
         ];
     }
 }
