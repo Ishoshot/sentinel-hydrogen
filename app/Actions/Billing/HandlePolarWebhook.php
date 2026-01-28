@@ -26,10 +26,12 @@ final readonly class HandlePolarWebhook
 
     /**
      * Handle incoming Polar webhook events.
+     *
+     * @param  array{webhook-id: string, webhook-signature: string, webhook-timestamp: string}  $headers
      */
-    public function handle(string $payload, string $signature): void
+    public function handle(string $payload, array $headers): void
     {
-        $event = $this->billingService->verifyWebhook($payload, $signature);
+        $event = $this->billingService->verifyWebhook($payload, $headers);
         $type = $event['type'] ?? null;
 
         if (! is_string($type)) {

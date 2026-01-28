@@ -14,14 +14,20 @@ final class PolarWebhookController
 {
     /**
      * Handle incoming Polar webhook requests.
+     *
+     * Polar uses StandardWebhooks format requiring three headers.
      */
     public function handle(Request $request, HandlePolarWebhook $handler): JsonResponse
     {
-        $signature = (string) $request->header('webhook-signature', '');
+        $headers = [
+            'webhook-id' => (string) $request->header('webhook-id', ''),
+            'webhook-signature' => (string) $request->header('webhook-signature', ''),
+            'webhook-timestamp' => (string) $request->header('webhook-timestamp', ''),
+        ];
         $payload = $request->getContent();
 
         try {
-            $handler->handle($payload, $signature);
+            $handler->handle($payload, $headers);
 
             return response()->json(['received' => true]);
         } catch (Throwable $throwable) {

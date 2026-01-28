@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
+use StandardWebhooks\Exception\WebhookVerificationException;
+use StandardWebhooks\Webhook;
 
 /**
  * Service for integrating with Polar billing.
@@ -293,9 +295,15 @@ final class PolarBillingService
     /**
      * Verify a Polar webhook signature and parse the payload.
      *
+     * Polar uses StandardWebhooks format which requires three headers:
+     * - webhook-id: unique identifier for the webhook
+     * - webhook-signature: the signature to verify
+     * - webhook-timestamp: Unix timestamp when the webhook was sent
+     *
+     * @param  array{webhook-id: string, webhook-signature: string, webhook-timestamp: string}  $headers
      * @return array<string, mixed>
      */
-    public function verifyWebhook(string $payload, string $signature): array
+    public function verifyWebhook(string $payload, array $headers): array
     {
         $secret = (string) config('services.polar.webhook_secret');
 
@@ -305,10 +313,19 @@ final class PolarBillingService
             throw new RuntimeException('Polar webhook secret is not configured.');
         }
 
-        $expectedSignature = hash_hmac('sha256', $payload, $secret);
+        // StandardWebhooks requires the secret to be base64-encoded with "whsec_" prefix
+        // If the secret doesn't have the prefix, add it (Polar provides raw secrets)
+        $signingSecret = str_starts_with($secret, 'whsec_')
+            ? $secret
+            : 'whsec_'.base64_encode($secret);
 
-        if (! hash_equals($expectedSignature, $signature)) {
-            Log::warning('Invalid Polar webhook signature received');
+        try {
+            $webhook = new Webhook($signingSecret);
+            $webhook->verify($payload, $headers);
+        } catch (WebhookVerificationException $e) {
+            Log::warning('Invalid Polar webhook signature received', [
+                'error' => $e->getMessage(),
+            ]);
 
             throw new RuntimeException('Invalid Polar webhook signature.');
         }
