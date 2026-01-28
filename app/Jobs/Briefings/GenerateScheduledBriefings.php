@@ -34,7 +34,7 @@ final class GenerateScheduledBriefings implements ShouldQueue
         BriefingSubscription::query()
             ->with(['workspace', 'briefing', 'user'])
             ->due()
-            ->orderBy('next_run_at')
+            ->orderBy('next_scheduled_at')
             ->limit(self::MAX_SUBSCRIPTIONS)
             ->chunkById(self::CHUNK_SIZE, function ($subscriptions) use ($generateBriefing, &$processed): void {
                 Log::info('Processing scheduled briefings chunk', [
