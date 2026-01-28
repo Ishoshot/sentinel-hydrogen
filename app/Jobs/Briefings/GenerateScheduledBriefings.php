@@ -9,6 +9,7 @@ use App\Enums\Queue;
 use App\Models\BriefingSubscription;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -36,7 +37,7 @@ final class GenerateScheduledBriefings implements ShouldQueue
             ->due()
             ->orderBy('next_scheduled_at')
             ->limit(self::MAX_SUBSCRIPTIONS)
-            ->chunkById(self::CHUNK_SIZE, function ($subscriptions) use ($generateBriefing, &$processed): void {
+            ->chunkById(self::CHUNK_SIZE, function (Collection $subscriptions) use ($generateBriefing, &$processed): void {
                 Log::info('Processing scheduled briefings chunk', [
                     'chunk_size' => $subscriptions->count(),
                     'processed_so_far' => $processed,
