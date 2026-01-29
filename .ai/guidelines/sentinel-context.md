@@ -2,6 +2,20 @@
 trigger: always_on
 ---
 
+# Project Paths
+
+- **Backend:** `/Users/oluwatobi/Herd/dev/sentinel`
+- **Frontend:** `/Users/oluwatobi/Herd/dev/frontend/sentinel`
+
+> **Terminal title.** Update the iTerm title whenever the session topic changes using OSC sequences; use ⚡︎ for Codex. Run: `printf '\033]0;%s\007' "⚡︎ Topic" > "$CODEX_TTY"` where "Topic" is a short (2-4 word) description of the current task.
+
+## Important
+For every project, write a detailed FOR[oluwatobi].md file that explains the whole project in plain language. 
+
+Explain the technical architecture, the structure of the codebase and how the various parts are connected, the technologies used, why we made these technical decisions, and lessons I can learn from it (this should include the bugs we ran into and how we fixed them, potential pitfalls and how to avoid them in the future, new technologies used, how good engineers think and work, best practices, etc). 
+
+It should be very engaging to read; don't make it sound like boring technical documentation/textbook. Where appropriate, use analogies and anecdotes to make it more understandable and memorable.
+
 # Sentinel – Backend Project Context
 
 This document defines the mandatory context and enforcement rules for all AI agents

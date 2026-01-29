@@ -11,14 +11,14 @@ use Laravel\Boost\Install\Agents\Agent;
 use Laravel\Boost\Install\Enums\McpInstallationStrategy;
 use Laravel\Boost\Install\Enums\Platform;
 
-final class Windsurf extends Agent implements SupportsGuidelines, SupportsMcp, SupportsSkills
+final class Antigravity extends Agent implements SupportsGuidelines, SupportsMcp, SupportsSkills
 {
     /**
      * Get the environment identifier.
      */
     public function name(): string
     {
-        return 'cascade';
+        return 'antigravity';
     }
 
     /**
@@ -26,28 +26,28 @@ final class Windsurf extends Agent implements SupportsGuidelines, SupportsMcp, S
      */
     public function displayName(): string
     {
-        return 'Cascade (Windsurf)';
+        return 'Antigravity';
     }
 
     /**
-     * Get platform-specific detection paths.
+     * Get platform-specific detection command.
      *
-     * @return array{paths: array<int, string>}
+     * @return array{command: string}
      */
     public function systemDetectionConfig(Platform $platform): array
     {
         return match ($platform) {
             Platform::Darwin, Platform::Linux => [
-                'command' => 'command -v windsurf',
+                'command' => 'command -v antigravity',
             ],
             Platform::Windows => [
-                'command' => 'where windsurf 2>null',
+                'command' => 'where antigravity 2>null',
             ],
         };
     }
 
     /**
-     * Get the MCP installation strategy.
+     * Antigravity reads MCP config from files.
      */
     public function mcpInstallationStrategy(): McpInstallationStrategy
     {
@@ -55,31 +55,36 @@ final class Windsurf extends Agent implements SupportsGuidelines, SupportsMcp, S
     }
 
     /**
-     * Get project detection configuration.
+     * Detect Antigravity usage in the project.
      *
      * @return array{paths: array<int, string>}
      */
     public function projectDetectionConfig(): array
     {
         return [
-            'paths' => ['.windsurf'],
-            'files' => ['CASCADE.md'],
+            'paths' => [
+                '.agent',
+                '.agent/rules',
+                '.agent/skills',
+            ],
         ];
     }
 
     /**
-     * Get the path to the Boost guidelines.
+     * Path to workspace rules (guidelines).
+     *
+     * Antigravity applies rules from `.agent/rules`.
      */
     public function guidelinesPath(): string
     {
-        return '.windsurf/rules/CASCADE.md';
+        return '.agent/rules/ANTIGRAVITY.md';
     }
 
     /**
-     * Get the path to the skills directory.
+     * Path to workspace skills.
      */
     public function skillsPath(): string
     {
-        return '.claude/skills';
+        return '.agent/skills';
     }
 }

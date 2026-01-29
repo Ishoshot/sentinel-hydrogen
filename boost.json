@@ -2,13 +2,19 @@
     "agents": [
         "claude_code",
         "codex",
-        "windsurf"
+        "cascade",
+        "antigravity"
     ],
-    "editors": [
-        "claude_code",
-        "codex"
-    ],
-    "guidelines": [
+    "guidelines": true,
+    "herd_mcp": false,
+    "mcp": true,
+    "packages": [
         "echolabsdev/prism"
+    ],
+    "sail": false,
+    "skills": [
+        "pest-testing",
+        "tailwindcss-development",
+        "developing-with-prism"
     ]
 }
