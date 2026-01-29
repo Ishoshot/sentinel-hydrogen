@@ -14,6 +14,7 @@ use App\Models\Repository;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
 
 final class RepositoryController
@@ -21,18 +22,18 @@ final class RepositoryController
     /**
      * List all repositories for a workspace.
      */
-    public function index(Workspace $workspace): JsonResponse
+    public function index(Request $request, Workspace $workspace): AnonymousResourceCollection
     {
         Gate::authorize('viewAny', [Repository::class, $workspace]);
+
+        $perPage = min((int) $request->query('per_page', '20'), 100);
 
         $repositories = Repository::with('settings')
             ->where('workspace_id', $workspace->id)
             ->orderBy('full_name')
-            ->get();
+            ->paginate($perPage);
 
-        return response()->json([
-            'data' => RepositoryResource::collection($repositories),
-        ]);
+        return RepositoryResource::collection($repositories);
     }
 
     /**
