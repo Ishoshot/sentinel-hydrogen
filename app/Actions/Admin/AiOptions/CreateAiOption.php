@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Admin\AiOptions;
 
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use App\Models\AiOption;
 use Illuminate\Support\Facades\DB;
 
@@ -41,6 +41,8 @@ final readonly class CreateAiOption
                 'is_default' => $data['is_default'] ?? false,
                 'is_active' => $data['is_active'] ?? true,
                 'sort_order' => $data['sort_order'] ?? 0,
+                'context_window_tokens' => $data['context_window_tokens'] ?? null,
+                'max_output_tokens' => $data['max_output_tokens'] ?? null,
             ]);
         });
     }

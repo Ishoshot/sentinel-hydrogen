@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Admin\AiOptions;
 
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use App\Models\AiOption;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 

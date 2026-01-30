@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Admin\AiOptions;
 
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use App\Models\AiOption;
 use Illuminate\Support\Facades\DB;
 
@@ -47,6 +47,8 @@ final readonly class UpdateAiOption
                 'is_default' => $data['is_default'] ?? $aiOption->is_default,
                 'is_active' => $data['is_active'] ?? $aiOption->is_active,
                 'sort_order' => $data['sort_order'] ?? $aiOption->sort_order,
+                'context_window_tokens' => array_key_exists('context_window_tokens', $data) ? $data['context_window_tokens'] : $aiOption->context_window_tokens,
+                'max_output_tokens' => array_key_exists('max_output_tokens', $data) ? $data['max_output_tokens'] : $aiOption->max_output_tokens,
             ]);
 
             return $aiOption->refresh();

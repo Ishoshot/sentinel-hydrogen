@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Admin\Promotions;
 
-use App\Enums\PromotionValueType;
+use App\Enums\Promotions\PromotionValueType;
 use App\Models\Promotion;
 use App\Services\Billing\PolarDiscountService;
 use Illuminate\Support\Facades\DB;
