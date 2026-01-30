@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs\Reviews;
 
 use App\Actions\Reviews\PostRunAnnotations as PostRunAnnotationsAction;
-use App\Enums\Queue;
-use App\Enums\RunStatus;
+use App\Enums\Queue\Queue;
+use App\Enums\Reviews\RunStatus;
 use App\Models\Run;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;

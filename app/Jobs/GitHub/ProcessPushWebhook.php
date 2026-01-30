@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\GitHub;
 
 use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use App\Models\Installation;
 use App\Models\Repository;
 use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;

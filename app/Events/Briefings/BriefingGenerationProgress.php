@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Events\Briefings;
 
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use App\Models\BriefingGeneration;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\GitHub;
 
 use App\Actions\GitHub\SyncInstallationRepositories;
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use App\Models\Installation;
 use App\Services\GitHub\GitHubWebhookService;
 use Illuminate\Contracts\Queue\ShouldQueue;

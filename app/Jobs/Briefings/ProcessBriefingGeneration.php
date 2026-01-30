@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs\Briefings;
 
-use App\Enums\BriefingGenerationStatus;
-use App\Enums\Queue;
+use App\Enums\Briefings\BriefingGenerationStatus;
+use App\Enums\Queue\Queue;
 use App\Events\Briefings\BriefingGenerationCompleted;
 use App\Events\Briefings\BriefingGenerationFailed;
 use App\Events\Briefings\BriefingGenerationProgress;
@@ -13,6 +13,8 @@ use App\Events\Briefings\BriefingGenerationStarted;
 use App\Models\BriefingGeneration;
 use App\Services\Briefings\Contracts\BriefingDataCollector;
 use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
+use App\Services\Briefings\Contracts\BriefingSlidesBuilder;
+use App\Services\Briefings\ValueObjects\BriefingParameters;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -23,10 +25,16 @@ final class ProcessBriefingGeneration implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * The number of seconds the job can run before timing out.
+     */
+    public int $timeout;
+
     /** @param BriefingGeneration $generation The generation to process */
     public function __construct(
         public BriefingGeneration $generation,
     ) {
+        $this->timeout = (int) config('briefings.limits.generation_timeout_seconds', 300);
         $this->onQueue(Queue::BriefingsDefault->value);
     }
 
@@ -34,6 +42,7 @@ final class ProcessBriefingGeneration implements ShouldQueue
     public function handle(
         BriefingDataCollector $dataCollector,
         BriefingNarrativeGenerator $narrativeGenerator,
+        BriefingSlidesBuilder $slidesBuilder,
     ): void {
         try {
             $this->updateProgress(BriefingGenerationStatus::Processing, 0, 'Starting briefing generation...');
@@ -47,28 +56,42 @@ final class ProcessBriefingGeneration implements ShouldQueue
             }
 
             $this->updateProgress(BriefingGenerationStatus::Processing, 20, 'Collecting data...');
+            $parameters = BriefingParameters::fromArray($this->generation->parameters ?? []);
             $structuredData = $dataCollector->collect(
                 $this->generation->workspace_id,
                 $briefing->slug,
-                $this->generation->parameters ?? [],
+                $parameters,
             );
 
             $this->updateProgress(BriefingGenerationStatus::Processing, 40, 'Detecting achievements...');
             $achievements = $dataCollector->detectAchievements($structuredData);
 
             $narrative = null;
+            $metadata = $this->generation->metadata ?? [];
 
             if ($briefing->requires_ai && $briefing->prompt_path !== null) {
                 $this->updateProgress(BriefingGenerationStatus::Processing, 60, 'Generating narrative...');
-                $narrative = $narrativeGenerator->generate(
+                $narrativeResult = $narrativeGenerator->generate(
                     $briefing->prompt_path,
                     $structuredData,
                     $achievements,
                 );
+                $narrative = $narrativeResult->text;
+                $metadata['ai_telemetry'] = $narrativeResult->telemetry->toArray();
             }
 
             $this->updateProgress(BriefingGenerationStatus::Processing, 80, 'Generating excerpts...');
             $excerpts = $narrativeGenerator->generateExcerpts($narrative ?? '', $structuredData);
+
+            $this->updateProgress(BriefingGenerationStatus::Processing, 85, 'Building slide deck...');
+            $slides = $slidesBuilder->build(
+                $briefing,
+                $structuredData,
+                $achievements,
+                $narrative,
+            );
+            $structuredPayload = $structuredData->toArray();
+            $structuredPayload['slides'] = $slides->toArray();
 
             $this->updateProgress(BriefingGenerationStatus::Processing, 90, 'Rendering outputs...');
 
@@ -77,9 +100,10 @@ final class ProcessBriefingGeneration implements ShouldQueue
                 'progress' => 100,
                 'progress_message' => 'Completed',
                 'narrative' => $narrative,
-                'structured_data' => $structuredData,
-                'achievements' => $achievements,
-                'excerpts' => $excerpts,
+                'structured_data' => $structuredPayload,
+                'achievements' => $achievements->toArray(),
+                'excerpts' => $excerpts->toArray(),
+                'metadata' => $metadata,
                 'completed_at' => now(),
             ]);
 

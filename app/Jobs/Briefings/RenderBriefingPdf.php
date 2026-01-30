@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Jobs\Briefings;
 
-use App\Enums\BriefingOutputFormat;
-use App\Enums\Queue;
+use App\Enums\Briefings\BriefingOutputFormat;
+use App\Enums\Queue\Queue;
 use App\Models\BriefingGeneration;
+use App\Services\Briefings\ValueObjects\BriefingOutputFormats;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Spatie\Browsershot\Browsershot;
 
 final class RenderBriefingPdf implements ShouldQueue
@@ -44,28 +46,43 @@ final class RenderBriefingPdf implements ShouldQueue
             $this->generation->id,
         );
 
-        $outputPaths = $this->generation->output_paths ?? [];
+        $outputPaths = [];
+        $requestedFormats = $this->resolveOutputFormats();
 
-        // Render HTML
-        $htmlContent = $this->renderHtml();
-        $htmlPath = $storagePath.'/briefing.html';
-        Storage::disk($disk)->put($htmlPath, $htmlContent);
-        $outputPaths[BriefingOutputFormat::Html->value] = $htmlPath;
-
-        // Render PDF if driver is configured
-        $pdfDriver = config('briefings.pdf.driver');
-        if ($pdfDriver !== null) {
-            $pdfPath = $storagePath.'/briefing.pdf';
-            $pdfContent = $this->renderPdf();
-            Storage::disk($disk)->put($pdfPath, $pdfContent);
-            $outputPaths[BriefingOutputFormat::Pdf->value] = $pdfPath;
+        if ($requestedFormats->includes(BriefingOutputFormat::Html)) {
+            $htmlContent = $this->renderHtml();
+            $htmlPath = $storagePath.'/briefing.html';
+            Storage::disk($disk)->put($htmlPath, $htmlContent);
+            $outputPaths[BriefingOutputFormat::Html->value] = $htmlPath;
         }
 
-        // Render Markdown
-        $markdownContent = $this->renderMarkdown();
-        $markdownPath = $storagePath.'/briefing.md';
-        Storage::disk($disk)->put($markdownPath, $markdownContent);
-        $outputPaths[BriefingOutputFormat::Markdown->value] = $markdownPath;
+        if ($requestedFormats->includes(BriefingOutputFormat::Pdf)) {
+            $pdfDriver = config('briefings.pdf.driver');
+            if ($pdfDriver !== null) {
+                $pdfPath = $storagePath.'/briefing.pdf';
+                $pdfContent = $this->renderPdf();
+                Storage::disk($disk)->put($pdfPath, $pdfContent);
+                $outputPaths[BriefingOutputFormat::Pdf->value] = $pdfPath;
+            } else {
+                Log::warning('Briefing PDF generation skipped - driver not configured', [
+                    'generation_id' => $this->generation->id,
+                ]);
+            }
+        }
+
+        if ($requestedFormats->includes(BriefingOutputFormat::Markdown)) {
+            $markdownContent = $this->renderMarkdown();
+            $markdownPath = $storagePath.'/briefing.md';
+            Storage::disk($disk)->put($markdownPath, $markdownContent);
+            $outputPaths[BriefingOutputFormat::Markdown->value] = $markdownPath;
+        }
+
+        if ($requestedFormats->includes(BriefingOutputFormat::Slides)) {
+            $slidesContent = $this->renderSlides();
+            $slidesPath = $storagePath.'/briefing.slides.json';
+            Storage::disk($disk)->put($slidesPath, $slidesContent);
+            $outputPaths[BriefingOutputFormat::Slides->value] = $slidesPath;
+        }
 
         // Update the generation with output paths
         $this->generation->update([
@@ -141,5 +158,46 @@ final class RenderBriefingPdf implements ShouldQueue
         }
 
         return $markdown;
+    }
+
+    /**
+     * Render the briefing as a slides JSON payload.
+     */
+    private function renderSlides(): string
+    {
+        $structuredData = $this->generation->structured_data ?? [];
+        $slides = $structuredData['slides'] ?? null;
+
+        if (! is_array($slides) || ! isset($slides['slides']) || ! is_array($slides['slides'])) {
+            throw new RuntimeException('Briefing slides payload is missing or invalid.');
+        }
+
+        $encoded = json_encode($slides, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        if ($encoded === false) {
+            throw new RuntimeException('Failed to encode briefing slides payload.');
+        }
+
+        return $encoded;
+    }
+
+    /**
+     * Resolve output formats for the generation.
+     *
+     * @return BriefingOutputFormats The resolved output formats
+     */
+    private function resolveOutputFormats(): BriefingOutputFormats
+    {
+        $briefing = $this->generation->briefing;
+        $formats = is_array($briefing?->output_formats)
+            ? array_values($briefing->output_formats)
+            : null;
+        $resolved = BriefingOutputFormats::fromArray($formats);
+
+        if ($resolved->isEmpty()) {
+            throw new RuntimeException('Briefing output formats are not configured.');
+        }
+
+        return $resolved;
     }
 }

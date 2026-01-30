@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs\GitHub;
 
-use App\Enums\ConnectionStatus;
-use App\Enums\InstallationStatus;
-use App\Enums\Queue;
+use App\Enums\GitHub\InstallationStatus;
+use App\Enums\Queue\Queue;
+use App\Enums\Workspace\ConnectionStatus;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Services\GitHub\Contracts\GitHubAppServiceContract;

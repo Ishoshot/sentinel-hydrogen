@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\Commands;
 
 use App\Actions\Commands\ExecuteCommandRun;
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use App\Models\CommandRun;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -37,6 +37,15 @@ final class ExecuteCommandRunJob implements ShouldQueue
         if ($commandRun === null) {
             Log::warning('Command run not found', [
                 'command_run_id' => $this->commandRunId,
+            ]);
+
+            return;
+        }
+
+        if ($commandRun->status->isTerminal()) {
+            Log::info('Skipping command run job for terminal status', [
+                'command_run_id' => $commandRun->id,
+                'status' => $commandRun->status->value,
             ]);
 
             return;

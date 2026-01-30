@@ -6,11 +6,12 @@ namespace App\Jobs\GitHub;
 
 use App\Actions\Commands\CreateCommandRun;
 use App\Actions\Reviews\TriggerManualReview;
-use App\Enums\CommandType;
-use App\Enums\Queue;
+use App\Enums\Commands\CommandType;
+use App\Enums\Queue\Queue;
 use App\Jobs\Commands\ExecuteCommandRunJob;
-use App\Services\Commands\CommandParser;
 use App\Services\Commands\CommandPermissionService;
+use App\Services\Commands\Parsers\CommandParser;
+use App\Services\Commands\ValueObjects\ParsedCommand;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -73,14 +74,14 @@ final class ProcessIssueCommentWebhook implements ShouldQueue
         // Check if this is an @sentinel mention
         $parsed = $commandParser->parse($commentBody);
 
-        if ($parsed === null || ! $parsed['found']) {
+        if (! ($parsed instanceof ParsedCommand) || ! $parsed->wasFound()) {
             Log::debug('Issue comment does not contain @sentinel mention', $ctx);
 
             return;
         }
 
-        $commandType = $parsed['command_type'];
-        if ($commandType === null) {
+        $commandType = $parsed->commandType;
+        if (! ($commandType instanceof CommandType)) {
             Log::warning('Could not determine command type from parsed mention', $ctx);
 
             return;
@@ -88,7 +89,7 @@ final class ProcessIssueCommentWebhook implements ShouldQueue
 
         Log::info('Processing @sentinel command', array_merge($ctx, [
             'command_type' => $commandType->value,
-            'query' => mb_substr($parsed['query'] ?? '', 0, 100),
+            'query' => mb_substr($parsed->query ?? '', 0, 100),
         ]));
 
         // Check permissions
@@ -134,18 +135,38 @@ final class ProcessIssueCommentWebhook implements ShouldQueue
             return;
         }
 
+        if ($commandType === CommandType::Review && ! $isPullRequest && $issueNumber !== null) {
+            $this->postReviewErrorComment(
+                $githubApi,
+                $installationId,
+                $repositoryFullName,
+                $issueNumber,
+                'Manual reviews are only supported on pull requests. Use @sentinel explain or @sentinel analyze on issues.'
+            );
+
+            return;
+        }
+
         // Handle other commands via the agent-based command flow
         $commandRun = $createCommandRun->handle(
             workspace: $permissionResult->workspace,
             repository: $permissionResult->repository,
             user: $permissionResult->user,
             commandType: $commandType,
-            query: $parsed['query'] ?? '',
+            query: $parsed->query ?? '',
             githubCommentId: $commentId,
             issueNumber: $issueNumber,
             isPullRequest: $isPullRequest,
-            contextHints: $parsed['context_hints'],
+            contextHints: $parsed->contextHints,
         );
+
+        if (! $commandRun->wasRecentlyCreated) {
+            Log::info('Duplicate command webhook ignored', array_merge($ctx, [
+                'command_run_id' => $commandRun->id,
+            ]));
+
+            return;
+        }
 
         Log::info('Command run created', array_merge($ctx, [
             'command_run_id' => $commandRun->id,

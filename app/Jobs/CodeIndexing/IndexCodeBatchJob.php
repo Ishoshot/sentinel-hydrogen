@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\CodeIndexing;
 
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use App\Models\CodeIndex;
 use App\Models\Repository;
 use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;

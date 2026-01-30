@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\Reviews;
 
 use App\Actions\Reviews\ExecuteReviewRun as ExecuteReviewRunAction;
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use App\Models\Run;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs\Briefings;
 
-use App\Enums\BriefingDeliveryChannel;
-use App\Enums\Queue;
+use App\Enums\Briefings\BriefingDeliveryChannel;
+use App\Enums\Queue\Queue;
 use App\Models\BriefingGeneration;
 use App\Models\BriefingSubscription;
 use App\Notifications\Briefings\BriefingDeliveryNotification;
