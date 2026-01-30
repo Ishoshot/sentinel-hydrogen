@@ -10,6 +10,7 @@ use Laravel\Boost\Contracts\SupportsSkills;
 use Laravel\Boost\Install\Agents\Agent;
 use Laravel\Boost\Install\Enums\McpInstallationStrategy;
 use Laravel\Boost\Install\Enums\Platform;
+use Override;
 
 final class Antigravity extends Agent implements SupportsGuidelines, SupportsMcp, SupportsSkills
 {
@@ -49,6 +50,7 @@ final class Antigravity extends Agent implements SupportsGuidelines, SupportsMcp
     /**
      * Antigravity reads MCP config from files.
      */
+    #[Override]
     public function mcpInstallationStrategy(): McpInstallationStrategy
     {
         return McpInstallationStrategy::FILE;

@@ -31,7 +31,6 @@ parameters:
         # Config helper returns mixed
         - '#Cannot cast mixed to string#'
         # json_decode returns mixed
-        - '#should return array<string, mixed> but returns array<mixed, mixed>#'
         # Nullsafe access on non-nullable types
         - '#Using nullsafe .+ on non-nullable type#'
         - '#Using nullsafe property access .+ on left side of \?\? is unnecessary#'

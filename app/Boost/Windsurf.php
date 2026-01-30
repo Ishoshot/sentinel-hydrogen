@@ -10,6 +10,7 @@ use Laravel\Boost\Contracts\SupportsSkills;
 use Laravel\Boost\Install\Agents\Agent;
 use Laravel\Boost\Install\Enums\McpInstallationStrategy;
 use Laravel\Boost\Install\Enums\Platform;
+use Override;
 
 final class Windsurf extends Agent implements SupportsGuidelines, SupportsMcp, SupportsSkills
 {
@@ -30,9 +31,9 @@ final class Windsurf extends Agent implements SupportsGuidelines, SupportsMcp, S
     }
 
     /**
-     * Get platform-specific detection paths.
+     * Get platform-specific detection command.
      *
-     * @return array{paths: array<int, string>}
+     * @return array{command: string}
      */
     public function systemDetectionConfig(Platform $platform): array
     {
@@ -49,6 +50,7 @@ final class Windsurf extends Agent implements SupportsGuidelines, SupportsMcp, S
     /**
      * Get the MCP installation strategy.
      */
+    #[Override]
     public function mcpInstallationStrategy(): McpInstallationStrategy
     {
         return McpInstallationStrategy::FILE;
