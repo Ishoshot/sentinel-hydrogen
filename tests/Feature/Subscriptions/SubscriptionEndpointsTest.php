@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\PlanTier;
-use App\Enums\SubscriptionStatus;
+use App\Enums\Billing\PlanTier;
+use App\Enums\Billing\SubscriptionStatus;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -429,7 +429,7 @@ it('rejects invalid promo codes', function (): void {
         ]);
 
     $response->assertUnprocessable()
-        ->assertJsonPath('errors.promo_code.0', 'Invalid promotion code.');
+        ->assertJsonPath('message', 'Invalid promotion code.');
 });
 
 it('prevents non-owners from changing subscriptions', function (): void {

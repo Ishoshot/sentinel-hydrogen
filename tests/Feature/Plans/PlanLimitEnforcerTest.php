@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\ProviderType;
-use App\Enums\RunStatus;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Reviews\RunStatus;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Plan;
@@ -21,7 +21,7 @@ it('blocks runs when the monthly limit is reached', function (): void {
 
     $workspace = Workspace::factory()->create([
         'plan_id' => $plan->id,
-        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+        'subscription_status' => App\Enums\Billing\SubscriptionStatus::Active,
     ]);
 
     $provider = Provider::query()->firstOrCreate(
@@ -55,7 +55,7 @@ it('blocks invitations when team size limit is reached', function (): void {
 
     $workspace = Workspace::factory()->create([
         'plan_id' => $plan->id,
-        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+        'subscription_status' => App\Enums\Billing\SubscriptionStatus::Active,
     ]);
 
     $user = User::factory()->create();
@@ -90,7 +90,7 @@ it('blocks additional workspace creation when existing workspace is on free plan
     Workspace::factory()->create([
         'owner_id' => $user->id,
         'plan_id' => $foundationPlan->id,
-        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+        'subscription_status' => App\Enums\Billing\SubscriptionStatus::Active,
     ]);
 
     $enforcer = app(PlanLimitEnforcer::class);
@@ -107,7 +107,7 @@ it('allows additional workspace creation when all existing workspaces are on pai
     Workspace::factory()->create([
         'owner_id' => $user->id,
         'plan_id' => $illuminatePlan->id,
-        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+        'subscription_status' => App\Enums\Billing\SubscriptionStatus::Active,
     ]);
 
     $enforcer = app(PlanLimitEnforcer::class);
@@ -126,12 +126,12 @@ it('allows multiple workspaces when all are on paid plans', function (): void {
     Workspace::factory()->create([
         'owner_id' => $user->id,
         'plan_id' => $illuminatePlan->id,
-        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+        'subscription_status' => App\Enums\Billing\SubscriptionStatus::Active,
     ]);
     Workspace::factory()->create([
         'owner_id' => $user->id,
         'plan_id' => $orchestratePlan->id,
-        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+        'subscription_status' => App\Enums\Billing\SubscriptionStatus::Active,
     ]);
 
     $enforcer = app(PlanLimitEnforcer::class);
@@ -150,14 +150,14 @@ it('blocks workspace creation when any existing workspace is on free plan', func
     Workspace::factory()->create([
         'owner_id' => $user->id,
         'plan_id' => $illuminatePlan->id,
-        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+        'subscription_status' => App\Enums\Billing\SubscriptionStatus::Active,
     ]);
 
     // One free workspace
     Workspace::factory()->create([
         'owner_id' => $user->id,
         'plan_id' => $foundationPlan->id,
-        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+        'subscription_status' => App\Enums\Billing\SubscriptionStatus::Active,
     ]);
 
     $enforcer = app(PlanLimitEnforcer::class);

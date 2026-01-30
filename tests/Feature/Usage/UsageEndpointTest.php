@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Enums\ProviderType;
-use App\Enums\Queue as QueueEnum;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Billing\SubscriptionStatus;
+use App\Enums\Queue\Queue as QueueEnum;
 use App\Jobs\Usage\AggregateUsage;
 use App\Models\Annotation;
 use App\Models\Connection;
@@ -24,7 +25,7 @@ it('returns current period usage for a workspace', function (): void {
     $workspace = Workspace::factory()->create([
         'owner_id' => $user->id,
         'plan_id' => $plan->id,
-        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+        'subscription_status' => SubscriptionStatus::Active,
     ]);
 
     $workspace->teamMembers()->create([

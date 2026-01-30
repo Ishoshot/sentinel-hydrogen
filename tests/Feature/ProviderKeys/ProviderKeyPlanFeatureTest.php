@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Billing\SubscriptionStatus;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Plan;
@@ -20,7 +21,7 @@ it('blocks provider key storage when byok is disabled', function (): void {
     $workspace = Workspace::factory()->create([
         'owner_id' => $user->id,
         'plan_id' => $plan->id,
-        'subscription_status' => App\Enums\SubscriptionStatus::Active,
+        'subscription_status' => SubscriptionStatus::Active,
     ]);
 
     $workspace->teamMembers()->create([
