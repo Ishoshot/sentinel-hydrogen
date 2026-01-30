@@ -6,7 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Teams\RemoveTeamMember;
 use App\Actions\Teams\UpdateTeamMemberRole;
-use App\Enums\TeamRole;
+use App\Enums\Workspace\TeamRole;
 use App\Http\Requests\TeamMember\UpdateTeamMemberRequest;
 use App\Http\Resources\TeamMemberResource;
 use App\Models\TeamMember;
@@ -14,7 +14,6 @@ use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use InvalidArgumentException;
 
 final class TeamMemberController
 {
@@ -60,17 +59,11 @@ final class TeamMemberController
         /** @var string $role */
         $role = $request->validated('role');
 
-        try {
-            $updateTeamMemberRole->handle(
-                member: $member,
-                role: TeamRole::from($role),
-                actor: $user,
-            );
-        } catch (InvalidArgumentException $invalidArgumentException) {
-            return response()->json([
-                'message' => $invalidArgumentException->getMessage(),
-            ], 422);
-        }
+        $updateTeamMemberRole->handle(
+            member: $member,
+            role: TeamRole::from($role),
+            actor: $user,
+        );
 
         $member->refresh();
         $member->load('user');
@@ -103,13 +96,7 @@ final class TeamMemberController
         }
 
         /** @var \App\Models\User $user */
-        try {
-            $removeTeamMember->handle($member, $user);
-        } catch (InvalidArgumentException $invalidArgumentException) {
-            return response()->json([
-                'message' => $invalidArgumentException->getMessage(),
-            ], 422);
-        }
+        $removeTeamMember->handle($member, $user);
 
         return response()->json([
             'message' => 'Member removed successfully.',

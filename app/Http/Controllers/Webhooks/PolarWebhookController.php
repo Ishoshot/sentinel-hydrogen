@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Webhooks;
 
 use App\Actions\Billing\HandlePolarWebhook;
 use App\Actions\Webhooks\RecordIncomingWebhook;
-use App\Enums\Partner;
+use App\Enums\Billing\Partner;
 use App\Models\IncomingWebhook;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

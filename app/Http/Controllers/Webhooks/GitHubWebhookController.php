@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Webhooks;
 
-use App\Enums\GitHubWebhookEvent;
+use App\Enums\GitHub\GitHubWebhookEvent;
 use App\Jobs\GitHub\ProcessInstallationRepositoriesWebhook;
 use App\Jobs\GitHub\ProcessInstallationWebhook;
 use App\Jobs\GitHub\ProcessIssueCommentWebhook;
@@ -29,18 +29,25 @@ final readonly class GitHubWebhookController
      */
     public function handle(Request $request): JsonResponse
     {
-        Log::info('GitHub webhook received', [
-            'payload' => $request->getContent(),
-        ]);
         $payload = $request->getContent();
+        $payloadSize = mb_strlen($payload, '8bit');
         $signature = $request->header('X-Hub-Signature-256', '');
         $event = $request->header('X-GitHub-Event', '');
         $deliveryId = $request->header('X-GitHub-Delivery', '');
 
+        Log::info('GitHub webhook received', [
+            'event' => $event,
+            'delivery_id' => $deliveryId,
+            'payload_bytes' => $payloadSize,
+            'signature_present' => $signature !== '',
+        ]);
+
         // Verify signature
         if (! $this->webhookService->verifySignature($payload, $signature)) {
             Log::warning('GitHub webhook signature verification failed', [
+                'event' => $event,
                 'delivery_id' => $deliveryId,
+                'payload_bytes' => $payloadSize,
             ]);
 
             return response()->json(['error' => 'Invalid signature'], 401);
@@ -64,6 +71,9 @@ final readonly class GitHubWebhookController
             'event' => $event,
             'action' => $data['action'] ?? 'unknown',
             'delivery_id' => $deliveryId,
+            'installation_id' => $data['installation']['id'] ?? null,
+            'repository' => $data['repository']['full_name'] ?? null,
+            'sender_login' => $data['sender']['login'] ?? null,
         ]);
 
         return $this->dispatchJob($eventType, $data);
