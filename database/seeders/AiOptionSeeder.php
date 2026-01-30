@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use App\Models\AiOption;
 use Illuminate\Database\Seeder;
 
@@ -25,6 +25,8 @@ final class AiOptionSeeder extends Seeder
                 'is_default' => true,
                 'is_active' => true,
                 'sort_order' => 1,
+                'context_window_tokens' => 200000,
+                'max_output_tokens' => 64000,
             ],
             [
                 'provider' => AiProvider::Anthropic->value,
@@ -34,6 +36,8 @@ final class AiOptionSeeder extends Seeder
                 'is_default' => false,
                 'is_active' => true,
                 'sort_order' => 2,
+                'context_window_tokens' => 200000,
+                'max_output_tokens' => 64000,
             ],
             [
                 'provider' => AiProvider::Anthropic->value,
@@ -43,6 +47,8 @@ final class AiOptionSeeder extends Seeder
                 'is_default' => false,
                 'is_active' => true,
                 'sort_order' => 3,
+                'context_window_tokens' => 200000,
+                'max_output_tokens' => 8192,
             ],
 
             // OpenAI models
@@ -54,6 +60,8 @@ final class AiOptionSeeder extends Seeder
                 'is_default' => true,
                 'is_active' => true,
                 'sort_order' => 1,
+                'context_window_tokens' => 128000,
+                'max_output_tokens' => 16384,
             ],
             [
                 'provider' => AiProvider::OpenAI->value,
@@ -63,6 +71,8 @@ final class AiOptionSeeder extends Seeder
                 'is_default' => false,
                 'is_active' => true,
                 'sort_order' => 2,
+                'context_window_tokens' => 128000,
+                'max_output_tokens' => 16384,
             ],
             [
                 'provider' => AiProvider::OpenAI->value,
@@ -72,6 +82,8 @@ final class AiOptionSeeder extends Seeder
                 'is_default' => false,
                 'is_active' => true,
                 'sort_order' => 3,
+                'context_window_tokens' => 128000,
+                'max_output_tokens' => 4096,
             ],
         ];
 

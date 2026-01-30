@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\DTOs\Briefings\BriefingPropertyFormat;
-use App\DTOs\Briefings\BriefingSchema;
-use App\DTOs\Briefings\BriefingSchemaBuilder;
-use App\DTOs\Briefings\BriefingSchemaProperty;
-use App\Enums\BriefingOutputFormat;
+use App\DataTransferObjects\Briefings\BriefingPropertyFormat;
+use App\DataTransferObjects\Briefings\BriefingSchema;
+use App\DataTransferObjects\Briefings\BriefingSchemaBuilder;
+use App\DataTransferObjects\Briefings\BriefingSchemaProperty;
+use App\Enums\Briefings\BriefingOutputFormat;
 use App\Models\Briefing;
 use Illuminate\Database\Seeder;
 
