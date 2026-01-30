@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Enums;
+namespace App\Enums\Webhooks;
 
 /**
  * Polar webhook event types.
@@ -11,6 +11,8 @@ namespace App\Enums;
  */
 enum PolarWebhookEvent: string
 {
+    case Unknown = 'unknown';
+
     // Checkout events
     case CheckoutCreated = 'checkout.created';
     case CheckoutUpdated = 'checkout.updated';
@@ -75,6 +77,7 @@ enum PolarWebhookEvent: string
     public function label(): string
     {
         return match ($this) {
+            self::Unknown => 'Unknown',
             self::CheckoutCreated => 'Checkout Created',
             self::CheckoutUpdated => 'Checkout Updated',
             self::CustomerCreated => 'Customer Created',
