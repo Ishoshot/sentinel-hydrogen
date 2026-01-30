@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\SubscriptionStatus;
+use App\Enums\Billing\SubscriptionStatus;
 use App\Models\Invitation;
 use App\Models\Plan;
 use App\Models\User;

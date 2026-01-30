@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PlanTier;
+use App\Enums\Billing\PlanTier;
 use App\Models\Invitation;
 use App\Models\Plan;
 use App\Models\User;
