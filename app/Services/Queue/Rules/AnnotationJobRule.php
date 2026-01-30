@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Queue\Rules;
 
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use App\Jobs\Reviews\PostRunAnnotations;
 use App\Services\Queue\Contracts\QueueRule;
-use App\Services\Queue\JobContext;
-use App\Services\Queue\QueueRuleResult;
+use App\Services\Queue\ValueObjects\JobContext;
+use App\Services\Queue\ValueObjects\QueueRuleResult;
 
 /**
  * Routes annotation jobs to the annotations queue.

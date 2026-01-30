@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Queue\Contracts;
 
-use App\Services\Queue\JobContext;
-use App\Services\Queue\QueueRuleResult;
+use App\Services\Queue\ValueObjects\JobContext;
+use App\Services\Queue\ValueObjects\QueueRuleResult;
 
 /**
  * Contract for queue selection rules.

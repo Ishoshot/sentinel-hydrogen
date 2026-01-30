@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Queue;
 
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use App\Services\Queue\Contracts\QueueRule;
+use App\Services\Queue\ValueObjects\JobContext;
+use App\Services\Queue\ValueObjects\QueueResolution;
 use Illuminate\Support\Facades\Log;
 
 /**
