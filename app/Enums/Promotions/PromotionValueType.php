@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Enums;
+namespace App\Enums\Promotions;
 
 /**
  * Types of promotion discount values.
