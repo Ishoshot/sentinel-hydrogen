@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Enums\AiProvider;
+use App\Actions\AiOptions\ListProviderAiOptions;
+use App\Enums\AI\AiProvider;
 use App\Http\Resources\AiOptionResource;
-use App\Models\AiOption;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
@@ -17,7 +17,7 @@ final class AiOptionController
     /**
      * List all active models for a provider.
      */
-    public function __invoke(string $provider): AnonymousResourceCollection
+    public function __invoke(string $provider, ListProviderAiOptions $listProviderAiOptions): AnonymousResourceCollection
     {
         $aiProvider = AiProvider::tryFrom($provider);
 
@@ -25,12 +25,7 @@ final class AiOptionController
             abort(404, 'Invalid provider');
         }
 
-        $models = AiOption::query()
-            ->forProvider($aiProvider)
-            ->active()
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
+        $models = $listProviderAiOptions->handle($aiProvider);
 
         return AiOptionResource::collection($models);
     }

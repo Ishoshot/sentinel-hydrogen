@@ -8,15 +8,13 @@ use App\Actions\Admin\AiOptions\CreateAiOption;
 use App\Actions\Admin\AiOptions\DeleteAiOption;
 use App\Actions\Admin\AiOptions\ListAiOptions;
 use App\Actions\Admin\AiOptions\UpdateAiOption;
-use App\Enums\AiProvider;
+use App\Http\Requests\Admin\AiOption\IndexAiOptionsRequest;
 use App\Http\Requests\Admin\AiOption\StoreAiOptionRequest;
 use App\Http\Requests\Admin\AiOption\UpdateAiOptionRequest;
 use App\Http\Resources\Admin\AiOptionResource;
 use App\Models\AiOption;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use InvalidArgumentException;
 
 /**
  * Admin controller for managing AI options (provider models).
@@ -26,16 +24,12 @@ final class AiOptionController
     /**
      * List all AI options.
      */
-    public function index(Request $request, ListAiOptions $listAiOptions): AnonymousResourceCollection
+    public function index(IndexAiOptionsRequest $request, ListAiOptions $listAiOptions): AnonymousResourceCollection
     {
-        $provider = $request->has('provider')
-            ? AiProvider::tryFrom($request->string('provider')->toString())
-            : null;
-
         $aiOptions = $listAiOptions->handle(
-            provider: $provider,
-            activeOnly: $request->boolean('active_only'),
-            perPage: $request->integer('per_page', 15),
+            provider: $request->provider(),
+            activeOnly: $request->activeOnly(),
+            perPage: $request->perPage(),
         );
 
         return AiOptionResource::collection($aiOptions);
@@ -91,13 +85,7 @@ final class AiOptionController
         AiOption $aiOption,
         DeleteAiOption $deleteAiOption,
     ): JsonResponse {
-        try {
-            $deleteAiOption->handle($aiOption);
-        } catch (InvalidArgumentException $invalidArgumentException) {
-            return response()->json([
-                'message' => $invalidArgumentException->getMessage(),
-            ], 422);
-        }
+        $deleteAiOption->handle($aiOption);
 
         return response()->json([
             'message' => 'AI model deleted successfully.',
