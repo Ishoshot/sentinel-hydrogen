@@ -20,6 +20,8 @@ use App\Http\Controllers\Api\MarkGettingStartedSeenController;
 use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\Briefings\BriefingController;
 use App\Http\Controllers\Briefings\BriefingDownloadController;
+use App\Http\Controllers\Briefings\BriefingEligibilityController;
+use App\Http\Controllers\Briefings\BriefingFeedbackController;
 use App\Http\Controllers\Briefings\BriefingGenerationController;
 use App\Http\Controllers\Briefings\BriefingShareController;
 use App\Http\Controllers\Briefings\BriefingSubscriptionController;
@@ -131,6 +133,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/repositories/sync', [RepositoryController::class, 'sync'])->name('repositories.sync');
         Route::get('/repositories/{repository}', [RepositoryController::class, 'show'])->name('repositories.show');
         Route::patch('/repositories/{repository}', [RepositoryController::class, 'update'])->name('repositories.update');
+        Route::post('/repositories/{repository}/create-config-pr', [RepositoryController::class, 'createConfigPr'])->name('repositories.create-config-pr');
         Route::get('/repositories/{repository}/runs', [RunController::class, 'index'])->name('runs.index');
 
         // Provider Keys (BYOK)
@@ -171,6 +174,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         // Briefings
         Route::prefix('briefings')->group(function (): void {
             Route::get('/', [BriefingController::class, 'index'])->name('briefings.index');
+            Route::get('/eligibility', BriefingEligibilityController::class)->name('briefings.eligibility');
             Route::get('/{slug}', [BriefingController::class, 'show'])->name('briefings.show');
             Route::post('/{slug}/generate', [BriefingGenerationController::class, 'store'])->name('briefings.generate');
         });
@@ -181,6 +185,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::get('/{generation}', [BriefingGenerationController::class, 'show'])->name('briefing-generations.show');
             Route::get('/{generation}/download/{format}', BriefingDownloadController::class)->name('briefing-generations.download');
             Route::post('/{generation}/share', [BriefingShareController::class, 'store'])->name('briefing-generations.share');
+            Route::post('/{generation}/feedback', BriefingFeedbackController::class)->name('briefing-generations.feedback');
         });
 
         // Briefing Subscriptions

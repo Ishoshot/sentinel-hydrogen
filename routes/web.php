@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\OAuthProvider;
+use App\Enums\Auth\OAuthProvider;
 use App\Http\Controllers\Auth\OAuthController;
 use Illuminate\Support\Facades\Route;
 

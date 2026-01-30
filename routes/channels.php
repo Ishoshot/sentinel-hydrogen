@@ -26,3 +26,13 @@ Broadcast::channel('workspace.{workspaceId}.briefings', function (User $user, in
 
     return $user->belongsToWorkspace($workspace);
 });
+
+Broadcast::channel('workspace.{workspaceId}.repositories', function (User $user, int $workspaceId) {
+    $workspace = Workspace::find($workspaceId);
+
+    if ($workspace === null) {
+        return false;
+    }
+
+    return $user->belongsToWorkspace($workspace);
+});
