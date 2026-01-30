@@ -23,7 +23,7 @@ final class CreateShareRequest extends FormRequest
      */
     public function rules(): array
     {
-        $maxExpiryDays = config('briefings.retention.generations_days', 90);
+        $maxExpiryDays = (int) config('briefings.retention.generations_days', 90);
 
         return [
             'expires_at' => ['nullable', 'date', 'after:now', 'before_or_equal:'.now()->addDays($maxExpiryDays)->toDateString(), 'prohibits:expires_in_days'],
