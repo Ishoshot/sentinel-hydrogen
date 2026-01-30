@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\FindingCategory;
-use App\Enums\SentinelConfigSeverity;
+use App\Enums\Reviews\FindingCategory;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use Database\Factories\FindingFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @property SentinelConfigSeverity|null $severity
  * @property FindingCategory|null $category
+ * @property string|null $finding_hash
  */
 final class Finding extends Model
 {
@@ -29,6 +30,7 @@ final class Finding extends Model
      */
     protected $fillable = [
         'run_id',
+        'finding_hash',
         'workspace_id',
         'severity',
         'category',

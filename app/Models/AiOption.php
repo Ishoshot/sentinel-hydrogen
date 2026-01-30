@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use Database\Factories\AiOptionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $is_default
  * @property bool $is_active
  * @property int $sort_order
+ * @property int|null $context_window_tokens
+ * @property int|null $max_output_tokens
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  */
@@ -48,6 +50,8 @@ final class AiOption extends Model
         'is_default',
         'is_active',
         'sort_order',
+        'context_window_tokens',
+        'max_output_tokens',
     ];
 
     /**
@@ -102,6 +106,8 @@ final class AiOption extends Model
             'is_default' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
+            'context_window_tokens' => 'integer',
+            'max_output_tokens' => 'integer',
         ];
     }
 }

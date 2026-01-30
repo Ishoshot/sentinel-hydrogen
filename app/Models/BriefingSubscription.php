@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\BriefingSchedulePreset;
+use App\Enums\Briefings\BriefingSchedulePreset;
 use Database\Factories\BriefingSubscriptionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -106,6 +106,16 @@ final class BriefingSubscription extends Model
     {
         $this->update([
             'last_generated_at' => now(),
+            'next_scheduled_at' => $this->calculateNextScheduledAt(),
+        ]);
+    }
+
+    /**
+     * Defer the next scheduled run without marking a generation as completed.
+     */
+    public function markDeferred(): void
+    {
+        $this->update([
             'next_scheduled_at' => $this->calculateNextScheduledAt(),
         ]);
     }

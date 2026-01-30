@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\BillingInterval;
-use App\Enums\SubscriptionStatus;
+use App\Enums\Billing\BillingInterval;
+use App\Enums\Billing\SubscriptionStatus;
 use Database\Factories\SubscriptionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

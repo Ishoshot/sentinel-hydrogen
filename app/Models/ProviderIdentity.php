@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\OAuthProvider;
+use App\Enums\Auth\OAuthProvider;
 use Database\Factories\ProviderIdentityFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\ChunkType;
+use App\Enums\CodeIndexing\ChunkType;
 use Database\Factories\CodeEmbeddingFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

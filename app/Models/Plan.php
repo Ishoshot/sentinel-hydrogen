@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Casts\MoneyCast;
-use App\Enums\PlanFeature;
-use App\Enums\PlanTier;
+use App\Enums\Billing\PlanFeature;
+use App\Enums\Billing\PlanTier;
 use Database\Factories\PlanFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +27,7 @@ final class Plan extends Model
         'monthly_commands_limit',
         'team_size_limit',
         'features',
+        'limits',
         'price_monthly',
         'price_yearly',
     ];
@@ -102,12 +103,44 @@ final class Plan extends Model
     }
 
     /**
+     * Get a specific limit value from the limits JSON.
+     *
+     * Returns null if the limit is not set (unlimited).
+     * Returns 0 if explicitly set to 0 (blocked).
+     *
+     * @param  string  $path  Dot-notation path (e.g., 'briefings.daily')
+     */
+    public function getLimit(string $path): ?int
+    {
+        $limits = $this->limits ?? [];
+
+        $value = data_get($limits, $path);
+
+        if ($value === null) {
+            return null;
+        }
+
+        return (int) $value;
+    }
+
+    /**
+     * Check if a limit is set (not null).
+     */
+    public function hasLimit(string $path): bool
+    {
+        $limits = $this->limits ?? [];
+
+        return data_get($limits, $path) !== null;
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
             'features' => 'array',
+            'limits' => 'array',
             'price_monthly' => MoneyCast::class,
             'price_yearly' => MoneyCast::class,
         ];

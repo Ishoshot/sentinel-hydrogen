@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\BriefingGenerationStatus;
+use App\Enums\Briefings\BriefingGenerationStatus;
 use Database\Factories\BriefingGenerationFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

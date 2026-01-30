@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Casts\PromotionValueCast;
-use App\Enums\PromotionValueType;
+use App\Enums\Promotions\PromotionValueType;
 use Brick\Money\Money;
 use Carbon\CarbonImmutable;
 use Database\Factories\PromotionFactory;

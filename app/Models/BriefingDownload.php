@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\BriefingDownloadSource;
-use App\Enums\BriefingOutputFormat;
+use App\Enums\Briefings\BriefingDownloadSource;
+use App\Enums\Briefings\BriefingOutputFormat;
 use Database\Factories\BriefingDownloadFactory;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;

@@ -184,7 +184,7 @@ final class Workspace extends Model
     {
         return [
             'settings' => 'array',
-            'subscription_status' => \App\Enums\SubscriptionStatus::class,
+            'subscription_status' => \App\Enums\Billing\SubscriptionStatus::class,
             'trial_ends_at' => 'datetime',
         ];
     }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\PromotionUsageStatus;
+use App\Enums\Promotions\PromotionUsageStatus;
 use Database\Factories\PromotionUsageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

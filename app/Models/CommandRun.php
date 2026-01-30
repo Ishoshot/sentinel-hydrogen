@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\CommandRunStatus;
-use App\Enums\CommandType;
+use App\Enums\Commands\CommandRunStatus;
+use App\Enums\Commands\CommandType;
 use Database\Factories\CommandRunFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
