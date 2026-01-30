@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
-use App\Enums\AnnotationStyle;
-use App\Enums\SentinelConfigSeverity;
-use App\Enums\SentinelConfigTone;
+use App\Enums\Reviews\AnnotationStyle;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
+use App\Enums\SentinelConfig\SentinelConfigTone;
 use App\Exceptions\SentinelConfig\ConfigParseException;
 use App\Exceptions\SentinelConfig\ConfigValidationException;
 use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
