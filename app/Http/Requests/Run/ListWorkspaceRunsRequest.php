@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Run;
 
-use App\Enums\RunStatus;
+use App\Enums\Reviews\RunStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Override;
@@ -95,5 +95,26 @@ final class ListWorkspaceRunsRequest extends FormRequest
         $groupBy = $this->validated('group_by');
 
         return is_string($groupBy) ? $groupBy : null;
+    }
+
+    /**
+     * Get all filter parameters as an array.
+     *
+     * @return array<string, mixed>
+     */
+    public function filters(): array
+    {
+        /** @var array<string, mixed> $filters */
+        $filters = $this->only([
+            'status',
+            'repository_id',
+            'risk_level',
+            'author',
+            'from_date',
+            'to_date',
+            'search',
+        ]);
+
+        return $filters;
     }
 }

@@ -24,6 +24,7 @@ final class BriefingResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'workspace_id' => $this->workspace_id,
             'title' => $this->title,
             'slug' => $this->slug,
             'description' => $this->description,
@@ -31,9 +32,14 @@ final class BriefingResource extends JsonResource
             'target_roles' => $this->target_roles,
             'parameter_schema' => $this->parameter_schema,
             'requires_ai' => $this->requires_ai,
+            'eligible_plan_ids' => $this->eligible_plan_ids,
             'output_formats' => $this->output_formats,
             'is_schedulable' => $this->is_schedulable,
             'is_system' => $this->is_system,
+            'sort_order' => $this->sort_order,
+            'is_active' => $this->is_active,
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

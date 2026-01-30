@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Briefings;
 
-use App\Enums\BriefingDeliveryChannel;
-use App\Enums\BriefingSchedulePreset;
+use App\Enums\Briefings\BriefingDeliveryChannel;
+use App\Enums\Briefings\BriefingSchedulePreset;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 

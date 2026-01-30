@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\ProviderKey;
 
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use App\Models\Repository;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;

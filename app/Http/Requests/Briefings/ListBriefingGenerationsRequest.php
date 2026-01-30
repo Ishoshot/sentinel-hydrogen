@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Briefings;
 
-use App\Enums\BriefingGenerationStatus;
+use App\Enums\Briefings\BriefingGenerationStatus;
+use App\Services\Briefings\ValueObjects\BriefingGenerationStatusSet;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -63,10 +64,8 @@ final class ListBriefingGenerationsRequest extends FormRequest
 
     /**
      * Get the status filters.
-     *
-     * @return list<string>|null
      */
-    public function getStatuses(): ?array
+    public function getStatuses(): ?BriefingGenerationStatusSet
     {
         $status = $this->input('status');
 
@@ -76,7 +75,7 @@ final class ListBriefingGenerationsRequest extends FormRequest
 
         $filtered = array_filter($status, is_string(...));
 
-        return array_values($filtered);
+        return BriefingGenerationStatusSet::fromStrings(array_values($filtered));
     }
 
     /**

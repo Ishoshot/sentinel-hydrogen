@@ -22,6 +22,7 @@ final class FindingResource extends JsonResource
         return [
             'id' => $this->id,
             'run_id' => $this->run_id,
+            // 'finding_hash' => $this->finding_hash,
             'severity' => $this->severity,
             'category' => $this->category,
             'title' => $this->title,

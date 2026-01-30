@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin\Promotion;
 
-use App\Enums\PromotionValueType;
+use App\Enums\Promotions\PromotionValueType;
 use App\Models\Promotion;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;

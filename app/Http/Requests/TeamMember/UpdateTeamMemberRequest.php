@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\TeamMember;
 
-use App\Enums\TeamRole;
+use App\Enums\Workspace\TeamRole;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Http\FormRequest;

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Subscription;
 
-use App\Enums\BillingInterval;
-use App\Enums\PlanTier;
+use App\Enums\Billing\BillingInterval;
+use App\Enums\Billing\PlanTier;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Override;

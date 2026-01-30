@@ -30,6 +30,8 @@ final class AiOptionResource extends JsonResource
             'is_default' => $this->is_default,
             'is_active' => $this->is_active,
             'sort_order' => $this->sort_order,
+            'context_window_tokens' => $this->context_window_tokens,
+            'max_output_tokens' => $this->max_output_tokens,
             'usage_count' => $this->whenCounted('providerKeys'),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

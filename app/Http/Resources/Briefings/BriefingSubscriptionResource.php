@@ -24,6 +24,8 @@ final class BriefingSubscriptionResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'workspace_id' => $this->workspace_id,
+            'user_id' => $this->user_id,
             'briefing_id' => $this->briefing_id,
             'briefing' => $this->when(
                 $this->relationLoaded('briefing'),

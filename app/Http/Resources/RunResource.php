@@ -28,10 +28,12 @@ final class RunResource extends JsonResource
             'completed_at' => $this->completed_at?->toISOString(),
             'findings_count' => $this->whenCounted('findings', $this->findings_count),
             'metrics' => $this->metrics,
-            'policy_snapshot' => $this->policy_snapshot,
+            // 'policy_snapshot' => $this->policy_snapshot,
+            'policy_snapshot' => $this->formatPolicySnapshot($this->policy_snapshot),
             'pull_request' => $this->formatPullRequest(),
             'summary' => $this->formatSummary(),
-            'metadata' => $this->metadata,
+            // 'metadata' => $this->metadata,
+            'metadata' => $this->filterMetadata($this->metadata),
             'repository' => new RepositoryResource($this->whenLoaded('repository')),
             'findings' => FindingResource::collection($this->whenLoaded('findings')),
             'created_at' => $this->created_at->toISOString(),
@@ -96,6 +98,58 @@ final class RunResource extends JsonResource
             'concerns' => $this->filterStringArray($summary['concerns'] ?? []),
             'recommendations' => $this->filterStringArray($summary['recommendations'] ?? []),
         ];
+    }
+
+    /**
+     * Filter the policy snapshot to UI-required fields only.
+     *
+     * @param  array<string, mixed>|null  $policySnapshot
+     * @return array<string, mixed>|null
+     */
+    private function formatPolicySnapshot(?array $policySnapshot): ?array
+    {
+        if (! is_array($policySnapshot)) {
+            return null;
+        }
+
+        $filtered = [];
+
+        if (isset($policySnapshot['enabled_rules']) && is_array($policySnapshot['enabled_rules'])) {
+            $filtered['enabled_rules'] = $policySnapshot['enabled_rules'];
+        }
+
+        if (isset($policySnapshot['confidence_thresholds']) && is_array($policySnapshot['confidence_thresholds'])) {
+            $filtered['confidence_thresholds'] = $policySnapshot['confidence_thresholds'];
+        }
+
+        if (isset($policySnapshot['ignored_paths']) && is_array($policySnapshot['ignored_paths'])) {
+            $filtered['ignored_paths'] = $policySnapshot['ignored_paths'];
+        }
+
+        if (array_key_exists('config_source', $policySnapshot)) {
+            $filtered['config_source'] = $policySnapshot['config_source'];
+        }
+
+        if (array_key_exists('config_branch', $policySnapshot)) {
+            $filtered['config_branch'] = $policySnapshot['config_branch'];
+        }
+
+        return $filtered === [] ? null : $filtered;
+    }
+
+    /**
+     * Filter metadata to remove non-UI fields.
+     */
+    private function filterMetadata(mixed $metadata): mixed
+    {
+        if (! is_array($metadata)) {
+            return $metadata;
+        }
+
+        $filtered = $metadata;
+        unset($filtered['prompt_snapshot']);
+
+        return $filtered;
     }
 
     /**

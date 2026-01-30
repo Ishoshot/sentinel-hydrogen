@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin\AiOption;
 
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Override;
@@ -39,6 +39,8 @@ final class StoreAiOptionRequest extends FormRequest
             'is_default' => ['boolean'],
             'is_active' => ['boolean'],
             'sort_order' => ['integer', 'min:0'],
+            'context_window_tokens' => ['nullable', 'integer', 'min:1'],
+            'max_output_tokens' => ['nullable', 'integer', 'min:1'],
         ];
     }
 
