@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\SubscriptionStatus;
+use App\Enums\Billing\SubscriptionStatus;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Workspace;

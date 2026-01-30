@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\BriefingGenerationStatus;
+use App\Enums\Briefings\BriefingGenerationStatus;
 use App\Models\Briefing;
 use App\Models\BriefingGeneration;
 use App\Models\User;

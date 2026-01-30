@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use App\Models\AiOption;
 use Database\Factories\Concerns\RefreshOnCreate;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -32,6 +32,8 @@ final class AiOptionFactory extends Factory
             'is_default' => false,
             'is_active' => true,
             'sort_order' => 0,
+            'context_window_tokens' => 128000,
+            'max_output_tokens' => 8192,
         ];
     }
 
@@ -45,6 +47,8 @@ final class AiOptionFactory extends Factory
             'identifier' => 'claude-sonnet-4-5-20250929',
             'name' => 'Claude Sonnet 4.5',
             'is_default' => true,
+            'context_window_tokens' => 200000,
+            'max_output_tokens' => 64000,
         ]);
     }
 
@@ -57,6 +61,8 @@ final class AiOptionFactory extends Factory
             'provider' => AiProvider::Anthropic,
             'identifier' => 'claude-sonnet-4-20250514',
             'name' => 'Claude Sonnet 4',
+            'context_window_tokens' => 200000,
+            'max_output_tokens' => 64000,
         ]);
     }
 
@@ -69,6 +75,8 @@ final class AiOptionFactory extends Factory
             'provider' => AiProvider::Anthropic,
             'identifier' => 'claude-3-5-haiku-20241022',
             'name' => 'Claude Haiku 3.5',
+            'context_window_tokens' => 200000,
+            'max_output_tokens' => 8192,
         ]);
     }
 
@@ -82,6 +90,8 @@ final class AiOptionFactory extends Factory
             'identifier' => 'gpt-4o',
             'name' => 'GPT-4o',
             'is_default' => true,
+            'context_window_tokens' => 128000,
+            'max_output_tokens' => 16384,
         ]);
     }
 
@@ -94,6 +104,8 @@ final class AiOptionFactory extends Factory
             'provider' => AiProvider::OpenAI,
             'identifier' => 'gpt-4o-mini',
             'name' => 'GPT-4o Mini',
+            'context_window_tokens' => 128000,
+            'max_output_tokens' => 16384,
         ]);
     }
 

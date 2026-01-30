@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\RunStatus;
+use App\Enums\Reviews\RunStatus;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Models\Workspace;

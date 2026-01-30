@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\ChunkType;
+use App\Enums\CodeIndexing\ChunkType;
 use App\Models\CodeEmbedding;
 use App\Models\CodeIndex;
 use App\Models\Repository;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\OAuthProvider;
+use App\Enums\Auth\OAuthProvider;
 use App\Models\ProviderIdentity;
 use App\Models\User;
 use Database\Factories\Concerns\RefreshOnCreate;

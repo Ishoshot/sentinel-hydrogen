@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\PromotionValueType;
+use App\Enums\Promotions\PromotionValueType;
 use App\Models\Promotion;
 use Illuminate\Database\Eloquent\Factories\Factory;
 

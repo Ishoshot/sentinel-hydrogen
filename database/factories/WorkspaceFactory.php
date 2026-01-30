@@ -34,7 +34,7 @@ final class WorkspaceFactory extends Factory
             'slug' => Str::slug($name).'-'.Str::random(6),
             'owner_id' => User::factory(),
             'plan_id' => Plan::factory(),
-            'subscription_status' => \App\Enums\SubscriptionStatus::Active,
+            'subscription_status' => \App\Enums\Billing\SubscriptionStatus::Active,
             'trial_ends_at' => null,
             'settings' => null,
         ];

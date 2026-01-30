@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\TeamRole;
+use App\Enums\Workspace\TeamRole;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;

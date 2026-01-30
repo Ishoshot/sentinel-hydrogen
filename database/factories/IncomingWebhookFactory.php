@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\Partner;
+use App\Enums\Billing\Partner;
 use App\Models\IncomingWebhook;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -44,7 +44,7 @@ final class IncomingWebhookFactory extends Factory
      */
     public function processed(int $responseCode = 200): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'response_code' => $responseCode,
             'response_body' => ['received' => true],
             'processed_at' => now(),
@@ -56,7 +56,7 @@ final class IncomingWebhookFactory extends Factory
      */
     public function polar(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'partner' => Partner::Polar,
         ]);
     }
@@ -66,7 +66,7 @@ final class IncomingWebhookFactory extends Factory
      */
     public function github(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'partner' => Partner::GitHub,
         ]);
     }

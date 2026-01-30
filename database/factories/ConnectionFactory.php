@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\ConnectionStatus;
+use App\Enums\Workspace\ConnectionStatus;
 use App\Models\Connection;
 use App\Models\Provider;
 use App\Models\Workspace;

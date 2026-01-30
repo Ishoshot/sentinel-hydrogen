@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\BriefingDownloadSource;
-use App\Enums\BriefingOutputFormat;
+use App\Enums\Briefings\BriefingDownloadSource;
+use App\Enums\Briefings\BriefingOutputFormat;
 use App\Models\BriefingDownload;
 use App\Models\BriefingGeneration;
 use App\Models\User;

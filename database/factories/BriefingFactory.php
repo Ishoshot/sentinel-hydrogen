@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\DTOs\Briefings\BriefingPropertyFormat;
-use App\DTOs\Briefings\BriefingSchema;
-use App\DTOs\Briefings\BriefingSchemaProperty;
+use App\DataTransferObjects\Briefings\BriefingPropertyFormat;
+use App\DataTransferObjects\Briefings\BriefingSchema;
+use App\DataTransferObjects\Briefings\BriefingSchemaProperty;
 use App\Models\Briefing;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;

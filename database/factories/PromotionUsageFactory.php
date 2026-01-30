@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\PromotionUsageStatus;
+use App\Enums\Promotions\PromotionUsageStatus;
 use App\Models\Promotion;
 use App\Models\PromotionUsage;
 use App\Models\Workspace;

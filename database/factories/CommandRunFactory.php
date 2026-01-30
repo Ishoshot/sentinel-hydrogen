@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\CommandRunStatus;
-use App\Enums\CommandType;
+use App\Enums\Commands\CommandRunStatus;
+use App\Enums\Commands\CommandType;
 use App\Models\CommandRun;
 use App\Models\Repository;
 use App\Models\Workspace;

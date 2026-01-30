@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\FindingCategory;
-use App\Enums\SentinelConfigSeverity;
+use App\Enums\Reviews\FindingCategory;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Models\Finding;
 use App\Models\Run;
 use App\Models\Workspace;

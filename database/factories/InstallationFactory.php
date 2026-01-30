@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\InstallationStatus;
+use App\Enums\GitHub\InstallationStatus;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Workspace;
