@@ -50,6 +50,22 @@ final class ProviderKeyPolicy
     }
 
     /**
+     * Determine whether the user can update the provider key.
+     */
+    public function update(User $user, ProviderKey $providerKey): bool
+    {
+        $workspace = $providerKey->workspace;
+
+        if ($workspace === null) {
+            return false;
+        }
+
+        $role = $user->roleInWorkspace($workspace);
+
+        return $role?->canManageSettings() ?? false;
+    }
+
+    /**
      * Determine whether the user can delete the provider key.
      */
     public function delete(User $user, ProviderKey $providerKey): bool
