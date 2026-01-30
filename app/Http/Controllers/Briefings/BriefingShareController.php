@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Briefings;
 
 use App\Actions\Briefings\RevokeBriefingShare;
 use App\Actions\Briefings\ShareBriefingGeneration;
-use App\Enums\BriefingGenerationStatus;
+use App\Enums\Briefings\BriefingGenerationStatus;
 use App\Http\Requests\Briefings\CreateShareRequest;
 use App\Http\Resources\Briefings\BriefingShareResource;
 use App\Models\BriefingGeneration;
@@ -45,11 +45,11 @@ final readonly class BriefingShareController
 
         Gate::authorize('create', [BriefingShare::class, $workspace, $generation]);
 
-        $canShare = $this->limitEnforcer->canShare($workspace);
+        $canShare = $this->limitEnforcer->canShare();
 
-        if (! $canShare['allowed']) {
+        if ($canShare->isDenied()) {
             return response()->json([
-                'message' => $canShare['reason'],
+                'message' => $canShare->reason,
             ], 403);
         }
 
@@ -59,9 +59,13 @@ final readonly class BriefingShareController
             ], 400);
         }
 
-        $expiresAt = $request->has('expires_at')
-            ? Carbon::parse($request->input('expires_at'))
-            : null;
+        $expiresAt = null;
+
+        if ($request->has('expires_at')) {
+            $expiresAt = Carbon::parse($request->input('expires_at'));
+        } elseif ($request->has('expires_in_days')) {
+            $expiresAt = now()->addDays((int) $request->input('expires_in_days'));
+        }
 
         $share = $this->shareGeneration->handle(
             generation: $generation,

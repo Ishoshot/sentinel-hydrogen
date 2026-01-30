@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Briefings;
 
 use App\Actions\Briefings\GenerateBriefing;
+use App\Actions\Briefings\ListBriefingGenerations;
 use App\Http\Requests\Briefings\GenerateBriefingRequest;
 use App\Http\Requests\Briefings\ListBriefingGenerationsRequest;
 use App\Http\Resources\Briefings\BriefingGenerationResource;
@@ -23,11 +24,13 @@ final readonly class BriefingGenerationController
      * @param  BriefingLimitEnforcer  $limitEnforcer  Service to check plan limits
      * @param  BriefingParameterValidator  $parameterValidator  Service to validate parameters
      * @param  GenerateBriefing  $generateBriefing  Action to generate briefings
+     * @param  ListBriefingGenerations  $listBriefingGenerations  Action to list generations
      */
     public function __construct(
         private BriefingLimitEnforcer $limitEnforcer,
         private BriefingParameterValidator $parameterValidator,
         private GenerateBriefing $generateBriefing,
+        private ListBriefingGenerations $listBriefingGenerations,
     ) {}
 
     /** List briefing generations for the workspace with filters, search, and sorting. */
@@ -35,41 +38,17 @@ final readonly class BriefingGenerationController
     {
         Gate::authorize('viewAny', [BriefingGeneration::class, $workspace]);
 
-        $query = BriefingGeneration::query()
-            ->where('workspace_id', $workspace->id)
-            ->with(['briefing', 'generatedBy']);
-
-        // Search by briefing title
-        if ($search = $request->getSearch()) {
-            $query->whereHas('briefing', function (\Illuminate\Database\Eloquent\Builder $q) use ($search): void {
-                $q->where('title', 'like', sprintf('%%%s%%', $search));
-            });
-        }
-
-        // Filter by status
-        if ($statuses = $request->getStatuses()) {
-            $query->whereIn('status', $statuses);
-        }
-
-        // Filter by briefing type
-        if ($briefingId = $request->getBriefingId()) {
-            $query->where('briefing_id', $briefingId);
-        }
-
-        // Filter by date range
-        if ($dateFrom = $request->getDateFrom()) {
-            $query->whereDate('created_at', '>=', $dateFrom);
-        }
-
-        if ($dateTo = $request->getDateTo()) {
-            $query->whereDate('created_at', '<=', $dateTo);
-        }
-
-        // Apply sorting
-        $query->orderBy($request->getSort(), $request->getDirection());
-
-        // Paginate
-        $generations = $query->paginate($request->getPerPage());
+        $generations = $this->listBriefingGenerations->handle(
+            workspace: $workspace,
+            search: $request->getSearch(),
+            statuses: $request->getStatuses(),
+            briefingId: $request->getBriefingId(),
+            dateFrom: $request->getDateFrom(),
+            dateTo: $request->getDateTo(),
+            sort: $request->getSort(),
+            direction: $request->getDirection(),
+            perPage: $request->getPerPage(),
+        );
 
         return BriefingGenerationResource::collection($generations);
     }
@@ -87,15 +66,15 @@ final readonly class BriefingGenerationController
 
         Gate::authorize('create', [BriefingGeneration::class, $workspace, $briefing]);
 
-        $canGenerate = $this->limitEnforcer->canGenerate($workspace, $briefing);
+        $parameters = $this->parameterValidator->validate($briefing, $request->input('parameters', []));
 
-        if (! $canGenerate['allowed']) {
+        $canGenerate = $this->limitEnforcer->canGenerate($workspace, $briefing, $parameters);
+
+        if ($canGenerate->isDenied()) {
             return response()->json([
-                'message' => $canGenerate['reason'],
+                'message' => $canGenerate->reason,
             ], 403);
         }
-
-        $parameters = $this->parameterValidator->validate($briefing, $request->input('parameters', []));
 
         $generation = $this->generateBriefing->handle(
             workspace: $workspace,
@@ -119,7 +98,7 @@ final readonly class BriefingGenerationController
 
         Gate::authorize('view', $generation);
 
-        $generation->load('briefing');
+        $generation->load('briefing', 'generatedBy');
 
         return response()->json([
             'data' => new BriefingGenerationResource($generation),

@@ -7,8 +7,7 @@ namespace App\Http\Controllers\Briefings;
 use App\Actions\Briefings\CancelBriefingSubscription;
 use App\Actions\Briefings\CreateBriefingSubscription;
 use App\Actions\Briefings\UpdateBriefingSubscription;
-use App\Enums\BriefingDeliveryChannel;
-use App\Enums\BriefingSchedulePreset;
+use App\Enums\Briefings\BriefingSchedulePreset;
 use App\Http\Requests\Briefings\CreateSubscriptionRequest;
 use App\Http\Requests\Briefings\UpdateSubscriptionRequest;
 use App\Http\Resources\Briefings\BriefingSubscriptionResource;
@@ -16,6 +15,8 @@ use App\Models\Briefing;
 use App\Models\BriefingSubscription;
 use App\Models\Workspace;
 use App\Services\Briefings\BriefingLimitEnforcer;
+use App\Services\Briefings\ValueObjects\BriefingDeliveryChannels;
+use App\Services\Briefings\ValueObjects\BriefingParameters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -69,22 +70,24 @@ final readonly class BriefingSubscriptionController
 
         $canSubscribe = $this->limitEnforcer->canSubscribe($workspace, $briefing);
 
-        if (! $canSubscribe['allowed']) {
+        if ($canSubscribe->isDenied()) {
             return response()->json([
-                'message' => $canSubscribe['reason'],
+                'message' => $canSubscribe->reason,
             ], 403);
         }
 
         /** @var array<int, string> $channelStrings */
         $channelStrings = $request->input('delivery_channels', ['push']);
+        $deliveryChannels = BriefingDeliveryChannels::fromStrings($channelStrings);
+        $parameters = BriefingParameters::fromArray($request->input('parameters', []));
 
         $subscription = $this->createSubscription->handle(
             workspace: $workspace,
             user: $user,
             briefing: $briefing,
             schedulePreset: BriefingSchedulePreset::from($request->input('schedule_preset')),
-            deliveryChannels: array_map(BriefingDeliveryChannel::from(...), $channelStrings),
-            parameters: $request->input('parameters', []),
+            deliveryChannels: $deliveryChannels,
+            parameters: $parameters,
             scheduleDay: $request->input('schedule_day'),
             scheduleHour: $request->input('schedule_hour', 9),
             slackWebhookUrl: $request->input('slack_webhook_url'),
@@ -109,22 +112,27 @@ final readonly class BriefingSubscriptionController
         Gate::authorize('update', $subscription);
 
         $deliveryChannels = null;
+        $parameters = null;
 
         if ($request->has('delivery_channels')) {
             /** @var array<int, string> $channelStrings */
             $channelStrings = $request->input('delivery_channels');
-            $deliveryChannels = array_map(BriefingDeliveryChannel::from(...), $channelStrings);
+            $deliveryChannels = BriefingDeliveryChannels::fromStrings($channelStrings);
         }
 
         $schedulePreset = $request->has('schedule_preset')
             ? BriefingSchedulePreset::from($request->input('schedule_preset'))
             : null;
 
+        if ($request->has('parameters')) {
+            $parameters = BriefingParameters::fromArray($request->input('parameters') ?? []);
+        }
+
         $updatedSubscription = $this->updateSubscription->handle(
             subscription: $subscription,
             schedulePreset: $schedulePreset,
             deliveryChannels: $deliveryChannels,
-            parameters: $request->input('parameters'),
+            parameters: $parameters,
             scheduleDay: $request->input('schedule_day'),
             scheduleHour: $request->input('schedule_hour'),
             slackWebhookUrl: $request->input('slack_webhook_url'),

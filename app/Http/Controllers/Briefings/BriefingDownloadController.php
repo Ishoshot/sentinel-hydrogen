@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Briefings;
 
 use App\Actions\Briefings\TrackBriefingDownload;
-use App\Enums\BriefingDownloadSource;
-use App\Enums\BriefingGenerationStatus;
-use App\Enums\BriefingOutputFormat;
+use App\Enums\Briefings\BriefingDownloadSource;
+use App\Enums\Briefings\BriefingGenerationStatus;
+use App\Enums\Briefings\BriefingOutputFormat;
 use App\Models\BriefingGeneration;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final readonly class BriefingDownloadController
 {
@@ -29,7 +29,7 @@ final readonly class BriefingDownloadController
         Workspace $workspace,
         BriefingGeneration $generation,
         string $format,
-    ): JsonResponse|StreamedResponse {
+    ): JsonResponse|RedirectResponse {
         if ($generation->workspace_id !== $workspace->id) {
             abort(404);
         }
@@ -69,12 +69,30 @@ final readonly class BriefingDownloadController
             user: $user,
         );
 
-        $disk = config('briefings.storage.disk', 'r2');
+        $disk = config('briefings.storage.disk', 's3');
+        $expiryMinutes = (int) config('briefings.storage.temporary_url_expiry_minutes', 60);
 
-        return Storage::disk($disk)->download(
+        $temporaryUrl = Storage::disk($disk)->temporaryUrl(
             $outputPaths[$format],
-            sprintf('briefing-%d.%s', $generation->id, $outputFormat->extension()),
-            ['Content-Type' => $outputFormat->mimeType()]
+            now()->addMinutes($expiryMinutes),
+            [
+                'ResponseContentDisposition' => sprintf(
+                    'attachment; filename="briefing-%d.%s"',
+                    $generation->id,
+                    $outputFormat->extension()
+                ),
+                'ResponseContentType' => $outputFormat->mimeType(),
+            ]
         );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'url' => $temporaryUrl,
+                'filename' => sprintf('briefing-%d.%s', $generation->id, $outputFormat->extension()),
+                'content_type' => $outputFormat->mimeType(),
+            ]);
+        }
+
+        return redirect()->away($temporaryUrl);
     }
 }
