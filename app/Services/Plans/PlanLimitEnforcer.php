@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace App\Services\Plans;
 
 use App\Actions\Activities\LogActivity;
-use App\Enums\ActivityType;
-use App\Enums\CommandRunStatus;
-use App\Enums\PlanFeature;
-use App\Enums\PlanTier;
-use App\Enums\RunStatus;
-use App\Enums\SubscriptionStatus;
+use App\Enums\Billing\PlanFeature;
+use App\Enums\Billing\PlanTier;
+use App\Enums\Billing\SubscriptionStatus;
+use App\Enums\Commands\CommandRunStatus;
+use App\Enums\Reviews\RunStatus;
+use App\Enums\Workspace\ActivityType;
 use App\Models\CommandRun;
 use App\Models\Plan;
 use App\Models\Run;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Plans\ValueObjects\BillingPeriod;
+use App\Services\Plans\ValueObjects\PlanLimitResult;
 use App\Support\PlanDefaults;
-use Carbon\CarbonImmutable;
 
 final readonly class PlanLimitEnforcer
 {
@@ -64,11 +65,11 @@ final readonly class PlanLimitEnforcer
             return PlanLimitResult::allow();
         }
 
-        [$start, $end] = $this->currentPeriod();
+        $period = $this->currentPeriod();
 
         $runsCount = Run::query()
             ->where('workspace_id', $workspace->id)
-            ->whereBetween('created_at', [$start->toDateTimeString(), $end->toDateTimeString()])
+            ->whereBetween('created_at', [$period->startAsString(), $period->endAsString()])
             ->whereIn('status', [
                 RunStatus::Queued,
                 RunStatus::InProgress,
@@ -113,11 +114,11 @@ final readonly class PlanLimitEnforcer
             return PlanLimitResult::allow();
         }
 
-        [$start, $end] = $this->currentPeriod();
+        $period = $this->currentPeriod();
 
         $commandsCount = CommandRun::query()
             ->where('workspace_id', $workspace->id)
-            ->whereBetween('created_at', [$start->toDateTimeString(), $end->toDateTimeString()])
+            ->whereBetween('created_at', [$period->startAsString(), $period->endAsString()])
             ->whereIn('status', [
                 CommandRunStatus::Queued,
                 CommandRunStatus::InProgress,
@@ -228,16 +229,11 @@ final readonly class PlanLimitEnforcer
     }
 
     /**
-     * Get the current billing period start and end dates.
-     *
-     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
+     * Get the current billing period.
      */
-    public function currentPeriod(): array
+    public function currentPeriod(): BillingPeriod
     {
-        $start = CarbonImmutable::now()->startOfMonth();
-        $end = $start->endOfMonth();
-
-        return [$start, $end];
+        return BillingPeriod::currentMonth();
     }
 
     /**

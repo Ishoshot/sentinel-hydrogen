@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Billing;
 
-use App\Enums\BillingInterval;
+use App\Enums\Billing\BillingInterval;
 use App\Models\Plan;
 use App\Models\Promotion;
 use App\Models\Workspace;
+use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
 use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -301,9 +302,8 @@ final class PolarBillingService
      * - webhook-timestamp: Unix timestamp when the webhook was sent
      *
      * @param  array{webhook-id: string, webhook-signature: string, webhook-timestamp: string}  $headers
-     * @return array<string, mixed>
      */
-    public function verifyWebhook(string $payload, array $headers): array
+    public function verifyWebhook(string $payload, array $headers): VerifiedPolarWebhook
     {
         $secret = (string) config('services.polar.webhook_secret');
 
@@ -322,12 +322,12 @@ final class PolarBillingService
         try {
             $webhook = new Webhook($signingSecret);
             $webhook->verify($payload, $headers);
-        } catch (WebhookVerificationException $e) {
+        } catch (WebhookVerificationException $webhookVerificationException) {
             Log::warning('Invalid Polar webhook signature received', [
-                'error' => $e->getMessage(),
+                'error' => $webhookVerificationException->getMessage(),
             ]);
 
-            throw new RuntimeException('Invalid Polar webhook signature.');
+            throw new RuntimeException('Invalid Polar webhook signature.', $webhookVerificationException->getCode(), $webhookVerificationException);
         }
 
         $event = json_decode($payload, true);
@@ -338,7 +338,8 @@ final class PolarBillingService
             throw new RuntimeException('Invalid Polar webhook payload.');
         }
 
-        return $event;
+        /** @var array<string, mixed> $event */
+        return VerifiedPolarWebhook::fromArray($event);
     }
 
     /**
