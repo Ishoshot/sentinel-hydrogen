@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\CodeIndexing;
 
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use App\Jobs\CodeIndexing\IndexCodeBatchJob;
 use App\Models\CodeIndex;
 use App\Models\Repository;

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Services\Contracts\SentinelMessageServiceContract;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 
 /**
  * Service for generating Sentinel's fun and friendly PR messages.
  */
-final class SentinelMessageService
+final class SentinelMessageService implements SentinelMessageServiceContract
 {
     private const string CACHE_KEY = 'sentinel:messages';
 

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Jobs\Usage\AggregateUsage;
-use App\Services\Queue\JobContext;
 use App\Services\Queue\QueueResolver;
+use App\Services\Queue\ValueObjects\JobContext;
 use Illuminate\Console\Command;
 
 final class AggregateUsageCommand extends Command
