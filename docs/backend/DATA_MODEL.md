@@ -241,6 +241,7 @@ Key fields:
 
 -   id
 -   run_id
+-   finding_hash
 -   workspace_id
 -   severity
 -   category
@@ -270,6 +271,44 @@ Key fields:
 -   external_id
 -   type
 -   created_at
+
+---
+
+## Command System Tables
+
+### command_runs
+
+Represents a single @sentinel command execution.
+
+Key fields:
+
+-   id
+-   workspace_id
+-   repository_id
+-   external_reference
+-   github_comment_id
+-   issue_number
+-   is_pull_request
+-   command_type
+-   query
+-   status
+-   started_at
+-   completed_at
+-   duration_seconds
+-   response (JSONB)
+-   context_snapshot (JSONB)
+-   metrics (JSONB)
+-   metadata (JSONB)
+-   created_at
+
+Indexes:
+
+-   workspace_id, created_at
+-   repository_id, created_at
+-   status
+-   command_type
+-   github_comment_id
+-   unique: workspace_id, external_reference
 
 ---
 
@@ -364,6 +403,29 @@ Key fields:
 -   updated_at
 
 Provider keys are encrypted at rest.
+
+---
+
+### provider_models
+
+Represents the global catalog of AI provider models available for BYOK.
+
+This is reference data managed by Sentinel (not workspace-scoped).
+
+Key fields:
+
+-   id
+-   provider
+-   identifier
+-   name
+-   description
+-   is_default
+-   is_active
+-   sort_order
+-   context_window_tokens
+-   max_output_tokens
+-   created_at
+-   updated_at
 
 ---
 

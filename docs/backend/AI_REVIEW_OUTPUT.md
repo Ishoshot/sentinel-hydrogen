@@ -33,17 +33,9 @@ The ReviewResult is immutable once persisted.
 
 ## ReviewResult Structure (v1)
 
-### review_result
-
-The top-level object representing the outcome of a review Run.
+The top-level object returned by the review engine.
 
 #### Fields
-
-##### id
-
-A stable, unique identifier for the ReviewResult.
-
----
 
 ##### summary
 
@@ -54,8 +46,17 @@ Fields:
 -   `overview`  
     A concise, neutral summary of the overall state of the change.
 
+-   `verdict`  
+    One of: `approve`, `request_changes`, `comment`.
+
 -   `risk_level`  
     One of: `low`, `medium`, `high`, `critical`.
+
+-   `strengths`  
+    A short list of positive aspects observed.
+
+-   `concerns`  
+    A short list of high-level risks or concerns.
 
 -   `recommendations`  
     A short list of actionable next steps.
@@ -76,20 +77,11 @@ Execution and contextual metadata.
 
 ---
 
-##### policy_snapshot
-
-A read-only snapshot of the policy used for this review.
-
----
-
 ## Finding Object
 
 Each element in `findings` represents a single Finding.
 
 ### Required Fields
-
--   `id`  
-    A stable identifier derived from content and context.
 
 -   `severity`  
     One of: `info`, `low`, `medium`, `high`, `critical`.
@@ -112,9 +104,6 @@ Each element in `findings` represents a single Finding.
 -   `description`  
     A clear explanation of the issue.
 
--   `rationale`  
-    Why this issue matters.
-
 -   `confidence`  
     A numeric value between `0.0` and `1.0`.
 
@@ -132,17 +121,20 @@ If location cannot be determined reliably, these fields must be omitted.
 
 ### Optional Fields
 
--   `suggestion`  
-    A proposed fix or improvement.
+-   `impact`  
+    Why this matters and its potential impact.
 
--   `patch`  
-    A minimal unified diff snippet.
+-   `current_code`  
+    The current code that needs to change.
+
+-   `replacement_code`  
+    The suggested replacement code.
+
+-   `explanation`  
+    Why the replacement is better.
 
 -   `references`  
     External references (e.g. CWE, OWASP, documentation).
-
--   `tags`  
-    Additional classification labels.
 
 ---
 
@@ -155,6 +147,8 @@ Fields:
 -   `files_changed`
 -   `lines_added`
 -   `lines_deleted`
+-   `input_tokens`
+-   `output_tokens`
 -   `tokens_used_estimated`
 -   `model`
 -   `provider`
@@ -166,18 +160,8 @@ Metrics are used for reporting and analytics, not enforcement.
 
 ## Policy Snapshot
 
-The `policy_snapshot` object records the exact policy configuration
-used during the review.
-
-Fields may include:
-
--   `policy_version`
--   `enabled_rules`
--   `severity_thresholds`
--   `comment_limits`
--   `ignored_paths`
-
-Policy snapshots ensure auditability and reproducibility.
+Policy snapshots are stored on Runs for auditability and reproducibility.
+They are not part of the ReviewResult payload.
 
 ---
 
