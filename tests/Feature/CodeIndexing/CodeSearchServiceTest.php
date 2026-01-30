@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\ChunkType;
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
+use App\Enums\CodeIndexing\ChunkType;
 use App\Models\CodeEmbedding;
 use App\Models\CodeIndex;
 use App\Models\Connection;

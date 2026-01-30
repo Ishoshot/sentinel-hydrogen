@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\ProviderType;
-use App\Enums\Queue;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Queue\Queue;
 use App\Jobs\CodeIndexing\IndexCodeBatchJob;
 use App\Models\CodeIndex;
 use App\Models\Connection;

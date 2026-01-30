@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\AiProvider;
-use App\Enums\ProviderType;
+use App\Enums\AI\AiProvider;
+use App\Enums\Auth\ProviderType;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Provider;
@@ -11,11 +11,19 @@ use App\Models\ProviderKey;
 use App\Models\Repository;
 use App\Services\Context\ContextBag;
 use App\Services\Reviews\PrismReviewEngine;
+use App\Services\Reviews\ValueObjects\ReviewResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\ValueObjects\Usage;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Http::fake([
+        '*' => Http::response(['input_tokens' => 100], 200),
+    ]);
+});
 
 function createRepositoryWithByokKey(): Repository
 {
@@ -126,15 +134,15 @@ it('parses a valid AI response and returns structured review data', function ():
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
 
-    expect($result)->toBeArray()
-        ->and($result['summary']['overview'])->toBe('Review completed successfully.')
-        ->and($result['summary']['risk_level'])->toBe('low')
-        ->and($result['summary']['recommendations'])->toBe(['Consider adding tests.'])
-        ->and($result['findings'])->toHaveCount(1)
-        ->and($result['findings'][0]['severity'])->toBe('medium')
-        ->and($result['findings'][0]['title'])->toBe('Missing tests')
-        ->and($result['metrics']['files_changed'])->toBe(1)
-        ->and($result['metrics']['tokens_used_estimated'])->toBe(150);
+    expect($result)->toBeInstanceOf(ReviewResult::class)
+        ->and($result->summary->overview)->toBe('Review completed successfully.')
+        ->and($result->summary->riskLevel->value)->toBe('low')
+        ->and($result->summary->recommendations)->toBe(['Consider adding tests.'])
+        ->and($result->findings)->toHaveCount(1)
+        ->and($result->findings[0]->severity->value)->toBe('medium')
+        ->and($result->findings[0]->title)->toBe('Missing tests')
+        ->and($result->metrics->filesChanged)->toBe(1)
+        ->and($result->metrics->tokensUsedEstimated)->toBe(150);
 });
 
 it('normalizes invalid severity to info', function (): void {
@@ -159,7 +167,7 @@ it('normalizes invalid severity to info', function (): void {
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
 
-    expect($result['findings'][0]['severity'])->toBe('info');
+    expect($result->findings[0]->severity->value)->toBe('info');
 });
 
 it('handles structured response and returns correct data', function (): void {
@@ -175,9 +183,9 @@ it('handles structured response and returns correct data', function (): void {
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
 
-    expect($result['summary']['overview'])->toBe('Review done.')
-        ->and($result['findings'])->toBeArray()
-        ->and($result['findings'])->toBeEmpty();
+    expect($result->summary->overview)->toBe('Review done.')
+        ->and($result->findings)->toBeArray()
+        ->and($result->findings)->toBeEmpty();
 });
 
 it('handles empty findings array gracefully', function (): void {
@@ -193,7 +201,7 @@ it('handles empty findings array gracefully', function (): void {
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
 
-    expect($result['findings'])->toBeEmpty();
+    expect($result->findings)->toBeEmpty();
 });
 
 it('normalizes empty summary with defaults', function (): void {
@@ -209,9 +217,9 @@ it('normalizes empty summary with defaults', function (): void {
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
 
-    expect($result['summary']['overview'])->toBe('Review completed.')
-        ->and($result['summary']['risk_level'])->toBe('low')
-        ->and($result['summary']['recommendations'])->toBe([]);
+    expect($result->summary->overview)->toBe('Review completed.')
+        ->and($result->summary->riskLevel->value)->toBe('low')
+        ->and($result->summary->recommendations)->toBe([]);
 });
 
 it('normalizes invalid category to maintainability', function (): void {
@@ -236,7 +244,7 @@ it('normalizes invalid category to maintainability', function (): void {
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
 
-    expect($result['findings'][0]['category'])->toBe('maintainability');
+    expect($result->findings[0]->category->value)->toBe('maintainability');
 });
 
 it('clamps confidence value between 0 and 1', function (): void {
@@ -269,8 +277,8 @@ it('clamps confidence value between 0 and 1', function (): void {
     $engine = app(PrismReviewEngine::class);
     $result = $engine->review($context);
 
-    expect($result['findings'][0]['confidence'])->toBe(1.0)
-        ->and($result['findings'][1]['confidence'])->toBe(0.0);
+    expect($result->findings[0]->confidence)->toBe(1.0)
+        ->and($result->findings[1]->confidence)->toBe(0.0);
 });
 
 it('throws NoProviderKeyException when repository has no BYOK keys', function (): void {

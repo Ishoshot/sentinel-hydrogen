@@ -3,17 +3,19 @@
 declare(strict_types=1);
 
 use App\DataTransferObjects\SentinelConfig\CategoriesConfig;
+use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\DataTransferObjects\SentinelConfig\ReviewConfig;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
-use App\Enums\ProviderType;
-use App\Enums\SentinelConfigSeverity;
-use App\Enums\SentinelConfigTone;
+use App\Enums\Auth\ProviderType;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
+use App\Enums\SentinelConfig\SentinelConfigTone;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\RepositorySettings;
 use App\Services\Reviews\ReviewPolicyResolver;
+use App\Services\Reviews\ValueObjects\ReviewPolicy;
 
 /**
  * Helper function to create a repository with proper provider chain.
@@ -39,13 +41,12 @@ it('returns default policy when repository has no settings', function (): void {
     $policy = $resolver->resolve($repository);
 
     // Default values match config/reviews.php and SentinelConfig::default()
-    expect($policy)->toHaveKey('policy_version')
-        ->and($policy['policy_version'])->toBe(1)
-        ->and($policy['enabled_rules'])->toBe(['security', 'correctness', 'performance', 'maintainability', 'testing'])
-        ->and($policy['severity_thresholds']['comment'])->toBe('low')
-        ->and($policy['comment_limits']['max_inline_comments'])->toBe(25)
-        ->and($policy['tone'])->toBe('constructive')
-        ->and($policy['language'])->toBe('en');
+    expect($policy)->toBeInstanceOf(ReviewPolicy::class)
+        ->and($policy->enabledRules)->toBe(['security', 'correctness', 'performance', 'maintainability', 'testing'])
+        ->and($policy->getCommentSeverityThreshold()->value)->toBe('low')
+        ->and($policy->getMaxInlineComments())->toBe(25)
+        ->and($policy->tone->value)->toBe('constructive')
+        ->and($policy->language)->toBe('en');
 });
 
 it('merges sentinel config review settings into policy', function (): void {
@@ -80,19 +81,72 @@ it('merges sentinel config review settings into policy', function (): void {
     $policy = $resolver->resolve($repository);
 
     // Check min_severity mapping
-    expect($policy['severity_thresholds']['comment'])->toBe('high');
+    expect($policy->getCommentSeverityThreshold()->value)->toBe('high');
 
     // Check max_findings mapping
-    expect($policy['comment_limits']['max_inline_comments'])->toBe(15);
+    expect($policy->getMaxInlineComments())->toBe(15);
 
     // Check enabled categories replace enabled_rules (not merge)
     // User set performance: false and maintainability: false, so they should NOT be in enabled_rules
-    expect($policy['enabled_rules'])->toBe(['security', 'correctness']);
+    expect($policy->enabledRules)->toBe(['security', 'correctness']);
 
     // Check tone, language, and focus
-    expect($policy['tone'])->toBe('direct')
-        ->and($policy['language'])->toBe('es')
-        ->and($policy['focus'])->toBe(['SQL injection prevention', 'Input validation']);
+    expect($policy->tone->value)->toBe('direct')
+        ->and($policy->language)->toBe('es')
+        ->and($policy->focus)->toBe(['SQL injection prevention', 'Input validation']);
+});
+
+it('prefers branch sentinel config when provided', function (): void {
+    $repository = createRepositoryWithProvider();
+
+    $settingsConfig = new SentinelConfig(
+        version: 1,
+        paths: new PathsConfig(ignore: ['ignored-from-settings/**']),
+        review: new ReviewConfig(
+            minSeverity: SentinelConfigSeverity::Low,
+            maxFindings: 25,
+            categories: new CategoriesConfig(),
+            tone: SentinelConfigTone::Constructive,
+            language: 'en',
+        ),
+    );
+
+    RepositorySettings::factory()->create([
+        'repository_id' => $repository->id,
+        'workspace_id' => $repository->workspace_id,
+        'sentinel_config' => $settingsConfig->toArray(),
+    ]);
+
+    $branchConfig = new SentinelConfig(
+        version: 1,
+        paths: new PathsConfig(ignore: ['app/Secret/**']),
+        review: new ReviewConfig(
+            minSeverity: SentinelConfigSeverity::High,
+            maxFindings: 5,
+            categories: new CategoriesConfig(
+                security: false,
+                correctness: true,
+                performance: false,
+                maintainability: false,
+                style: false,
+                testing: false,
+                documentation: false,
+            ),
+            tone: SentinelConfigTone::Direct,
+            language: 'en',
+        ),
+    );
+
+    $resolver = new ReviewPolicyResolver();
+    $policy = $resolver->resolve($repository, $branchConfig->toArray(), 'main');
+
+    expect($policy->getCommentSeverityThreshold()->value)->toBe('high')
+        ->and($policy->getMaxInlineComments())->toBe(5)
+        ->and($policy->enabledRules)->toBe(['correctness'])
+        ->and($policy->ignoredPaths)->toContain('app/Secret/**')
+        ->and($policy->ignoredPaths)->not->toContain('ignored-from-settings/**')
+        ->and($policy->configSource)->toBe('branch')
+        ->and($policy->configBranch)->toBe('main');
 });
 
 it('uses default review config when sentinel config is empty', function (): void {
@@ -108,10 +162,10 @@ it('uses default review config when sentinel config is empty', function (): void
     $policy = $resolver->resolve($repository);
 
     // Should use default SentinelConfig values
-    expect($policy['severity_thresholds']['comment'])->toBe('low')
-        ->and($policy['comment_limits']['max_inline_comments'])->toBe(25)
-        ->and($policy['tone'])->toBe('constructive')
-        ->and($policy['language'])->toBe('en');
+    expect($policy->getCommentSeverityThreshold()->value)->toBe('low')
+        ->and($policy->getMaxInlineComments())->toBe(25)
+        ->and($policy->tone->value)->toBe('constructive')
+        ->and($policy->language)->toBe('en');
 });
 
 it('replaces enabled_rules with user categories', function (): void {
@@ -141,7 +195,7 @@ it('replaces enabled_rules with user categories', function (): void {
     $policy = $resolver->resolve($repository);
 
     // User's categories replace defaults - only security and style enabled
-    expect($policy['enabled_rules'])->toBe(['security', 'style']);
+    expect($policy->enabledRules)->toBe(['security', 'style']);
 });
 
 it('keeps empty focus array when not specified by user', function (): void {
@@ -164,7 +218,7 @@ it('keeps empty focus array when not specified by user', function (): void {
     $policy = $resolver->resolve($repository);
 
     // Default focus is empty array (from config/reviews.php), not added from user config
-    expect($policy['focus'])->toBe([]);
+    expect($policy->focus)->toBe([]);
 });
 
 it('applies constructive tone', function (): void {
@@ -184,7 +238,7 @@ it('applies constructive tone', function (): void {
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
-    expect($policy['tone'])->toBe('constructive');
+    expect($policy->tone->value)->toBe('constructive');
 });
 
 it('applies direct tone', function (): void {
@@ -204,7 +258,7 @@ it('applies direct tone', function (): void {
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
-    expect($policy['tone'])->toBe('direct');
+    expect($policy->tone->value)->toBe('direct');
 });
 
 it('applies educational tone', function (): void {
@@ -224,7 +278,7 @@ it('applies educational tone', function (): void {
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
-    expect($policy['tone'])->toBe('educational');
+    expect($policy->tone->value)->toBe('educational');
 });
 
 it('applies minimal tone', function (): void {
@@ -244,7 +298,7 @@ it('applies minimal tone', function (): void {
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
-    expect($policy['tone'])->toBe('minimal');
+    expect($policy->tone->value)->toBe('minimal');
 });
 
 it('applies critical severity level', function (): void {
@@ -264,7 +318,7 @@ it('applies critical severity level', function (): void {
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
-    expect($policy['severity_thresholds']['comment'])->toBe('critical');
+    expect($policy->getCommentSeverityThreshold()->value)->toBe('critical');
 });
 
 it('applies medium severity level', function (): void {
@@ -284,7 +338,7 @@ it('applies medium severity level', function (): void {
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
-    expect($policy['severity_thresholds']['comment'])->toBe('medium');
+    expect($policy->getCommentSeverityThreshold()->value)->toBe('medium');
 });
 
 it('applies info severity level', function (): void {
@@ -304,5 +358,5 @@ it('applies info severity level', function (): void {
     $resolver = new ReviewPolicyResolver();
     $policy = $resolver->resolve($repository);
 
-    expect($policy['severity_thresholds']['comment'])->toBe('info');
+    expect($policy->getCommentSeverityThreshold()->value)->toBe('info');
 });

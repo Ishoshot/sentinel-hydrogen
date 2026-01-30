@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\ActivityType;
+use App\Enums\Workspace\ActivityType;
 use App\Models\Activity;
 use App\Models\User;
 use App\Models\Workspace;

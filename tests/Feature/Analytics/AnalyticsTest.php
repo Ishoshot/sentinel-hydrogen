@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\FindingCategory;
+use App\Enums\Reviews\FindingCategory;
 use App\Models\Finding;
 use App\Models\Repository;
 use App\Models\Run;

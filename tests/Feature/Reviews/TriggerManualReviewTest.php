@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 use App\Actions\Reviews\TriggerManualReview;
-use App\Enums\OAuthProvider;
-use App\Enums\ProviderType;
-use App\Enums\RunStatus;
-use App\Enums\SubscriptionStatus;
+use App\Enums\Auth\OAuthProvider;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Billing\SubscriptionStatus;
+use App\Enums\Reviews\RunStatus;
 use App\Jobs\Reviews\ExecuteReviewRun;
 use App\Models\Connection;
 use App\Models\Installation;
