@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Actions\Workspaces\CreateWorkspaceForNewUser;
-use App\Enums\OAuthProvider;
+use App\Enums\Auth\OAuthProvider;
 use App\Models\ProviderIdentity;
 use App\Models\User;
 use App\Notifications\WelcomeNotification;
