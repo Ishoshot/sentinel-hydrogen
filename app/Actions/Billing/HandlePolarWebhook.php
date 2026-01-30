@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Billing;
 
-use App\Enums\BillingInterval;
-use App\Enums\PlanTier;
-use App\Enums\PolarWebhookEvent;
-use App\Enums\PromotionUsageStatus;
-use App\Enums\SubscriptionStatus;
+use App\Enums\Billing\BillingInterval;
+use App\Enums\Billing\PlanTier;
+use App\Enums\Billing\SubscriptionStatus;
+use App\Enums\Promotions\PromotionUsageStatus;
+use App\Enums\Webhooks\PolarWebhookEvent;
 use App\Models\Plan;
 use App\Models\PromotionUsage;
 use App\Models\Subscription;
 use App\Models\Workspace;
 use App\Services\Billing\PolarBillingService;
+use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
 use App\Support\PlanDefaults;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
@@ -33,40 +34,30 @@ final readonly class HandlePolarWebhook
      */
     public function handle(string $payload, array $headers): void
     {
-        $event = $this->billingService->verifyWebhook($payload, $headers);
+        $webhook = $this->billingService->verifyWebhook($payload, $headers);
 
-        $type = $event['type'] ?? null;
-
-        if (! is_string($type)) {
-            Log::warning('Polar webhook missing event type');
+        if ($webhook->type === PolarWebhookEvent::Unknown) {
+            Log::debug('Unhandled Polar webhook event type', ['type' => $webhook->type->value]);
 
             return;
         }
 
-        $webhookEvent = PolarWebhookEvent::tryFrom($type);
-
-        if ($webhookEvent === null) {
-            Log::debug('Unhandled Polar webhook event type', ['type' => $type]);
-
-            return;
-        }
-
-        match ($webhookEvent) {
+        match ($webhook->type) {
             // Primary event for granting/maintaining access
-            PolarWebhookEvent::OrderPaid => $this->handleOrderPaid($event),
+            PolarWebhookEvent::OrderPaid => $this->handleOrderPaid($webhook),
 
             // Revoke access on refund
-            PolarWebhookEvent::OrderRefunded => $this->handleOrderRefunded($event),
+            PolarWebhookEvent::OrderRefunded => $this->handleOrderRefunded($webhook),
 
             // Subscription lifecycle events for status changes
-            PolarWebhookEvent::SubscriptionActive => $this->handleSubscriptionActive($event),
-            PolarWebhookEvent::SubscriptionCanceled => $this->handleSubscriptionCanceled($event),
-            PolarWebhookEvent::SubscriptionUncanceled => $this->handleSubscriptionUncanceled($event),
-            PolarWebhookEvent::SubscriptionRevoked => $this->handleSubscriptionRevoked($event),
-            PolarWebhookEvent::SubscriptionUpdated => $this->handleSubscriptionUpdated($event),
+            PolarWebhookEvent::SubscriptionActive => $this->handleSubscriptionActive($webhook),
+            PolarWebhookEvent::SubscriptionCanceled => $this->handleSubscriptionCanceled($webhook),
+            PolarWebhookEvent::SubscriptionUncanceled => $this->handleSubscriptionUncanceled($webhook),
+            PolarWebhookEvent::SubscriptionRevoked => $this->handleSubscriptionRevoked($webhook),
+            PolarWebhookEvent::SubscriptionUpdated => $this->handleSubscriptionUpdated($webhook),
 
             // Informational - subscription created but not yet active
-            PolarWebhookEvent::SubscriptionCreated => $this->handleSubscriptionCreated($event),
+            PolarWebhookEvent::SubscriptionCreated => $this->handleSubscriptionCreated($webhook),
 
             default => null, // Ignore other events
         };
@@ -76,14 +67,12 @@ final readonly class HandlePolarWebhook
      * Handle order.paid - the recommended event for provisioning access.
      *
      * This fires for both new subscriptions and renewals.
-     *
-     * @param  array<string, mixed>  $event
      */
-    private function handleOrderPaid(array $event): void
+    private function handleOrderPaid(VerifiedPolarWebhook $webhook): void
     {
-        $order = $event['data'] ?? null;
+        $order = $webhook->data;
 
-        if (! is_array($order)) {
+        if ($order === []) {
             Log::warning('order.paid webhook missing data payload');
 
             return;
@@ -186,7 +175,7 @@ final readonly class HandlePolarWebhook
                 'polar_customer_id' => $customerId,
             ];
 
-            if ($billingInterval !== null) {
+            if ($billingInterval instanceof BillingInterval) {
                 $subscriptionAttributes['billing_interval'] = $billingInterval;
             }
 
@@ -195,10 +184,11 @@ final readonly class HandlePolarWebhook
                 $periodStart = $this->timestampToDateTime($subscriptionData['current_period_start'] ?? null);
                 $periodEnd = $this->timestampToDateTime($subscriptionData['current_period_end'] ?? null);
 
-                if ($periodStart !== null) {
+                if ($periodStart instanceof CarbonImmutable) {
                     $subscriptionAttributes['current_period_start'] = $periodStart;
                 }
-                if ($periodEnd !== null) {
+
+                if ($periodEnd instanceof CarbonImmutable) {
                     $subscriptionAttributes['current_period_end'] = $periodEnd;
                 }
             }
@@ -228,14 +218,12 @@ final readonly class HandlePolarWebhook
 
     /**
      * Handle order.refunded - revoke access when a refund is issued.
-     *
-     * @param  array<string, mixed>  $event
      */
-    private function handleOrderRefunded(array $event): void
+    private function handleOrderRefunded(VerifiedPolarWebhook $webhook): void
     {
-        $order = $event['data'] ?? null;
+        $order = $webhook->data;
 
-        if (! is_array($order)) {
+        if ($order === []) {
             Log::warning('order.refunded webhook missing data payload');
 
             return;
@@ -296,26 +284,22 @@ final readonly class HandlePolarWebhook
 
     /**
      * Handle subscription.active - subscription is now active.
-     *
-     * @param  array<string, mixed>  $event
      */
-    private function handleSubscriptionActive(array $event): void
+    private function handleSubscriptionActive(VerifiedPolarWebhook $webhook): void
     {
-        $this->updateSubscriptionFromEvent($event, SubscriptionStatus::Active);
+        $this->updateSubscriptionFromWebhook($webhook, SubscriptionStatus::Active);
     }
 
     /**
      * Handle subscription.canceled - customer canceled their subscription.
      *
      * The subscription remains active until the end of the billing period.
-     *
-     * @param  array<string, mixed>  $event
      */
-    private function handleSubscriptionCanceled(array $event): void
+    private function handleSubscriptionCanceled(VerifiedPolarWebhook $webhook): void
     {
-        $subscription = $event['data'] ?? null;
+        $subscription = $webhook->data;
 
-        if (! is_array($subscription)) {
+        if ($subscription === []) {
             Log::warning('subscription.canceled webhook missing data payload');
 
             return;
@@ -370,14 +354,12 @@ final readonly class HandlePolarWebhook
 
     /**
      * Handle subscription.uncanceled - customer reactivated before end date.
-     *
-     * @param  array<string, mixed>  $event
      */
-    private function handleSubscriptionUncanceled(array $event): void
+    private function handleSubscriptionUncanceled(VerifiedPolarWebhook $webhook): void
     {
-        $subscription = $event['data'] ?? null;
+        $subscription = $webhook->data;
 
-        if (! is_array($subscription)) {
+        if ($subscription === []) {
             Log::warning('subscription.uncanceled webhook missing data payload');
 
             return;
@@ -427,14 +409,12 @@ final readonly class HandlePolarWebhook
      * Handle subscription.revoked - subscription terminated immediately.
      *
      * This happens for non-payment or policy violations.
-     *
-     * @param  array<string, mixed>  $event
      */
-    private function handleSubscriptionRevoked(array $event): void
+    private function handleSubscriptionRevoked(VerifiedPolarWebhook $webhook): void
     {
-        $subscription = $event['data'] ?? null;
+        $subscription = $webhook->data;
 
-        if (! is_array($subscription)) {
+        if ($subscription === []) {
             Log::warning('subscription.revoked webhook missing data payload');
 
             return;
@@ -488,35 +468,23 @@ final readonly class HandlePolarWebhook
      * Handle subscription.updated - subscription details changed.
      *
      * This syncs plan, billing interval, and status changes.
-     *
-     * @param  array<string, mixed>  $event
      */
-    private function handleSubscriptionUpdated(array $event): void
+    private function handleSubscriptionUpdated(VerifiedPolarWebhook $webhook): void
     {
-        $this->updateSubscriptionFromEvent($event, null);
+        $this->updateSubscriptionFromWebhook($webhook, null);
     }
 
     /**
      * Handle subscription.created - subscription created but may not be active yet.
      *
      * We don't grant access here - wait for order.paid.
-     *
-     * @param  array<string, mixed>  $event
      */
-    private function handleSubscriptionCreated(array $event): void
+    private function handleSubscriptionCreated(VerifiedPolarWebhook $webhook): void
     {
         // Log for debugging but don't take action
         // Access is granted on order.paid
-        $subscription = $event['data'] ?? null;
-
-        if (! is_array($subscription)) {
-            Log::warning('subscription.created webhook missing data payload');
-
-            return;
-        }
-
         Log::debug('Subscription created (waiting for order.paid)', [
-            'subscription_id' => $subscription['id'] ?? null,
+            'subscription_id' => $webhook->getSubscriptionId(),
         ]);
     }
 
@@ -524,27 +492,24 @@ final readonly class HandlePolarWebhook
      * Update subscription from webhook event data.
      *
      * Syncs plan, billing interval, and status.
-     *
-     * @param  array<string, mixed>  $event
      */
-    private function updateSubscriptionFromEvent(array $event, ?SubscriptionStatus $overrideStatus): void
+    private function updateSubscriptionFromWebhook(VerifiedPolarWebhook $webhook, ?SubscriptionStatus $overrideStatus): void
     {
-        $subscription = $event['data'] ?? null;
-        $eventType = $event['type'] ?? 'unknown';
+        $subscription = $webhook->data;
 
-        if (! is_array($subscription)) {
+        if ($subscription === []) {
             Log::warning('Subscription webhook missing data payload', [
-                'event_type' => $eventType,
+                'event_type' => $webhook->type->value,
             ]);
 
             return;
         }
 
-        $subscriptionId = $subscription['id'] ?? null;
+        $subscriptionId = $webhook->getSubscriptionId();
 
-        if (! is_string($subscriptionId)) {
+        if ($subscriptionId === null) {
             Log::warning('Subscription webhook missing subscription id', [
-                'event_type' => $eventType,
+                'event_type' => $webhook->type->value,
             ]);
 
             return;
@@ -556,7 +521,7 @@ final readonly class HandlePolarWebhook
 
         if ($existingSubscription === null) {
             Log::warning('Subscription not found in database', [
-                'event_type' => $eventType,
+                'event_type' => $webhook->type->value,
                 'polar_subscription_id' => $subscriptionId,
             ]);
 
@@ -594,15 +559,15 @@ final readonly class HandlePolarWebhook
             $updateAttributes['plan_id'] = $plan->id;
         }
 
-        if ($billingInterval !== null) {
+        if ($billingInterval instanceof BillingInterval) {
             $updateAttributes['billing_interval'] = $billingInterval;
         }
 
-        if ($periodStart !== null) {
+        if ($periodStart instanceof CarbonImmutable) {
             $updateAttributes['current_period_start'] = $periodStart;
         }
 
-        if ($periodEnd !== null) {
+        if ($periodEnd instanceof CarbonImmutable) {
             $updateAttributes['current_period_end'] = $periodEnd;
         }
 
@@ -652,7 +617,7 @@ final readonly class HandlePolarWebhook
             $product = $subscriptionData['product'] ?? null;
             if (is_array($product)) {
                 $prices = $product['prices'] ?? [];
-                if (is_array($prices) && count($prices) > 0) {
+                if (is_array($prices) && $prices !== []) {
                     $price = $prices[0];
                     if (is_array($price)) {
                         $interval = $price['recurring_interval'] ?? null;
@@ -675,7 +640,7 @@ final readonly class HandlePolarWebhook
             $product = $orderData['product'] ?? null;
             if (is_array($product)) {
                 $prices = $product['prices'] ?? [];
-                if (is_array($prices) && count($prices) > 0) {
+                if (is_array($prices) && $prices !== []) {
                     $price = $prices[0];
                     if (is_array($price)) {
                         $interval = $price['recurring_interval'] ?? null;
