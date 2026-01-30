@@ -9,9 +9,9 @@ use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\DataTransferObjects\SentinelConfig\ReviewConfig;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\DataTransferObjects\SentinelConfig\TriggersConfig;
-use App\Enums\AnnotationStyle;
-use App\Enums\SentinelConfigSeverity;
-use App\Enums\SentinelConfigTone;
+use App\Enums\Reviews\AnnotationStyle;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
+use App\Enums\SentinelConfig\SentinelConfigTone;
 
 describe('SentinelConfig', function (): void {
     it('creates from minimal array with only version', function (): void {

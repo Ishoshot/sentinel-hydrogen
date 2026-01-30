@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\DTOs\Briefings\BriefingPropertyFormat;
-use App\DTOs\Briefings\BriefingPropertyType;
-use App\DTOs\Briefings\BriefingSchema;
-use App\DTOs\Briefings\BriefingSchemaProperty;
+use App\DataTransferObjects\Briefings\BriefingPropertyFormat;
+use App\DataTransferObjects\Briefings\BriefingPropertyType;
+use App\DataTransferObjects\Briefings\BriefingSchema;
+use App\DataTransferObjects\Briefings\BriefingSchemaProperty;
 
 describe('BriefingSchemaProperty', function () {
     it('creates a string property with all options', function () {
