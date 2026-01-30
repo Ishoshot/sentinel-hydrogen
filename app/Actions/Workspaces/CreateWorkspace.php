@@ -6,8 +6,8 @@ namespace App\Actions\Workspaces;
 
 use App\Actions\Activities\LogActivity;
 use App\Actions\Subscriptions\CreateSubscription;
-use App\Enums\ActivityType;
-use App\Enums\TeamRole;
+use App\Enums\Workspace\ActivityType;
+use App\Enums\Workspace\TeamRole;
 use App\Exceptions\WorkspaceLimitExceededException;
 use App\Models\Team;
 use App\Models\TeamMember;

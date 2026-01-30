@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Webhooks;
 
-use App\Enums\Partner;
+use App\Enums\Billing\Partner;
 use App\Models\IncomingWebhook;
 
 final class RecordIncomingWebhook
