@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use App\Jobs\Reviews\ExecuteReviewRun;
 use App\Jobs\Reviews\PostRunAnnotations;
-use App\Services\Queue\JobContext;
 use App\Services\Queue\QueueResolver;
-use App\Services\Queue\QueueRuleResult;
 use App\Services\Queue\Rules\AnnotationJobRule;
 use App\Services\Queue\Rules\LongRunningJobRule;
 use App\Services\Queue\Rules\ReviewJobTierRule;
 use App\Services\Queue\Rules\SystemJobRule;
 use App\Services\Queue\Rules\WebhookJobRule;
+use App\Services\Queue\ValueObjects\JobContext;
+use App\Services\Queue\ValueObjects\QueueRuleResult;
 
 describe('Queue Enum', function (): void {
     it('has correct priority ordering', function (): void {

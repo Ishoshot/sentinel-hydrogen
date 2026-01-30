@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\ProviderType;
-use App\Enums\RunStatus;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Reviews\RunStatus;
 use App\Models\Connection;
 use App\Models\Finding;
 use App\Models\Installation;
@@ -565,4 +565,32 @@ it('validates group_by parameter', function (): void {
 
     $response->assertStatus(422)
         ->assertJsonValidationErrors(['group_by']);
+});
+
+it('returns policy snapshot details and finding hash for a run', function (): void {
+    $run = Run::factory()->forRepository($this->repository)->create([
+        'policy_snapshot' => [
+            'policy_version' => 1,
+            'enabled_rules' => ['security', 'maintainability'],
+            'severity_thresholds' => ['comment' => 'low'],
+            'confidence_thresholds' => ['finding' => 0.7],
+            'comment_limits' => ['max_inline_comments' => 25],
+            'ignored_paths' => ['vendor/**'],
+            'config_source' => 'branch',
+            'config_branch' => 'main',
+        ],
+    ]);
+
+    $finding = Finding::factory()->forRun($run)->create([
+        'finding_hash' => 'f75ce4ecb01c9a98a8cfa0c8f1d2b8a2d1bda3f5c1e1f7d9a2c3e4f5a6b7c8d9',
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson("/api/workspaces/{$this->workspace->id}/runs/{$run->id}");
+
+    $response->assertOk()
+        ->assertJsonPath('data.policy_snapshot.config_source', 'branch')
+        ->assertJsonPath('data.policy_snapshot.config_branch', 'main')
+        ->assertJsonPath('data.policy_snapshot.confidence_thresholds.finding', 0.7)
+        ->assertJsonMissingPath('data.findings.0.finding_hash');
 });

@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Actions\Promotions\ValidatePromotion;
 use App\Models\Promotion;
+use App\Services\Promotions\Contracts\PromotionValidatorContract;
+use App\Services\Promotions\ValueObjects\PromotionValidationResult;
 
 it('validates a valid promo code', function (): void {
     $promotion = Promotion::factory()->create([
@@ -11,22 +12,23 @@ it('validates a valid promo code', function (): void {
         'value_amount' => 20,
     ]);
 
-    $action = app(ValidatePromotion::class);
-    $result = $action->handle('SUMMER2026');
+    $validator = app(PromotionValidatorContract::class);
+    $result = $validator->validate('SUMMER2026');
 
-    expect($result['valid'])->toBeTrue()
-        ->and($result['promotion'])->toBeInstanceOf(Promotion::class)
-        ->and($result['promotion']->id)->toBe($promotion->id)
-        ->and($result['message'])->toBeNull();
+    expect($result)->toBeInstanceOf(PromotionValidationResult::class)
+        ->and($result->isValid())->toBeTrue()
+        ->and($result->promotion)->toBeInstanceOf(Promotion::class)
+        ->and($result->promotion->id)->toBe($promotion->id)
+        ->and($result->message)->toBeNull();
 });
 
 it('rejects an invalid promo code', function (): void {
-    $action = app(ValidatePromotion::class);
-    $result = $action->handle('NONEXISTENT');
+    $validator = app(PromotionValidatorContract::class);
+    $result = $validator->validate('NONEXISTENT');
 
-    expect($result['valid'])->toBeFalse()
-        ->and($result['promotion'])->toBeNull()
-        ->and($result['message'])->toBe('Invalid promotion code.');
+    expect($result->failed())->toBeTrue()
+        ->and($result->promotion)->toBeNull()
+        ->and($result->message)->toBe('Invalid promotion code.');
 });
 
 it('rejects an inactive promo code', function (): void {
@@ -34,11 +36,11 @@ it('rejects an inactive promo code', function (): void {
         'code' => 'INACTIVE',
     ]);
 
-    $action = app(ValidatePromotion::class);
-    $result = $action->handle('INACTIVE');
+    $validator = app(PromotionValidatorContract::class);
+    $result = $validator->validate('INACTIVE');
 
-    expect($result['valid'])->toBeFalse()
-        ->and($result['message'])->toBe('This promotion is no longer active.');
+    expect($result->failed())->toBeTrue()
+        ->and($result->message)->toBe('This promotion is no longer active.');
 });
 
 it('rejects an expired promo code', function (): void {
@@ -46,11 +48,11 @@ it('rejects an expired promo code', function (): void {
         'code' => 'EXPIRED',
     ]);
 
-    $action = app(ValidatePromotion::class);
-    $result = $action->handle('EXPIRED');
+    $validator = app(PromotionValidatorContract::class);
+    $result = $validator->validate('EXPIRED');
 
-    expect($result['valid'])->toBeFalse()
-        ->and($result['message'])->toBe('This promotion has expired.');
+    expect($result->failed())->toBeTrue()
+        ->and($result->message)->toBe('This promotion has expired.');
 });
 
 it('rejects a future promo code', function (): void {
@@ -58,11 +60,11 @@ it('rejects a future promo code', function (): void {
         'code' => 'FUTURE',
     ]);
 
-    $action = app(ValidatePromotion::class);
-    $result = $action->handle('FUTURE');
+    $validator = app(PromotionValidatorContract::class);
+    $result = $validator->validate('FUTURE');
 
-    expect($result['valid'])->toBeFalse()
-        ->and($result['message'])->toBe('This promotion is not yet active.');
+    expect($result->failed())->toBeTrue()
+        ->and($result->message)->toBe('This promotion is not yet active.');
 });
 
 it('rejects an exhausted promo code', function (): void {
@@ -70,11 +72,11 @@ it('rejects an exhausted promo code', function (): void {
         'code' => 'EXHAUSTED',
     ]);
 
-    $action = app(ValidatePromotion::class);
-    $result = $action->handle('EXHAUSTED');
+    $validator = app(PromotionValidatorContract::class);
+    $result = $validator->validate('EXHAUSTED');
 
-    expect($result['valid'])->toBeFalse()
-        ->and($result['message'])->toBe('This promotion has reached its usage limit.');
+    expect($result->failed())->toBeTrue()
+        ->and($result->message)->toBe('This promotion has reached its usage limit.');
 });
 
 it('is case insensitive for promo codes', function (): void {
@@ -82,10 +84,10 @@ it('is case insensitive for promo codes', function (): void {
         'code' => 'DISCOUNT',
     ]);
 
-    $action = app(ValidatePromotion::class);
-    $result = $action->handle('discount');
+    $validator = app(PromotionValidatorContract::class);
+    $result = $validator->validate('discount');
 
-    expect($result['valid'])->toBeTrue();
+    expect($result->isValid())->toBeTrue();
 });
 
 it('trims whitespace from promo codes', function (): void {
@@ -93,10 +95,10 @@ it('trims whitespace from promo codes', function (): void {
         'code' => 'TRIMME',
     ]);
 
-    $action = app(ValidatePromotion::class);
-    $result = $action->handle('  TRIMME  ');
+    $validator = app(PromotionValidatorContract::class);
+    $result = $validator->validate('  TRIMME  ');
 
-    expect($result['valid'])->toBeTrue();
+    expect($result->isValid())->toBeTrue();
 });
 
 it('rejects a promo code not synced to Polar', function (): void {
@@ -104,9 +106,9 @@ it('rejects a promo code not synced to Polar', function (): void {
         'code' => 'NOTSYNCED',
     ]);
 
-    $action = app(ValidatePromotion::class);
-    $result = $action->handle('NOTSYNCED');
+    $validator = app(PromotionValidatorContract::class);
+    $result = $validator->validate('NOTSYNCED');
 
-    expect($result['valid'])->toBeFalse()
-        ->and($result['message'])->toBe('This promotion code is not activated.');
+    expect($result->failed())->toBeTrue()
+        ->and($result->message)->toBe('This promotion code is not activated.');
 });
