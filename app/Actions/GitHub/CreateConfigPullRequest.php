@@ -204,7 +204,12 @@ final readonly class CreateConfigPullRequest
     private function getDefaultConfigContent(): string
     {
         $exampleConfigPath = base_path('.sentinel/config.example.yaml');
+        $content = file_get_contents($exampleConfigPath);
 
-        return file_get_contents($exampleConfigPath);
+        if ($content === false) {
+            throw new \RuntimeException('Failed to read example config file');
+        }
+
+        return $content;
     }
 }
