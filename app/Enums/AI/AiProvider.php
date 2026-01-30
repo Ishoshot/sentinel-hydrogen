@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Enums;
+namespace App\Enums\AI;
 
 /**
  * AI providers supported for BYOK (Bring Your Own Key).
