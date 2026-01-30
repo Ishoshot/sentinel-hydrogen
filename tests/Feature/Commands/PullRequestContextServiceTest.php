@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Enums\CommandRunStatus;
-use App\Enums\CommandType;
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Commands\CommandRunStatus;
+use App\Enums\Commands\CommandType;
 use App\Models\CommandRun;
 use App\Models\Connection;
 use App\Models\Installation;
@@ -226,6 +226,8 @@ describe('getMetadata', function (): void {
                 'additions' => 25,
                 'deletions' => 10,
                 'changed_files' => 3,
+                'base' => ['ref' => 'main'],
+                'head' => ['ref' => 'feature/auth-fix'],
             ]);
 
         $service = app(PullRequestContextService::class);
@@ -236,7 +238,9 @@ describe('getMetadata', function (): void {
             ->and($metadata['pr_additions'])->toBe(25)
             ->and($metadata['pr_deletions'])->toBe(10)
             ->and($metadata['pr_changed_files'])->toBe(3)
-            ->and($metadata['pr_context_included'])->toBeTrue();
+            ->and($metadata['pr_context_included'])->toBeTrue()
+            ->and($metadata['base_branch'])->toBe('main')
+            ->and($metadata['head_branch'])->toBe('feature/auth-fix');
     });
 
     it('handles API errors gracefully', function (): void {

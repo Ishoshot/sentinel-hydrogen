@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Auth\ProviderType;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Provider;
@@ -77,7 +78,7 @@ it('deduplicates issue numbers', function (): void {
 
 it('should not collect when PR body is empty', function (): void {
     $provider = Provider::query()->firstOrCreate(
-        ['type' => App\Enums\ProviderType::GitHub],
+        ['type' => ProviderType::GitHub],
         ['name' => 'GitHub', 'is_active' => true]
     );
     $connection = Connection::factory()->forProvider($provider)->active()->create();
@@ -102,7 +103,7 @@ it('should not collect when PR body is empty', function (): void {
 
 it('should collect when PR body contains issue references', function (): void {
     $provider = Provider::query()->firstOrCreate(
-        ['type' => App\Enums\ProviderType::GitHub],
+        ['type' => ProviderType::GitHub],
         ['name' => 'GitHub', 'is_active' => true]
     );
     $connection = Connection::factory()->forProvider($provider)->active()->create();

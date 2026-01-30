@@ -19,7 +19,7 @@ it('redacts Polar tokens in file patches', function (): void {
         ],
     );
 
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
     $filter->filter($bag);
 
     expect($bag->files[0]['patch'])->toContain('[REDACTED:')
@@ -40,7 +40,7 @@ it('redacts AWS access keys', function (): void {
         ],
     );
 
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
     $filter->filter($bag);
 
     expect($bag->files[0]['patch'])->toContain('[REDACTED:aws_access_key:')
@@ -61,7 +61,7 @@ it('redacts GitHub tokens', function (): void {
         ],
     );
 
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
     $filter->filter($bag);
 
     expect($bag->files[0]['patch'])->toContain('[REDACTED:')
@@ -82,7 +82,7 @@ it('redacts JWT tokens', function (): void {
         ],
     );
 
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
     $filter->filter($bag);
 
     expect($bag->files[0]['patch'])->toContain('[REDACTED:jwt:')
@@ -103,7 +103,7 @@ it('completely redacts .env file patches', function (): void {
         ],
     );
 
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
     $filter->filter($bag);
 
     expect($bag->files[0]['patch'])->toBe('[REDACTED - sensitive file]');
@@ -123,7 +123,7 @@ it('completely redacts .env.local file patches', function (): void {
         ],
     );
 
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
     $filter->filter($bag);
 
     expect($bag->files[0]['patch'])->toBe('[REDACTED - sensitive file]');
@@ -136,7 +136,7 @@ it('redacts sensitive data in PR body', function (): void {
         ],
     );
 
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
     $filter->filter($bag);
 
     expect($bag->pullRequest['body'])->toContain('[REDACTED:')
@@ -162,7 +162,7 @@ it('redacts sensitive data in linked issue comments', function (): void {
         ],
     );
 
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
     $filter->filter($bag);
 
     expect($bag->linkedIssues[0]['comments'][0]['body'])->toContain('[REDACTED:')
@@ -180,7 +180,7 @@ it('redacts sensitive data in PR comments', function (): void {
         ],
     );
 
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
     $filter->filter($bag);
 
     expect($bag->prComments[0]['body'])->toContain('[REDACTED:')
@@ -203,20 +203,20 @@ it('does not modify non-sensitive content', function (): void {
         ],
     );
 
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
     $filter->filter($bag);
 
     expect($bag->files[0]['patch'])->toBe($originalPatch);
 });
 
 it('has correct order', function (): void {
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
 
     expect($filter->order())->toBe(30);
 });
 
 it('has correct name', function (): void {
-    $filter = new SensitiveDataFilter();
+    $filter = app(SensitiveDataFilter::class);
 
     expect($filter->name())->toBe('sensitive_data');
 });

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Enums\CommandRunStatus;
-use App\Enums\OAuthProvider;
-use App\Enums\ProviderType;
-use App\Enums\SubscriptionStatus;
+use App\Enums\Auth\OAuthProvider;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Billing\SubscriptionStatus;
+use App\Enums\Commands\CommandRunStatus;
 use App\Models\CommandRun;
 use App\Models\Connection;
 use App\Models\Installation;

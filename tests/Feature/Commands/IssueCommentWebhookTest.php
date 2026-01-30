@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Enums\CommandRunStatus;
-use App\Enums\CommandType;
-use App\Enums\OAuthProvider;
-use App\Enums\ProviderType;
-use App\Enums\SubscriptionStatus;
+use App\Enums\Auth\OAuthProvider;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Billing\SubscriptionStatus;
+use App\Enums\Commands\CommandRunStatus;
+use App\Enums\Commands\CommandType;
+use App\Enums\Reviews\RunStatus;
 use App\Jobs\Commands\ExecuteCommandRunJob;
 use App\Jobs\GitHub\ProcessIssueCommentWebhook;
 use App\Models\CommandRun;
@@ -472,7 +473,7 @@ it('triggers manual review for @sentinel review on PR', function (): void {
     expect($run->pr_number)->toBe(42)
         ->and($run->pr_title)->toBe('Test PR Title')
         ->and($run->metadata['action'])->toBe('manual_trigger')
-        ->and($run->status)->toBe(App\Enums\RunStatus::Queued);
+        ->and($run->status)->toBe(RunStatus::Queued);
 
     // Verify ExecuteReviewRun job was dispatched
     Bus::assertDispatched(App\Jobs\Reviews\ExecuteReviewRun::class);
@@ -572,7 +573,87 @@ it('triggers manual review for @sentinel re-review on PR', function (): void {
     Bus::assertDispatched(App\Jobs\Reviews\ExecuteReviewRun::class);
 });
 
-it('creates command run for @sentinel review on issue (not PR)', function (): void {
+it('posts guidance for @sentinel review on issue (not PR)', function (): void {
+    Bus::fake([ExecuteCommandRunJob::class]);
+
+    $user = User::factory()->create();
+    ProviderIdentity::factory()->create([
+        'user_id' => $user->id,
+        'provider' => OAuthProvider::GitHub,
+        'nickname' => 'testuser',
+    ]);
+
+    $workspace = Workspace::factory()->create([
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
+
+    $workspace->teamMembers()->create([
+        'user_id' => $user->id,
+        'team_id' => $workspace->team->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'member',
+        'joined_at' => now(),
+    ]);
+
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 12345,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'workspace_id' => $workspace->id,
+        'full_name' => 'owner/testrepo',
+    ]);
+
+    ProviderKey::factory()->forRepository($repository)->create();
+
+    $githubApi = Mockery::mock(GitHubApiServiceContract::class);
+    $githubApi->shouldReceive('createIssueComment')
+        ->once()
+        ->withArgs(function ($installationId, $owner, $repo, $number, $body) {
+            return $installationId === 12345
+                && $owner === 'owner'
+                && $repo === 'testrepo'
+                && $number === 10
+                && str_contains($body, 'Manual reviews are only supported on pull requests');
+        })
+        ->andReturn(['id' => 555]);
+    app()->instance(GitHubApiServiceContract::class, $githubApi);
+
+    $payload = [
+        'action' => 'created',
+        'comment' => [
+            'id' => 77777,
+            'body' => '@sentinel review the authentication logic',
+        ],
+        'sender' => [
+            'login' => 'testuser',
+        ],
+        'repository' => [
+            'full_name' => 'owner/testrepo',
+        ],
+        'installation' => [
+            'id' => 12345,
+        ],
+        'issue' => [
+            'number' => 10,
+            // No 'pull_request' key - this is a regular issue
+        ],
+    ];
+
+    ProcessIssueCommentWebhook::dispatchSync($payload);
+
+    // On an issue (not PR), @sentinel review should not create a CommandRun
+    expect(CommandRun::count())->toBe(0);
+    expect(App\Models\Run::count())->toBe(0);
+
+    Bus::assertNotDispatched(ExecuteCommandRunJob::class);
+});
+
+it('deduplicates repeated issue comment webhooks', function (): void {
     Bus::fake([ExecuteCommandRunJob::class]);
 
     $user = User::factory()->create();
@@ -613,7 +694,7 @@ it('creates command run for @sentinel review on issue (not PR)', function (): vo
         'action' => 'created',
         'comment' => [
             'id' => 77777,
-            'body' => '@sentinel review the authentication logic',
+            'body' => '@sentinel explain the authentication logic',
         ],
         'sender' => [
             'login' => 'testuser',
@@ -626,20 +707,12 @@ it('creates command run for @sentinel review on issue (not PR)', function (): vo
         ],
         'issue' => [
             'number' => 10,
-            // No 'pull_request' key - this is a regular issue
         ],
     ];
 
     ProcessIssueCommentWebhook::dispatchSync($payload);
+    ProcessIssueCommentWebhook::dispatchSync($payload);
 
-    // On an issue (not PR), @sentinel review should create a CommandRun
     expect(CommandRun::count())->toBe(1);
-    expect(App\Models\Run::count())->toBe(0);
-
-    $commandRun = CommandRun::first();
-    expect($commandRun->command_type)->toBe(CommandType::Review)
-        ->and($commandRun->query)->toBe('the authentication logic')
-        ->and($commandRun->is_pull_request)->toBeFalse();
-
-    Bus::assertDispatched(ExecuteCommandRunJob::class);
+    Bus::assertDispatchedTimes(ExecuteCommandRunJob::class, 1);
 });

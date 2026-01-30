@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use App\Actions\Commands\CreateCommandRun;
-use App\Enums\CommandRunStatus;
-use App\Enums\CommandType;
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Commands\CommandRunStatus;
+use App\Enums\Commands\CommandType;
 use App\Models\CommandRun;
 use App\Models\Connection;
 use App\Models\Installation;
@@ -13,6 +13,8 @@ use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Commands\ValueObjects\ContextHints;
+use App\Services\Commands\ValueObjects\LineRange;
 
 it('creates a command run with all required fields', function (): void {
     $workspace = Workspace::factory()->create();
@@ -68,11 +70,11 @@ it('creates a command run with context hints', function (): void {
 
     $action = app(CreateCommandRun::class);
 
-    $contextHints = [
-        'files' => ['app/Models/User.php'],
-        'symbols' => ['User', 'isActive'],
-        'lines' => [['start' => 42, 'end' => null]],
-    ];
+    $contextHints = new ContextHints(
+        files: ['app/Models/User.php'],
+        symbols: ['User', 'isActive'],
+        lines: [new LineRange(start: 42)],
+    );
 
     $commandRun = $action->handle(
         workspace: $workspace,
@@ -87,7 +89,7 @@ it('creates a command run with context hints', function (): void {
     );
 
     expect($commandRun->context_snapshot)->toBeArray()
-        ->and($commandRun->context_snapshot['context_hints'])->toBe($contextHints);
+        ->and($commandRun->context_snapshot['context_hints'])->toBe($contextHints->toArray());
 });
 
 it('creates a command run for a pull request', function (): void {
@@ -184,3 +186,45 @@ it('creates command runs with different command types', function (CommandType $c
     'summarize' => CommandType::Summarize,
     'find' => CommandType::Find,
 ]);
+
+it('deduplicates command runs for the same GitHub comment', function (): void {
+    $workspace = Workspace::factory()->create();
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->create();
+    $installation = Installation::factory()->forConnection($connection)->create();
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'workspace_id' => $workspace->id,
+    ]);
+    $user = User::factory()->create();
+
+    $action = app(CreateCommandRun::class);
+
+    $first = $action->handle(
+        workspace: $workspace,
+        repository: $repository,
+        user: $user,
+        commandType: CommandType::Explain,
+        query: 'test query',
+        githubCommentId: 22222,
+        issueNumber: 9,
+        isPullRequest: true,
+    );
+
+    $second = $action->handle(
+        workspace: $workspace,
+        repository: $repository,
+        user: $user,
+        commandType: CommandType::Explain,
+        query: 'test query',
+        githubCommentId: 22222,
+        issueNumber: 9,
+        isPullRequest: true,
+    );
+
+    expect($second->id)->toBe($first->id)
+        ->and($second->wasRecentlyCreated)->toBeFalse()
+        ->and(CommandRun::query()->where('external_reference', 'github:comment:22222')->count())->toBe(1);
+});

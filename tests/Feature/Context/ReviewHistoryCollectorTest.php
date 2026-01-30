@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\ProviderType;
-use App\Enums\RunStatus;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Reviews\RunStatus;
 use App\Models\Connection;
 use App\Models\Finding;
 use App\Models\Installation;
