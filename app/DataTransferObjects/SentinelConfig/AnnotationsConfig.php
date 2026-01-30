@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\SentinelConfig;
 
-use App\Enums\AnnotationStyle;
-use App\Enums\SentinelConfigSeverity;
+use App\Enums\Reviews\AnnotationStyle;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
 
 /**
  * Configuration for how annotations are posted.
@@ -30,14 +30,14 @@ final readonly class AnnotationsConfig
     public static function fromArray(array $data): self
     {
         return new self(
-            style: isset($data['style'])
-                ? AnnotationStyle::from((string) $data['style']) // @phpstan-ignore cast.string
+            style: isset($data['style']) && is_string($data['style'])
+                ? AnnotationStyle::tryFrom($data['style']) ?? AnnotationStyle::Review
                 : AnnotationStyle::Review,
-            postThreshold: isset($data['post_threshold'])
-                ? SentinelConfigSeverity::from((string) $data['post_threshold']) // @phpstan-ignore cast.string
+            postThreshold: isset($data['post_threshold']) && is_string($data['post_threshold'])
+                ? SentinelConfigSeverity::tryFrom($data['post_threshold']) ?? SentinelConfigSeverity::Medium
                 : SentinelConfigSeverity::Medium,
-            grouped: (bool) ($data['grouped'] ?? true),
-            includeSuggestions: (bool) ($data['include_suggestions'] ?? true),
+            grouped: ! isset($data['grouped']) || (bool) $data['grouped'],
+            includeSuggestions: ! isset($data['include_suggestions']) || (bool) $data['include_suggestions'],
         );
     }
 

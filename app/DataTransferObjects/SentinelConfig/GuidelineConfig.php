@@ -25,8 +25,8 @@ final readonly class GuidelineConfig
     public static function fromArray(array $data): self
     {
         return new self(
-            path: (string) ($data['path'] ?? ''), // @phpstan-ignore cast.string
-            description: isset($data['description']) ? (string) $data['description'] : null, // @phpstan-ignore cast.string
+            path: is_string($data['path'] ?? null) ? $data['path'] : '',
+            description: is_string($data['description'] ?? null) ? $data['description'] : null,
         );
     }
 

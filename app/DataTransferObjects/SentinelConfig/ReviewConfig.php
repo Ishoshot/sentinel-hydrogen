@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\SentinelConfig;
 
-use App\Enums\SentinelConfigSeverity;
-use App\Enums\SentinelConfigTone;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
+use App\Enums\SentinelConfig\SentinelConfigTone;
 
 /**
  * Configuration for review behavior and focus areas.
@@ -39,17 +39,15 @@ final readonly class ReviewConfig
     public static function fromArray(array $data): self
     {
         return new self(
-            minSeverity: isset($data['min_severity'])
-                ? SentinelConfigSeverity::from((string) $data['min_severity']) // @phpstan-ignore cast.string
+            minSeverity: isset($data['min_severity']) && is_string($data['min_severity'])
+                ? SentinelConfigSeverity::tryFrom($data['min_severity']) ?? SentinelConfigSeverity::Low
                 : SentinelConfigSeverity::Low,
-            maxFindings: (int) ($data['max_findings'] ?? 25), // @phpstan-ignore cast.int
-            categories: isset($data['categories']) && is_array($data['categories'])
-                ? CategoriesConfig::fromArray($data['categories']) // @phpstan-ignore argument.type
-                : new CategoriesConfig(),
-            tone: isset($data['tone'])
-                ? SentinelConfigTone::from((string) $data['tone']) // @phpstan-ignore cast.string
+            maxFindings: is_numeric($data['max_findings'] ?? null) ? (int) $data['max_findings'] : 25,
+            categories: self::parseCategories($data['categories'] ?? null),
+            tone: isset($data['tone']) && is_string($data['tone'])
+                ? SentinelConfigTone::tryFrom($data['tone']) ?? SentinelConfigTone::Constructive
                 : SentinelConfigTone::Constructive,
-            language: (string) ($data['language'] ?? 'en'), // @phpstan-ignore cast.string
+            language: is_string($data['language'] ?? null) ? $data['language'] : 'en',
             focus: self::toStringArray($data['focus'] ?? []),
         );
     }
@@ -80,6 +78,19 @@ final readonly class ReviewConfig
     }
 
     /**
+     * Parse categories from mixed data.
+     */
+    private static function parseCategories(mixed $data): CategoriesConfig
+    {
+        if (! is_array($data)) {
+            return new CategoriesConfig();
+        }
+
+        /** @var array<string, mixed> $data */
+        return CategoriesConfig::fromArray($data);
+    }
+
+    /**
      * Convert mixed array to string array.
      *
      * @return array<int, string>
@@ -90,9 +101,13 @@ final readonly class ReviewConfig
             return [];
         }
 
-        return array_values(array_map(
-            fn (mixed $item): string => (string) $item, // @phpstan-ignore cast.string
-            $value
-        ));
+        $result = [];
+        foreach ($value as $item) {
+            if (is_scalar($item) || $item === null) {
+                $result[] = (string) $item;
+            }
+        }
+
+        return $result;
     }
 }

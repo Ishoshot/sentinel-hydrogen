@@ -46,29 +46,31 @@ final readonly class SentinelConfig
         if (isset($data['guidelines']) && is_array($data['guidelines'])) {
             foreach ($data['guidelines'] as $guideline) {
                 if (is_array($guideline)) {
-                    $guidelines[] = GuidelineConfig::fromArray($guideline); // @phpstan-ignore argument.type
+                    /** @var array<string, mixed> $guideline */
+                    $guidelines[] = GuidelineConfig::fromArray($guideline);
                 }
             }
         }
 
+        /** @var array<string, mixed>|null $triggers */
+        $triggers = isset($data['triggers']) && is_array($data['triggers']) ? $data['triggers'] : null;
+        /** @var array<string, mixed>|null $paths */
+        $paths = isset($data['paths']) && is_array($data['paths']) ? $data['paths'] : null;
+        /** @var array<string, mixed>|null $review */
+        $review = isset($data['review']) && is_array($data['review']) ? $data['review'] : null;
+        /** @var array<string, mixed>|null $annotations */
+        $annotations = isset($data['annotations']) && is_array($data['annotations']) ? $data['annotations'] : null;
+        /** @var array<string, mixed>|null $provider */
+        $provider = isset($data['provider']) && is_array($data['provider']) ? $data['provider'] : null;
+
         return new self(
-            version: (int) ($data['version'] ?? self::CURRENT_VERSION), // @phpstan-ignore cast.int
-            triggers: isset($data['triggers']) && is_array($data['triggers'])
-                ? TriggersConfig::fromArray($data['triggers']) // @phpstan-ignore argument.type
-                : null,
-            paths: isset($data['paths']) && is_array($data['paths'])
-                ? PathsConfig::fromArray($data['paths']) // @phpstan-ignore argument.type
-                : null,
-            review: isset($data['review']) && is_array($data['review'])
-                ? ReviewConfig::fromArray($data['review']) // @phpstan-ignore argument.type
-                : null,
+            version: is_numeric($data['version'] ?? null) ? (int) $data['version'] : self::CURRENT_VERSION,
+            triggers: $triggers !== null ? TriggersConfig::fromArray($triggers) : null,
+            paths: $paths !== null ? PathsConfig::fromArray($paths) : null,
+            review: $review !== null ? ReviewConfig::fromArray($review) : null,
             guidelines: $guidelines,
-            annotations: isset($data['annotations']) && is_array($data['annotations'])
-                ? AnnotationsConfig::fromArray($data['annotations']) // @phpstan-ignore argument.type
-                : null,
-            provider: isset($data['provider']) && is_array($data['provider'])
-                ? ProviderConfig::fromArray($data['provider']) // @phpstan-ignore argument.type
-                : null,
+            annotations: $annotations !== null ? AnnotationsConfig::fromArray($annotations) : null,
+            provider: $provider !== null ? ProviderConfig::fromArray($provider) : null,
         );
     }
 

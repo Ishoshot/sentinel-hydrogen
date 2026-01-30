@@ -71,9 +71,13 @@ final readonly class PathsConfig
             return [];
         }
 
-        return array_values(array_map(
-            fn (mixed $item): string => (string) $item, // @phpstan-ignore cast.string
-            $value
-        ));
+        $result = [];
+        foreach ($value as $item) {
+            if (is_scalar($item) || $item === null) {
+                $result[] = (string) $item;
+            }
+        }
+
+        return $result;
     }
 }
