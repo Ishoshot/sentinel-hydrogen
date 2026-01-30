@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\GitHub;
 
 use App\Actions\Activities\LogActivity;
-use App\Enums\ActivityType;
+use App\Enums\Workspace\ActivityType;
 use App\Models\Repository;
 use App\Models\RepositorySettings;
 use App\Models\User;

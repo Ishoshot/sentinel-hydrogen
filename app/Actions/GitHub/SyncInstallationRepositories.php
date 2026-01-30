@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\GitHub;
 
 use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
+use App\Jobs\GitHub\CreateConfigPullRequestJob;
 use App\Models\Installation;
 use App\Models\Repository;
 use App\Models\RepositorySettings;
@@ -35,7 +36,10 @@ final readonly class SyncInstallationRepositories
         /** @var array<int> $syncedRepositoryIds */
         $syncedRepositoryIds = [];
 
-        $result = DB::transaction(function () use ($installation, $githubRepos, &$syncedRepositoryIds): array {
+        /** @var array<int> $newlyCreatedRepositoryIds */
+        $newlyCreatedRepositoryIds = [];
+
+        $result = DB::transaction(function () use ($installation, $githubRepos, &$syncedRepositoryIds, &$newlyCreatedRepositoryIds): array {
             $existingRepoIds = $installation->repositories()->pluck('github_id')->toArray();
             $githubRepoIds = array_column($githubRepos, 'id');
 
@@ -61,6 +65,7 @@ final readonly class SyncInstallationRepositories
 
                 if ($repository->wasRecentlyCreated) {
                     $added++;
+                    $newlyCreatedRepositoryIds[] = $repository->id;
 
                     // Create default repository settings
                     RepositorySettings::create([
@@ -99,6 +104,12 @@ final readonly class SyncInstallationRepositories
         // Sync Sentinel configs for all repositories (outside transaction)
         foreach ($syncedRepositories as $repository) {
             $this->syncSentinelConfig->handle($repository);
+        }
+
+        // Dispatch config PR creation jobs for newly created repositories
+        // Add a delay to allow GitHub to propagate access permissions
+        foreach ($newlyCreatedRepositoryIds as $repositoryId) {
+            CreateConfigPullRequestJob::dispatch($repositoryId)->delay(now()->addSeconds(10));
         }
 
         return $result;
@@ -161,6 +172,12 @@ final readonly class SyncInstallationRepositories
             // Sync Sentinel configs for newly added repositories (outside transaction)
             foreach ($addedRepositories as $repository) {
                 $this->syncSentinelConfig->handle($repository);
+            }
+
+            // Dispatch config PR creation jobs for newly added repositories
+            // Add a delay to allow GitHub to propagate access permissions
+            foreach ($addedRepositoryIds as $repositoryId) {
+                CreateConfigPullRequestJob::dispatch($repositoryId)->delay(now()->addSeconds(10));
             }
         }
 
