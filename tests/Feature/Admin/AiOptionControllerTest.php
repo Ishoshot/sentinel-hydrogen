@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use App\Models\Admin;
 use App\Models\AiOption;
 use App\Models\ProviderKey;
@@ -27,7 +27,7 @@ describe('index', function (): void {
             ->assertJsonCount(3, 'data')
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'provider', 'identifier', 'name', 'is_default', 'is_active', 'sort_order'],
+                    '*' => ['id', 'provider', 'identifier', 'name', 'is_default', 'is_active', 'sort_order', 'context_window_tokens', 'max_output_tokens'],
                 ],
                 'meta' => ['current_page', 'last_page', 'per_page', 'total'],
             ]);
@@ -65,17 +65,35 @@ describe('store', function (): void {
                 'is_default' => false,
                 'is_active' => true,
                 'sort_order' => 0,
+                'context_window_tokens' => 200000,
+                'max_output_tokens' => 64000,
             ])
             ->assertCreated()
             ->assertJsonPath('data.provider', 'anthropic')
             ->assertJsonPath('data.identifier', 'claude-test-model')
             ->assertJsonPath('data.name', 'Claude Test Model')
+            ->assertJsonPath('data.context_window_tokens', 200000)
+            ->assertJsonPath('data.max_output_tokens', 64000)
             ->assertJsonPath('message', 'AI model created successfully.');
 
         $this->assertDatabaseHas('provider_models', [
             'identifier' => 'claude-test-model',
             'name' => 'Claude Test Model',
+            'context_window_tokens' => 200000,
+            'max_output_tokens' => 64000,
         ]);
+    });
+
+    it('creates an ai option with nullable token limits', function (): void {
+        $this->actingAs($this->admin, 'admin')
+            ->postJson(route('admin.ai-options.store'), [
+                'provider' => AiProvider::Anthropic->value,
+                'identifier' => 'claude-no-limits',
+                'name' => 'Claude No Limits',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.context_window_tokens', null)
+            ->assertJsonPath('data.max_output_tokens', null);
     });
 
     it('validates required fields', function (): void {
@@ -199,6 +217,44 @@ describe('update', function (): void {
             ])
             ->assertOk()
             ->assertJsonPath('data.identifier', 'new-id');
+    });
+
+    it('updates token limits', function (): void {
+        $aiOption = AiOption::factory()->create([
+            'context_window_tokens' => 100000,
+            'max_output_tokens' => 8000,
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->patchJson(route('admin.ai-options.update', ['ai_option' => $aiOption]), [
+                'context_window_tokens' => 200000,
+                'max_output_tokens' => 64000,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.context_window_tokens', 200000)
+            ->assertJsonPath('data.max_output_tokens', 64000);
+
+        $this->assertDatabaseHas('provider_models', [
+            'id' => $aiOption->id,
+            'context_window_tokens' => 200000,
+            'max_output_tokens' => 64000,
+        ]);
+    });
+
+    it('allows setting token limits to null', function (): void {
+        $aiOption = AiOption::factory()->create([
+            'context_window_tokens' => 200000,
+            'max_output_tokens' => 64000,
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->patchJson(route('admin.ai-options.update', ['ai_option' => $aiOption]), [
+                'context_window_tokens' => null,
+                'max_output_tokens' => null,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.context_window_tokens', null)
+            ->assertJsonPath('data.max_output_tokens', null);
     });
 });
 

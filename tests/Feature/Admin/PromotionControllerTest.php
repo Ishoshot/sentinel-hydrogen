@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PromotionValueType;
+use App\Enums\Promotions\PromotionValueType;
 use App\Models\Admin;
 use App\Models\Promotion;
 

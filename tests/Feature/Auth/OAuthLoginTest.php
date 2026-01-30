@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Auth\HandleOAuthCallback;
-use App\Enums\OAuthProvider;
+use App\Enums\Auth\OAuthProvider;
 use App\Models\ProviderIdentity;
 use App\Models\User;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
