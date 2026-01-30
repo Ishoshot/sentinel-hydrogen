@@ -8,7 +8,6 @@ use App\Models\Workspace;
 use App\Services\Billing\PolarBillingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use InvalidArgumentException;
 
 /**
  * Generate a customer portal session URL for managing billing.
@@ -28,13 +27,7 @@ final class SubscriptionPortalController
             ], 422);
         }
 
-        try {
-            $portalUrl = $billingService->createCustomerPortalSession($workspace);
-        } catch (InvalidArgumentException $invalidArgumentException) {
-            return response()->json([
-                'message' => $invalidArgumentException->getMessage(),
-            ], 422);
-        }
+        $portalUrl = $billingService->createCustomerPortalSession($workspace);
 
         return response()->json([
             'data' => [

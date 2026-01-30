@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Subscriptions;
 
+use App\Actions\Subscriptions\GetWorkspaceSubscription;
 use App\Http\Resources\SubscriptionResource;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -17,11 +18,13 @@ final class ShowSubscriptionController
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Workspace $workspace): JsonResponse
-    {
+    public function __invoke(
+        Workspace $workspace,
+        GetWorkspaceSubscription $getWorkspaceSubscription,
+    ): JsonResponse {
         Gate::authorize('view', $workspace);
 
-        $workspace->loadMissing('plan');
+        $workspace = $getWorkspaceSubscription->handle($workspace);
 
         return response()->json([
             'data' => new SubscriptionResource($workspace),

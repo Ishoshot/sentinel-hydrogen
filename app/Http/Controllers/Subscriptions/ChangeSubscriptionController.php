@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Subscriptions;
 
 use App\Actions\Subscriptions\ChangeSubscription;
-use App\Enums\BillingInterval;
-use App\Enums\PlanTier;
+use App\Enums\Billing\BillingInterval;
+use App\Enums\Billing\PlanTier;
 use App\Http\Requests\Subscription\ChangeSubscriptionRequest;
 use App\Http\Resources\SubscriptionResource;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use InvalidArgumentException;
-use RuntimeException;
 
 /**
  * Handle subscription changes: subscribe, upgrade, downgrade, and cancel.
@@ -39,18 +37,7 @@ final class ChangeSubscriptionController
         /** @var \App\Models\User|null $user */
         $user = $request->user();
 
-        try {
-            $result = $changeSubscription->handle($workspace, $tier, $interval, $promoCode, $user);
-        } catch (InvalidArgumentException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-                'errors' => ['promo_code' => [$e->getMessage()]],
-            ], 422);
-        } catch (RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], 500);
-        }
+        $result = $changeSubscription->handle($workspace, $tier, $interval, $promoCode, $user);
 
         if ($result['action'] === 'checkout') {
             return response()->json([
