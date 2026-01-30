@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Enums;
+namespace App\Enums\Reviews;
 
 /**
  * Reasons why a review run was skipped or failed.

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Enums;
+namespace App\Enums\Reviews;
 
 /**
  * Risk levels for code reviews.
