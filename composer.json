@@ -24,7 +24,8 @@
         "pgvector/pgvector": "^0.2.2",
         "resend/resend-laravel": "^1.1",
         "spatie/browsershot": "^5.2",
-        "standard-webhooks/standard-webhooks": "^1.0"
+        "standard-webhooks/standard-webhooks": "^1.0",
+        "yethee/tiktoken": "^1.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -90,7 +91,7 @@
             "pest --memory-limit=1G --type-coverage --min=100"
         ],
         "test:code-coverage": [
-            "pest --parallel --coverage --min=100"
+            "php -d memory_limit=2G vendor/bin/pest --parallel --passthru-php=\"-d memory_limit=2G\" --coverage --min=100"
         ],
         "test:types": [
             "phpstan analyse --memory-limit=1G"
