@@ -29,6 +29,8 @@ interface PullRequestContextServiceContract
      *     pr_deletions: int,
      *     pr_changed_files: int,
      *     pr_context_included: bool,
+     *     base_branch: string,
+     *     head_branch: string,
      * }|null
      */
     public function getMetadata(CommandRun $commandRun): ?array;

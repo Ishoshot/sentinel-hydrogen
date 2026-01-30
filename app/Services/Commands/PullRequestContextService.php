@@ -60,7 +60,7 @@ final readonly class PullRequestContextService implements PullRequestContextServ
     /**
      * Get pull request metadata for storing in CommandRun.
      *
-     * @return array{pr_title: string, pr_additions: int, pr_deletions: int, pr_changed_files: int, pr_context_included: bool}|null
+     * @return array{pr_title: string, pr_additions: int, pr_deletions: int, pr_changed_files: int, pr_context_included: bool, base_branch: string, head_branch: string}|null
      */
     public function getMetadata(CommandRun $commandRun): ?array
     {
@@ -72,12 +72,17 @@ final readonly class PullRequestContextService implements PullRequestContextServ
         try {
             $pr = $this->githubApi->getPullRequest(...$prParams);
 
+            $baseBranch = is_array($pr['base'] ?? null) ? (string) ($pr['base']['ref'] ?? '') : '';
+            $headBranch = is_array($pr['head'] ?? null) ? (string) ($pr['head']['ref'] ?? '') : '';
+
             return [
                 'pr_title' => (string) ($pr['title'] ?? ''),
                 'pr_additions' => (int) ($pr['additions'] ?? 0),
                 'pr_deletions' => (int) ($pr['deletions'] ?? 0),
                 'pr_changed_files' => (int) ($pr['changed_files'] ?? 0),
                 'pr_context_included' => true,
+                'base_branch' => $baseBranch,
+                'head_branch' => $headBranch,
             ];
         } catch (Throwable $throwable) {
             Log::warning('Failed to fetch PR metadata for command', [
