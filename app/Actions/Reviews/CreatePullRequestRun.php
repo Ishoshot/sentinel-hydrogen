@@ -6,10 +6,10 @@ namespace App\Actions\Reviews;
 
 use App\Actions\Activities\LogActivity;
 use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
-use App\Enums\ActivityType;
-use App\Enums\OAuthProvider;
-use App\Enums\RunStatus;
-use App\Enums\SkipReason;
+use App\Enums\Auth\OAuthProvider;
+use App\Enums\Reviews\RunStatus;
+use App\Enums\Reviews\SkipReason;
+use App\Enums\Workspace\ActivityType;
 use App\Models\ProviderIdentity;
 use App\Models\Repository;
 use App\Models\Run;

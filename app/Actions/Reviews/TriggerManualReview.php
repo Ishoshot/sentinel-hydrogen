@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews;
 
-use App\Enums\Queue;
-use App\Enums\RunStatus;
+use App\Enums\Queue\Queue;
+use App\Enums\Reviews\RunStatus;
 use App\Jobs\Reviews\ExecuteReviewRun;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Models\User;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
-use App\Services\Queue\JobContext;
 use App\Services\Queue\QueueResolver;
+use App\Services\Queue\ValueObjects\JobContext;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 

@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Actions\Reviews;
 
 use App\Actions\Activities\LogActivity;
-use App\Enums\ActivityType;
-use App\Enums\AnnotationStyle;
-use App\Enums\AnnotationType;
-use App\Enums\ProviderType;
-use App\Enums\SentinelConfigSeverity;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Reviews\AnnotationStyle;
+use App\Enums\Reviews\AnnotationType;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
+use App\Enums\Workspace\ActivityType;
 use App\Models\Annotation;
 use App\Models\Finding;
 use App\Models\Provider;
