@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\Queue;
+use App\Enums\Queue\Queue;
 use Illuminate\Support\Str;
 
 return [

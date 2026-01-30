@@ -32,7 +32,30 @@ return [
         'max_concurrent_generations' => (int) env('BRIEFINGS_MAX_CONCURRENT', 3),
 
         // Timeout for a single generation in seconds
-        'generation_timeout_seconds' => (int) env('BRIEFINGS_TIMEOUT', 300),
+        'generation_timeout_seconds' => (int) env('BRIEFINGS_TIMEOUT', 500),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Data Quality Guard
+    |--------------------------------------------------------------------------
+    |
+    | Minimum data requirements to generate a briefing. These checks prevent
+    | low-signal briefings when the workspace has minimal activity.
+    |
+    */
+    'data_guard' => [
+        // Enable or disable the data quality guard.
+        'enabled' => (bool) env('BRIEFINGS_DATA_GUARD', true),
+
+        // Minimum runs within the selected period.
+        'min_runs' => (int) env('BRIEFINGS_MIN_RUNS', 3),
+
+        // Minimum distinct activity days within the selected period.
+        'min_active_days' => (int) env('BRIEFINGS_MIN_ACTIVE_DAYS', 1),
+
+        // Minimum repositories with activity within the selected period.
+        'min_repositories' => (int) env('BRIEFINGS_MIN_REPOSITORIES', 1),
     ],
 
     /*
