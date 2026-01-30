@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\GitHub;
 
 use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
-use App\Enums\SkipReason;
+use App\Enums\Reviews\SkipReason;
 use App\Models\Run;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\SentinelMessageService;

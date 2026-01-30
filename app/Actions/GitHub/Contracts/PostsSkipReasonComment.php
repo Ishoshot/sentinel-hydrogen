@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub\Contracts;
 
-use App\Enums\SkipReason;
+use App\Enums\Reviews\SkipReason;
 use App\Models\Run;
 
 /**

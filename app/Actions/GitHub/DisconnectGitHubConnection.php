@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\GitHub;
 
 use App\Actions\Activities\LogActivity;
-use App\Enums\ActivityType;
-use App\Enums\ConnectionStatus;
+use App\Enums\Workspace\ActivityType;
+use App\Enums\Workspace\ConnectionStatus;
 use App\Models\Connection;
 use App\Models\User;
 use App\Services\GitHub\GitHubAppService;
