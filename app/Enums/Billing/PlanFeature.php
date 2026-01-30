@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Enums;
+namespace App\Enums\Billing;
 
 /**
  * Plan features that can be enabled or disabled per plan tier.
  */
 enum PlanFeature: string
 {
+    case Briefings = 'briefings';
     case ByokEnabled = 'byok_enabled';
     case CustomGuidelines = 'custom_guidelines';
     case PriorityQueue = 'priority_queue';
@@ -32,6 +33,7 @@ enum PlanFeature: string
     public function label(): string
     {
         return match ($this) {
+            self::Briefings => 'Briefings',
             self::ByokEnabled => 'Bring Your Own Key',
             self::CustomGuidelines => 'Custom Guidelines',
             self::PriorityQueue => 'Priority Queue',
@@ -47,6 +49,7 @@ enum PlanFeature: string
     public function description(): string
     {
         return match ($this) {
+            self::Briefings => 'AI-generated team briefings and reports',
             self::ByokEnabled => 'Use your own API keys for AI providers',
             self::CustomGuidelines => 'Define custom review guidelines',
             self::PriorityQueue => 'Higher priority queue for reviews',
