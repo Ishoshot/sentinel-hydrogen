@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\GitHub;
 
 use App\Actions\Activities\LogActivity;
+use App\Actions\GitHub\CreateConfigPullRequest;
 use App\Actions\GitHub\SyncInstallationRepositories;
 use App\Actions\GitHub\UpdateRepositorySettings;
-use App\Enums\ActivityType;
+use App\Enums\Workspace\ActivityType;
+use App\Http\Requests\GitHub\IndexRepositoriesRequest;
 use App\Http\Requests\GitHub\UpdateRepositorySettingsRequest;
 use App\Http\Resources\RepositoryResource;
 use App\Models\Repository;
@@ -22,16 +24,14 @@ final class RepositoryController
     /**
      * List all repositories for a workspace.
      */
-    public function index(Request $request, Workspace $workspace): AnonymousResourceCollection
+    public function index(IndexRepositoriesRequest $request, Workspace $workspace): AnonymousResourceCollection
     {
         Gate::authorize('viewAny', [Repository::class, $workspace]);
-
-        $perPage = min((int) $request->query('per_page', '20'), 100);
 
         $repositories = Repository::with('settings')
             ->where('workspace_id', $workspace->id)
             ->orderBy('full_name')
-            ->paginate($perPage);
+            ->paginate($request->perPage());
 
         return RepositoryResource::collection($repositories);
     }
@@ -132,5 +132,24 @@ final class RepositoryController
             ),
             'summary' => $result,
         ]);
+    }
+
+    /**
+     * Create a PR to add Sentinel configuration to a repository.
+     */
+    public function createConfigPr(
+        Workspace $workspace,
+        Repository $repository,
+        CreateConfigPullRequest $action,
+    ): JsonResponse {
+        if ($repository->workspace_id !== $workspace->id) {
+            abort(404);
+        }
+
+        Gate::authorize('update', $repository);
+
+        $result = $action->handle($repository);
+
+        return response()->json($result->toArray());
     }
 }

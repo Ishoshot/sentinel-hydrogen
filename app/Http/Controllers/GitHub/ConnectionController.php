@@ -7,7 +7,8 @@ namespace App\Http\Controllers\GitHub;
 use App\Actions\GitHub\DisconnectGitHubConnection;
 use App\Actions\GitHub\HandleGitHubInstallation;
 use App\Actions\GitHub\InitiateGitHubConnection;
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
+use App\Http\Requests\GitHub\ConnectionCallbackRequest;
 use App\Http\Resources\ConnectionResource;
 use App\Models\Connection;
 use App\Models\Provider;
@@ -82,25 +83,17 @@ final class ConnectionController
      * Handle the GitHub App installation callback.
      */
     public function callback(
-        Request $request,
+        ConnectionCallbackRequest $request,
         HandleGitHubInstallation $handleInstallation,
     ): RedirectResponse {
-        $installationId = $request->query('installation_id');
-        $state = $request->query('state');
-        $setupAction = $request->query('setup_action');
-
-        if ($installationId === null) {
-            return $this->redirectToError('Missing installation ID.');
-        }
-
         // If setup_action is request, user denied the installation
-        if ($setupAction === 'request') {
+        if ($request->wasCancelled()) {
             return $this->redirectToError('Installation was cancelled.');
         }
 
         $result = $handleInstallation->handle(
-            installationId: (int) $installationId,
-            state: is_string($state) ? $state : null,
+            installationId: $request->installationId(),
+            state: $request->state(),
         );
 
         $workspace = $result['connection']->workspace;

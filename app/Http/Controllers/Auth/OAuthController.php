@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\HandleOAuthCallback;
-use App\Enums\OAuthProvider;
+use App\Actions\Auth\LogoutUser;
+use App\Enums\Auth\OAuthProvider;
 use App\Http\Resources\UserResource;
-use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
@@ -49,15 +48,11 @@ final class OAuthController
             return redirect($frontendUrl.'/auth/error?message='.urlencode('Unknown OAuth provider.'));
         }
 
-        try {
-            /** @var AbstractProvider $driver */
-            $driver = Socialite::driver($provider);
+        /** @var AbstractProvider $driver */
+        $driver = Socialite::driver($provider);
 
-            /** @var SocialiteUser $socialiteUser */
-            $socialiteUser = $driver->stateless()->user();
-        } catch (Exception) {
-            return redirect($frontendUrl.'/auth/error?message='.urlencode('Failed to authenticate with '.$oauthProvider->label().'. Please try again.'));
-        }
+        /** @var SocialiteUser $socialiteUser */
+        $socialiteUser = $driver->stateless()->user();
 
         if ($socialiteUser->getEmail() === null) {
             return redirect($frontendUrl.'/auth/error?message='.urlencode('Your '.$oauthProvider->label().' account does not have a verified email address.'));
@@ -73,17 +68,14 @@ final class OAuthController
     /**
      * Log the user out by revoking the current access token.
      */
-    public function logout(Request $request): JsonResponse
+    public function logout(Request $request, LogoutUser $logoutUser): JsonResponse
     {
+        /** @var \App\Models\User|null $user */
         $user = $request->user();
 
-        if ($user === null) {
-            return response()->json([
-                'message' => 'Successfully logged out.',
-            ]);
+        if ($user !== null) {
+            $logoutUser->handle($user);
         }
-
-        $user->currentAccessToken()->delete();
 
         return response()->json([
             'message' => 'Successfully logged out.',

@@ -8,7 +8,7 @@ use App\Actions\Invitations\AcceptInvitation;
 use App\Actions\Invitations\CancelInvitation;
 use App\Actions\Invitations\CreateInvitation;
 use App\Actions\Invitations\ResendInvitation;
-use App\Enums\TeamRole;
+use App\Enums\Workspace\TeamRole;
 use App\Http\Requests\Invitation\CreateInvitationRequest;
 use App\Http\Resources\InvitationResource;
 use App\Models\Invitation;
@@ -16,7 +16,6 @@ use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use InvalidArgumentException;
 
 final class InvitationController
 {
@@ -60,18 +59,12 @@ final class InvitationController
         /** @var string $role */
         $role = $request->validated('role');
 
-        try {
-            $invitation = $createInvitation->handle(
-                workspace: $workspace,
-                invitedBy: $user,
-                email: $email,
-                role: TeamRole::from($role),
-            );
-        } catch (InvalidArgumentException $invalidArgumentException) {
-            return response()->json([
-                'message' => $invalidArgumentException->getMessage(),
-            ], 422);
-        }
+        $invitation = $createInvitation->handle(
+            workspace: $workspace,
+            invitedBy: $user,
+            email: $email,
+            role: TeamRole::from($role),
+        );
 
         $invitation->load('invitedBy');
 
@@ -95,13 +88,7 @@ final class InvitationController
 
         Gate::authorize('delete', $invitation);
 
-        try {
-            $cancelInvitation->handle($invitation);
-        } catch (InvalidArgumentException $invalidArgumentException) {
-            return response()->json([
-                'message' => $invalidArgumentException->getMessage(),
-            ], 422);
-        }
+        $cancelInvitation->handle($invitation);
 
         return response()->json([
             'message' => 'Invitation cancelled.',
@@ -122,13 +109,7 @@ final class InvitationController
 
         Gate::authorize('create', [Invitation::class, $workspace]);
 
-        try {
-            $resendInvitation->handle($invitation);
-        } catch (InvalidArgumentException $invalidArgumentException) {
-            return response()->json([
-                'message' => $invalidArgumentException->getMessage(),
-            ], 422);
-        }
+        $resendInvitation->handle($invitation);
 
         return response()->json([
             'message' => 'Invitation resent successfully.',
@@ -184,13 +165,7 @@ final class InvitationController
         }
 
         /** @var \App\Models\User $user */
-        try {
-            $acceptInvitation->handle($invitation, $user);
-        } catch (InvalidArgumentException $invalidArgumentException) {
-            return response()->json([
-                'message' => $invalidArgumentException->getMessage(),
-            ], 422);
-        }
+        $acceptInvitation->handle($invitation, $user);
 
         $invitation->load(['workspace.team', 'workspace.owner']);
         $workspace->loadCount('teamMembers');
