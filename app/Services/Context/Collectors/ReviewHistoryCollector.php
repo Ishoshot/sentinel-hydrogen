@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Collectors;
 
-use App\Enums\RunStatus;
+use App\Enums\Reviews\RunStatus;
 use App\Models\Finding;
 use App\Models\Repository;
 use App\Models\Run;

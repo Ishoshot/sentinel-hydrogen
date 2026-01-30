@@ -6,6 +6,7 @@ namespace App\Services\Context\Filters;
 
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextFilter;
+use App\Services\Context\SensitiveDataRedactor;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -14,76 +15,14 @@ use Illuminate\Support\Facades\Log;
  * Identifies and redacts potential secrets, API keys, passwords, and other
  * sensitive information to prevent exposure to the LLM.
  */
-final class SensitiveDataFilter implements ContextFilter
+final readonly class SensitiveDataFilter implements ContextFilter
 {
     /**
-     * Patterns for detecting sensitive data.
-     *
-     * @var array<string, string>
+     * Create a new filter instance.
      */
-    private const array SENSITIVE_PATTERNS = [
-        // API Keys and tokens (common formats)
-        'api_key' => '/(?:api[_-]?key|apikey)\s*[=:]\s*["\']?([a-zA-Z0-9_\-]{20,})["\']?/i',
-        'bearer_token' => '/Bearer\s+([a-zA-Z0-9_\-\.]{20,})/i',
-        'auth_token' => '/(?:auth[_-]?token|token)\s*[=:]\s*["\']?([a-zA-Z0-9_\-]{20,})["\']?/i',
-
-        // AWS
-        'aws_access_key' => '/(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}/i',
-        'aws_secret_key' => '/(?:aws[_-]?secret[_-]?(?:access[_-]?)?key)\s*[=:]\s*["\']?([a-zA-Z0-9\/+=]{40})["\']?/i',
-
-        // GitHub
-        'github_token' => '/gh[pousr]_[A-Za-z0-9_]{36,}/i',
-        'github_pat' => '/github_pat_[A-Za-z0-9_]{22,}/i',
-
-        // Polar
-        'polar_token' => '/polar_(?:live|test)_[a-zA-Z0-9]{24,}/i',
-
-        // Database connection strings
-        'db_url' => '/(?:mysql|postgres|mongodb|redis):\/\/[^@\s]+:[^@\s]+@[^\s]+/i',
-
-        // Private keys
-        'private_key' => '/-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/i',
-
-        // Passwords in config
-        'password_config' => '/(?:password|passwd|pwd)\s*[=:]\s*["\']?([^\s"\']{8,})["\']?/i',
-
-        // JWT tokens
-        'jwt' => '/eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*/i',
-
-        // Generic secrets
-        'secret' => '/(?:secret|client[_-]?secret)\s*[=:]\s*["\']?([a-zA-Z0-9_\-]{16,})["\']?/i',
-
-        // Slack tokens
-        'slack_token' => '/xox[baprs]-[a-zA-Z0-9-]+/i',
-
-        // SendGrid
-        'sendgrid_key' => '/SG\.[a-zA-Z0-9_-]{22,}\.[a-zA-Z0-9_-]{43,}/i',
-
-        // Twilio
-        'twilio_key' => '/SK[a-f0-9]{32}/i',
-    ];
-
-    /**
-     * Files that should have their patches completely redacted.
-     *
-     * @var array<string>
-     */
-    private const array SENSITIVE_FILES = [
-        '.env',
-        '.env.local',
-        '.env.production',
-        '.env.staging',
-        '.env.development',
-        'credentials.json',
-        'service-account.json',
-        'secrets.yaml',
-        'secrets.yml',
-        '.npmrc',
-        '.pypirc',
-        'id_rsa',
-        'id_ed25519',
-        '.htpasswd',
-    ];
+    public function __construct(
+        private SensitiveDataRedactor $redactor,
+    ) {}
 
     /**
      * {@inheritdoc}
@@ -110,10 +49,10 @@ final class SensitiveDataFilter implements ContextFilter
 
         // Filter file patches
         $bag->files = array_map(function (array $file) use (&$redactedCount): array {
-            $filename = basename($file['filename']);
+            $filename = $file['filename'];
 
             // Completely redact sensitive files
-            if ($this->isSensitiveFile($filename)) {
+            if ($this->redactor->isSensitiveFile($filename)) {
                 if ($file['patch'] !== null) {
                     $file['patch'] = '[REDACTED - sensitive file]';
                     $redactedCount++;
@@ -125,7 +64,7 @@ final class SensitiveDataFilter implements ContextFilter
             // Redact sensitive patterns in patches
             if ($file['patch'] !== null) {
                 $original = $file['patch'];
-                $file['patch'] = $this->redactSensitiveData($file['patch']);
+                $file['patch'] = $this->redactor->redact($file['patch']);
 
                 if ($original !== $file['patch']) {
                     $redactedCount++;
@@ -138,7 +77,7 @@ final class SensitiveDataFilter implements ContextFilter
         // Filter PR body in pullRequest data
         if (isset($bag->pullRequest['body']) && is_string($bag->pullRequest['body'])) {
             $original = $bag->pullRequest['body'];
-            $bag->pullRequest['body'] = $this->redactSensitiveData($bag->pullRequest['body']);
+            $bag->pullRequest['body'] = $this->redactor->redact($bag->pullRequest['body']);
 
             if ($original !== $bag->pullRequest['body']) {
                 $redactedCount++;
@@ -149,7 +88,7 @@ final class SensitiveDataFilter implements ContextFilter
         $bag->linkedIssues = array_map(function (array $issue) use (&$redactedCount): array {
             if ($issue['body'] !== null) {
                 $original = $issue['body'];
-                $issue['body'] = $this->redactSensitiveData($issue['body']);
+                $issue['body'] = $this->redactor->redact($issue['body']);
 
                 if ($original !== $issue['body']) {
                     $redactedCount++;
@@ -158,7 +97,7 @@ final class SensitiveDataFilter implements ContextFilter
 
             $issue['comments'] = array_map(function (array $comment) use (&$redactedCount): array {
                 $original = $comment['body'];
-                $comment['body'] = $this->redactSensitiveData($comment['body']);
+                $comment['body'] = $this->redactor->redact($comment['body']);
 
                 if ($original !== $comment['body']) {
                     $redactedCount++;
@@ -173,7 +112,7 @@ final class SensitiveDataFilter implements ContextFilter
         // Filter PR comments
         $bag->prComments = array_map(function (array $comment) use (&$redactedCount): array {
             $original = $comment['body'];
-            $comment['body'] = $this->redactSensitiveData($comment['body']);
+            $comment['body'] = $this->redactor->redact($comment['body']);
 
             if ($original !== $comment['body']) {
                 $redactedCount++;
@@ -181,6 +120,21 @@ final class SensitiveDataFilter implements ContextFilter
 
             return $comment;
         }, $bag->prComments);
+
+        // Filter full file contents
+        $bag->fileContents = $this->sanitizeFileContents($bag->fileContents, $redactedCount);
+
+        // Filter repository guidelines (content + description)
+        $bag->guidelines = $this->sanitizeGuidelines($bag->guidelines, $redactedCount);
+
+        // Filter repository context docs (README / CONTRIBUTING)
+        $bag->repositoryContext = $this->sanitizeRepositoryContext($bag->repositoryContext, $redactedCount);
+
+        // Filter semantic analysis data
+        $bag->semantics = $this->sanitizeSemantics($bag->semantics, $redactedCount);
+
+        // Filter project context
+        $bag->projectContext = $this->sanitizeProjectContext($bag->projectContext, $redactedCount);
 
         if ($redactedCount > 0) {
             Log::info('SensitiveDataFilter: Redacted sensitive data', [
@@ -190,47 +144,247 @@ final class SensitiveDataFilter implements ContextFilter
     }
 
     /**
-     * Check if a filename indicates a sensitive file.
+     * Sanitize full file contents.
+     *
+     * @param  array<string, string>  $data
+     * @return array<string, string>
      */
-    private function isSensitiveFile(string $filename): bool
+    private function sanitizeFileContents(array $data, int &$redactedCount): array
     {
-        $lowercaseFilename = mb_strtolower($filename);
+        foreach ($data as $key => $value) {
+            $redacted = $this->redactor->redact($value);
+            if ($redacted !== $value) {
+                $redactedCount++;
+            }
 
-        foreach (self::SENSITIVE_FILES as $sensitiveFile) {
-            if ($lowercaseFilename === mb_strtolower($sensitiveFile)) {
-                return true;
+            $data[$key] = $redacted;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Sanitize guideline content and descriptions.
+     *
+     * @param  array<int, array{path: string, description: string|null, content: string}>  $data
+     * @return array<int, array{path: string, description: string|null, content: string}>
+     */
+    private function sanitizeGuidelines(array $data, int &$redactedCount): array
+    {
+        foreach ($data as $index => $guideline) {
+            $content = $this->redactor->redact($guideline['content']);
+            if ($content !== $guideline['content']) {
+                $redactedCount++;
+            }
+
+            $description = $guideline['description'];
+            if ($description !== null) {
+                $redactedDescription = $this->redactor->redact($description);
+                if ($redactedDescription !== $description) {
+                    $redactedCount++;
+                }
+
+                $description = $redactedDescription;
+            }
+
+            $data[$index] = [
+                'path' => $guideline['path'],
+                'description' => $description,
+                'content' => $content,
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Sanitize repository context docs.
+     *
+     * @param  array{readme?: string|null, contributing?: string|null}  $data
+     * @return array{readme?: string|null, contributing?: string|null}
+     */
+    private function sanitizeRepositoryContext(array $data, int &$redactedCount): array
+    {
+        foreach (['readme', 'contributing'] as $key) {
+            if (! array_key_exists($key, $data)) {
+                continue;
+            }
+
+            if ($data[$key] === null) {
+                continue;
+            }
+
+            $value = $data[$key];
+            $redacted = $this->redactor->redact($value);
+            if ($redacted !== $value) {
+                $redactedCount++;
+            }
+
+            $data[$key] = $redacted;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Sanitize semantic analysis data.
+     *
+     * @param  array<string, array<string, mixed>>  $data
+     * @return array<string, array<string, mixed>>
+     */
+    private function sanitizeSemantics(array $data, int &$redactedCount): array
+    {
+        foreach ($data as $key => $value) {
+            /** @var array<string, mixed> $value */
+            $data[$key] = $this->sanitizeSemanticEntry($value, $redactedCount);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Sanitize project context data.
+     *
+     * @param  array{languages?: array<string>, runtime?: array{name: string, version: string}|null, frameworks?: array<int, array{name: string, version: string}>, dependencies?: array<int, array{name: string, version: string, dev?: bool}>}  $data
+     * @return array{languages?: array<string>, runtime?: array{name: string, version: string}|null, frameworks?: array<int, array{name: string, version: string}>, dependencies?: array<int, array{name: string, version: string, dev?: bool}>}
+     */
+    private function sanitizeProjectContext(array $data, int &$redactedCount): array
+    {
+        if (isset($data['languages'])) {
+            $data['languages'] = array_map(function (string $language) use (&$redactedCount): string {
+                $redacted = $this->redactor->redact($language);
+                if ($redacted !== $language) {
+                    $redactedCount++;
+                }
+
+                return $redacted;
+            }, $data['languages']);
+        }
+
+        if (isset($data['runtime'])) {
+            $runtime = $data['runtime'];
+            $name = $runtime['name'];
+            $version = $runtime['version'];
+
+            $redacted = $this->redactor->redact($name);
+            if ($redacted !== $name) {
+                $redactedCount++;
+            }
+
+            $runtime['name'] = $redacted;
+
+            $redacted = $this->redactor->redact($version);
+            if ($redacted !== $version) {
+                $redactedCount++;
+            }
+
+            $runtime['version'] = $redacted;
+
+            $data['runtime'] = $runtime;
+        }
+
+        if (isset($data['frameworks'])) {
+            $data['frameworks'] = array_map(function (array $framework) use (&$redactedCount): array {
+                $name = $framework['name'];
+                $version = $framework['version'];
+
+                $redacted = $this->redactor->redact($name);
+                if ($redacted !== $name) {
+                    $redactedCount++;
+                }
+
+                $framework['name'] = $redacted;
+
+                $redacted = $this->redactor->redact($version);
+                if ($redacted !== $version) {
+                    $redactedCount++;
+                }
+
+                $framework['version'] = $redacted;
+
+                return $framework;
+            }, $data['frameworks']);
+        }
+
+        if (isset($data['dependencies'])) {
+            $data['dependencies'] = array_map(function (array $dependency) use (&$redactedCount): array {
+                $name = $dependency['name'];
+                $version = $dependency['version'];
+
+                $redacted = $this->redactor->redact($name);
+                if ($redacted !== $name) {
+                    $redactedCount++;
+                }
+
+                $dependency['name'] = $redacted;
+
+                $redacted = $this->redactor->redact($version);
+                if ($redacted !== $version) {
+                    $redactedCount++;
+                }
+
+                $dependency['version'] = $redacted;
+
+                return $dependency;
+            }, $data['dependencies']);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Sanitize a semantic analysis entry.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function sanitizeSemanticEntry(array $data, int &$redactedCount): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_string($value)) {
+                $redacted = $this->redactor->redact($value);
+                if ($redacted !== $value) {
+                    $redactedCount++;
+                }
+
+                $data[$key] = $redacted;
+
+                continue;
+            }
+
+            if (is_array($value)) {
+                $data[$key] = $this->sanitizeNestedArray($value, $redactedCount);
             }
         }
 
-        // Check for .env variants
-        return str_starts_with($lowercaseFilename, '.env');
+        return $data;
     }
 
     /**
-     * Redact sensitive data patterns from text.
+     * Recursively sanitize arrays by redacting sensitive data in strings.
+     *
+     * @param  array<mixed, mixed>  $data
+     * @return array<mixed, mixed>
      */
-    private function redactSensitiveData(string $text): string
+    private function sanitizeNestedArray(array $data, int &$redactedCount): array
     {
-        foreach (self::SENSITIVE_PATTERNS as $name => $pattern) {
-            $text = (string) preg_replace_callback(
-                $pattern,
-                fn (array $matches): string => $this->generateRedaction($name, $matches[0]),
-                $text
-            );
+        foreach ($data as $key => $value) {
+            if (is_string($value)) {
+                $redacted = $this->redactor->redact($value);
+                if ($redacted !== $value) {
+                    $redactedCount++;
+                }
+
+                $data[$key] = $redacted;
+
+                continue;
+            }
+
+            if (is_array($value)) {
+                $data[$key] = $this->sanitizeNestedArray($value, $redactedCount);
+            }
         }
 
-        return $text;
-    }
-
-    /**
-     * Generate a redaction replacement string.
-     */
-    private function generateRedaction(string $type, string $original): string
-    {
-        // Preserve the structure but redact the value
-        $length = mb_strlen($original);
-        $preview = mb_substr($original, 0, min(4, $length));
-
-        return sprintf('[REDACTED:%s:%s***]', $type, $preview);
+        return $data;
     }
 }

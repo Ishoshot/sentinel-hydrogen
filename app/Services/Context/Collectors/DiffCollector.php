@@ -119,17 +119,18 @@ final readonly class DiffCollector implements ContextCollector
         $bag->files = $this->normalizeFiles($files);
         $bag->metrics = $this->calculateMetrics($bag->files);
 
-        // Fetch sentinel config with fallback: head_branch -> base_branch -> default_branch
-        $headBranch = $bag->pullRequest['head_branch'];
+        // Fetch sentinel config with fallback: base_branch -> default_branch
         $baseBranch = $bag->pullRequest['base_branch'];
         $defaultBranch = $repository->default_branch;
 
-        $configResult = $this->fetchConfigWithFallback($repository, $headBranch, $baseBranch, $defaultBranch);
+        $configResult = $this->fetchConfigWithFallback($repository, $baseBranch, $defaultBranch);
 
         if ($configResult['config'] !== null) {
             $bag->metadata['sentinel_config'] = $configResult['config'];
             $bag->metadata['paths_config'] = $configResult['config']['paths'] ?? [];
         }
+
+        $bag->metadata['config_from_branch'] = $configResult['branch'];
 
         Log::info('DiffCollector: Collected PR data', [
             'repository' => $fullName,
@@ -141,19 +142,17 @@ final readonly class DiffCollector implements ContextCollector
     }
 
     /**
-     * Fetch sentinel config with fallback: head_branch -> base_branch -> default_branch.
+     * Fetch sentinel config with fallback: base_branch -> default_branch.
      *
      * @return array{config: array<string, mixed>|null, branch: string|null}
      */
     private function fetchConfigWithFallback(
         Repository $repository,
-        ?string $headBranch,
         ?string $baseBranch,
         ?string $defaultBranch
     ): array {
         // Build ordered list of branches to try (deduplicated)
         $branches = array_values(array_unique(array_filter([
-            $headBranch,
             $baseBranch,
             $defaultBranch,
         ])));

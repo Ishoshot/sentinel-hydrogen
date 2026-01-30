@@ -7,6 +7,7 @@ namespace App\Services\Context\Filters;
 use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextFilter;
+use App\Support\PathRuleMatcher;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -16,8 +17,13 @@ use Illuminate\Support\Facades\Log;
  * - In allowlist mode (include set), keeps only files matching include patterns
  * - Marks files matching sensitive patterns for extra scrutiny
  */
-final class ConfiguredPathFilter implements ContextFilter
+final readonly class ConfiguredPathFilter implements ContextFilter
 {
+    /**
+     * Create a new ConfiguredPathFilter instance.
+     */
+    public function __construct(private PathRuleMatcher $matcher) {}
+
     /**
      * {@inheritdoc}
      */
@@ -50,27 +56,42 @@ final class ConfiguredPathFilter implements ContextFilter
         if ($pathsConfig->ignore !== []) {
             $bag->files = array_values(array_filter(
                 $bag->files,
-                fn (array $file): bool => ! $this->matchesAnyPattern($file['filename'], $pathsConfig->ignore)
+                fn (array $file): bool => ! $this->matcher->matchesAny($file['filename'], $pathsConfig->ignore)
             ));
         }
 
         if ($pathsConfig->include !== []) {
             $bag->files = array_values(array_filter(
                 $bag->files,
-                fn (array $file): bool => $this->matchesAnyPattern($file['filename'], $pathsConfig->include)
+                fn (array $file): bool => $this->matcher->matchesAny($file['filename'], $pathsConfig->include)
             ));
         }
 
         $sensitiveCount = $this->markSensitiveFiles($bag, $pathsConfig);
+        $removedFileContents = $this->filterFileContents($bag, $pathsConfig);
+        $removedSemantics = $this->filterSemantics($bag, $pathsConfig);
+        $removedGuidelines = $this->filterGuidelines($bag, $pathsConfig);
+        $removedRepositoryContext = $this->filterRepositoryContext($bag, $pathsConfig);
         $bag->recalculateMetrics();
 
         $removedCount = $originalCount - count($bag->files);
-        if ($removedCount > 0 || $sensitiveCount > 0) {
+        if (
+            $removedCount > 0
+            || $sensitiveCount > 0
+            || $removedFileContents > 0
+            || $removedSemantics > 0
+            || $removedGuidelines > 0
+            || $removedRepositoryContext > 0
+        ) {
             Log::debug('ConfiguredPathFilter: Applied path rules', [
                 'original_files' => $originalCount,
                 'removed_files' => $removedCount,
                 'sensitive_files' => $sensitiveCount,
                 'remaining_files' => count($bag->files),
+                'removed_file_contents' => $removedFileContents,
+                'removed_semantics' => $removedSemantics,
+                'removed_guidelines' => $removedGuidelines,
+                'removed_repository_context' => $removedRepositoryContext,
             ]);
         }
     }
@@ -86,7 +107,7 @@ final class ConfiguredPathFilter implements ContextFilter
 
         $sensitiveFiles = [];
         $bag->files = array_map(function (array $file) use ($pathsConfig, &$sensitiveFiles): array {
-            if ($this->matchesAnyPattern($file['filename'], $pathsConfig->sensitive)) {
+            if ($this->matcher->matchesAny($file['filename'], $pathsConfig->sensitive)) {
                 $file['is_sensitive'] = true;
                 $sensitiveFiles[] = $file['filename'];
             }
@@ -117,53 +138,120 @@ final class ConfiguredPathFilter implements ContextFilter
     }
 
     /**
-     * Check if a path matches any of the given glob patterns.
-     *
-     * @param  array<int, string>  $patterns
+     * Determine if a path should be included by the configured rules.
      */
-    private function matchesAnyPattern(string $path, array $patterns): bool
+    private function shouldIncludePath(string $path, PathsConfig $pathsConfig): bool
     {
-        return array_any($patterns, fn (string $pattern): bool => $this->matchesGlob($path, $pattern));
-    }
-
-    /**
-     * Check if a path matches a glob pattern.
-     *
-     * Supports:
-     * - * matches any sequence of characters except /
-     * - ** matches any sequence including /
-     * - ? matches any single character except /
-     */
-    private function matchesGlob(string $path, string $pattern): bool
-    {
-        // Exact match
-        if ($path === $pattern) {
-            return true;
+        if ($pathsConfig->ignore !== [] && $this->matcher->matchesAny($path, $pathsConfig->ignore)) {
+            return false;
         }
 
-        // Convert glob pattern to regex
-        $regex = $this->globToRegex($pattern);
+        if ($pathsConfig->include !== [] && ! $this->matcher->matchesAny($path, $pathsConfig->include)) {
+            return false;
+        }
 
-        return preg_match($regex, $path) === 1;
+        return true;
     }
 
     /**
-     * Convert a glob pattern to a regex pattern.
+     * Filter file contents using configured path rules.
      */
-    private function globToRegex(string $pattern): string
+    private function filterFileContents(ContextBag $bag, PathsConfig $pathsConfig): int
     {
-        // Escape special regex characters except * and ?
-        $escaped = preg_quote($pattern, '/');
+        if ($bag->fileContents === []) {
+            return 0;
+        }
 
-        // Handle ** (match anything including directory separators)
-        $escaped = str_replace('\*\*', '.*', $escaped);
+        $before = count($bag->fileContents);
 
-        // Handle * (match anything except directory separators)
-        $escaped = str_replace('\*', '[^\/]*', $escaped);
+        $bag->fileContents = array_filter(
+            $bag->fileContents,
+            fn (string $path): bool => $this->shouldIncludePath($path, $pathsConfig),
+            ARRAY_FILTER_USE_KEY
+        );
 
-        // Handle ? (match single character except directory separator)
-        $escaped = str_replace('\?', '[^\/]', $escaped);
+        return $before - count($bag->fileContents);
+    }
 
-        return '/^'.$escaped.'$/';
+    /**
+     * Filter semantic data using configured path rules.
+     */
+    private function filterSemantics(ContextBag $bag, PathsConfig $pathsConfig): int
+    {
+        if ($bag->semantics === []) {
+            return 0;
+        }
+
+        $before = count($bag->semantics);
+
+        $bag->semantics = array_filter(
+            $bag->semantics,
+            fn (string $path): bool => $this->shouldIncludePath($path, $pathsConfig),
+            ARRAY_FILTER_USE_KEY
+        );
+
+        return $before - count($bag->semantics);
+    }
+
+    /**
+     * Filter guidelines using configured path rules.
+     */
+    private function filterGuidelines(ContextBag $bag, PathsConfig $pathsConfig): int
+    {
+        if ($bag->guidelines === []) {
+            return 0;
+        }
+
+        $before = count($bag->guidelines);
+
+        $bag->guidelines = array_values(array_filter(
+            $bag->guidelines,
+            fn (array $guideline): bool => $this->shouldIncludePath($guideline['path'], $pathsConfig)
+        ));
+
+        return $before - count($bag->guidelines);
+    }
+
+    /**
+     * Filter repository context using configured path rules.
+     */
+    private function filterRepositoryContext(ContextBag $bag, PathsConfig $pathsConfig): int
+    {
+        if ($bag->repositoryContext === []) {
+            return 0;
+        }
+
+        $paths = $bag->metadata['repository_context_paths'] ?? null;
+        if (! is_array($paths)) {
+            return 0;
+        }
+
+        $removed = 0;
+
+        if (isset($bag->repositoryContext['readme'])) {
+            $readmePath = $paths['readme'] ?? null;
+            if (is_string($readmePath) && ! $this->shouldIncludePath($readmePath, $pathsConfig)) {
+                unset($bag->repositoryContext['readme']);
+                unset($paths['readme']);
+                $removed++;
+            }
+        }
+
+        if (isset($bag->repositoryContext['contributing'])) {
+            $contributingPath = $paths['contributing'] ?? null;
+            if (is_string($contributingPath) && ! $this->shouldIncludePath($contributingPath, $pathsConfig)) {
+                unset($bag->repositoryContext['contributing']);
+                unset($paths['contributing']);
+                $removed++;
+            }
+        }
+
+        if ($paths === []) {
+            unset($bag->metadata['repository_context_paths']);
+        } else {
+            $bag->metadata['repository_context_paths'] = $paths;
+        }
+
+        return $removed;
     }
 }

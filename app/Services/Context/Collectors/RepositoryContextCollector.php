@@ -108,6 +108,7 @@ final readonly class RepositoryContextCollector implements ContextCollector
         $installationId = $installation->installation_id;
 
         $context = [];
+        $contextPaths = [];
 
         // Fetch README
         $readme = $this->fetchFirstAvailable(
@@ -118,7 +119,8 @@ final readonly class RepositoryContextCollector implements ContextCollector
         );
 
         if ($readme !== null) {
-            $context['readme'] = $this->truncateContent($readme, 'README');
+            $context['readme'] = $this->truncateContent($readme['content'], 'README');
+            $contextPaths['readme'] = $readme['path'];
         }
 
         // Fetch CONTRIBUTING guide
@@ -130,10 +132,14 @@ final readonly class RepositoryContextCollector implements ContextCollector
         );
 
         if ($contributing !== null) {
-            $context['contributing'] = $this->truncateContent($contributing, 'CONTRIBUTING');
+            $context['contributing'] = $this->truncateContent($contributing['content'], 'CONTRIBUTING');
+            $contextPaths['contributing'] = $contributing['path'];
         }
 
         $bag->repositoryContext = $context;
+        if ($contextPaths !== []) {
+            $bag->metadata['repository_context_paths'] = $contextPaths;
+        }
 
         Log::info('RepositoryContextCollector: Collected repository context', [
             'repository' => $fullName,
@@ -146,18 +152,22 @@ final readonly class RepositoryContextCollector implements ContextCollector
      * Fetch the first available file from a list of candidates.
      *
      * @param  array<string>  $files
+     * @return array{path: string, content: string}|null
      */
     private function fetchFirstAvailable(
         int $installationId,
         string $owner,
         string $repo,
         array $files
-    ): ?string {
+    ): ?array {
         foreach ($files as $file) {
             try {
                 $content = $this->fetchFileContent($installationId, $owner, $repo, $file);
                 if ($content !== null && $content !== '') {
-                    return $content;
+                    return [
+                        'path' => $file,
+                        'content' => $content,
+                    ];
                 }
             } catch (Throwable) {
                 // File doesn't exist, try next

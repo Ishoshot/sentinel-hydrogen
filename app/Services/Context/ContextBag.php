@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Context;
 
+use App\Services\Context\Contracts\TokenCounter;
+use App\Services\Context\TokenCounting\HeuristicTokenCounter;
+use App\Services\Context\TokenCounting\TokenCounterContext;
+
 /**
  * Data transfer object holding all context data for a review.
  */
 final class ContextBag
 {
-    /**
-     * Approximate tokens per character for estimation.
-     */
-    private const float TOKENS_PER_CHAR = 0.25;
-
     /**
      * Create a new context bag instance.
      *
@@ -28,6 +27,7 @@ final class ContextBag
      * @param  array<string, string>  $fileContents  Full file contents for touched files (path => content)
      * @param  array<string, array<string, mixed>>  $semantics  Semantic analysis data (path => analysis)
      * @param  array{languages?: array<string>, runtime?: array{name: string, version: string}|null, frameworks?: array<int, array{name: string, version: string}>, dependencies?: array<int, array{name: string, version: string, dev?: bool}>}  $projectContext  Project dependencies and versions
+     * @param  array<int, array{file_path: string, content: string, matched_symbol: string, match_type: string, score: float, match_count: int, reason: string}>  $impactedFiles  Files that reference modified symbols
      * @param  array<string, mixed>  $metadata
      */
     public function __construct(
@@ -42,70 +42,78 @@ final class ContextBag
         public array $fileContents = [],
         public array $semantics = [],
         public array $projectContext = [],
+        public array $impactedFiles = [],
         public array $metadata = [],
     ) {}
 
     /**
      * Estimate the total token count for this context.
      */
-    public function estimateTokens(): int
+    public function estimateTokens(?TokenCounter $tokenCounter = null, ?TokenCounterContext $context = null): int
     {
-        $totalChars = 0;
+        $tokenCounter ??= new HeuristicTokenCounter();
+        $context ??= new TokenCounterContext();
+        $totalTokens = 0;
 
         // Pull request metadata
-        $totalChars += mb_strlen(json_encode($this->pullRequest) ?: '');
+        $totalTokens += $tokenCounter->countTextTokens(json_encode($this->pullRequest) ?: '', $context);
 
         // Files with patches (most significant)
         foreach ($this->files as $file) {
-            $totalChars += mb_strlen($file['filename']);
-            $totalChars += mb_strlen($file['patch'] ?? '');
+            $totalTokens += $tokenCounter->countTextTokens($file['filename'], $context);
+            $totalTokens += $tokenCounter->countTextTokens($file['patch'] ?? '', $context);
         }
 
         // Metrics
-        $totalChars += mb_strlen(json_encode($this->metrics) ?: '');
+        $totalTokens += $tokenCounter->countTextTokens(json_encode($this->metrics) ?: '', $context);
 
         // Linked issues
         foreach ($this->linkedIssues as $issue) {
-            $totalChars += mb_strlen($issue['title']);
-            $totalChars += mb_strlen($issue['body'] ?? '');
+            $totalTokens += $tokenCounter->countTextTokens($issue['title'], $context);
+            $totalTokens += $tokenCounter->countTextTokens($issue['body'] ?? '', $context);
             foreach ($issue['comments'] as $comment) {
-                $totalChars += mb_strlen($comment['body']);
+                $totalTokens += $tokenCounter->countTextTokens($comment['body'], $context);
             }
         }
 
         // PR comments
         foreach ($this->prComments as $comment) {
-            $totalChars += mb_strlen($comment['body']);
+            $totalTokens += $tokenCounter->countTextTokens($comment['body'], $context);
         }
 
         // Repository context
-        $totalChars += mb_strlen($this->repositoryContext['readme'] ?? '');
-        $totalChars += mb_strlen($this->repositoryContext['contributing'] ?? '');
+        $totalTokens += $tokenCounter->countTextTokens($this->repositoryContext['readme'] ?? '', $context);
+        $totalTokens += $tokenCounter->countTextTokens($this->repositoryContext['contributing'] ?? '', $context);
 
         // Review history
         foreach ($this->reviewHistory as $review) {
-            $totalChars += mb_strlen($review['summary']);
+            $totalTokens += $tokenCounter->countTextTokens($review['summary'], $context);
         }
 
         // Guidelines
         foreach ($this->guidelines as $guideline) {
-            $totalChars += mb_strlen($guideline['content']);
+            $totalTokens += $tokenCounter->countTextTokens($guideline['content'], $context);
         }
 
         // File contents
         foreach ($this->fileContents as $content) {
-            $totalChars += mb_strlen($content);
+            $totalTokens += $tokenCounter->countTextTokens($content, $context);
         }
 
         // Semantic analysis data
         foreach ($this->semantics as $data) {
-            $totalChars += mb_strlen(json_encode($data) ?: '');
+            $totalTokens += $tokenCounter->countTextTokens(json_encode($data) ?: '', $context);
         }
 
         // Project context
-        $totalChars += mb_strlen(json_encode($this->projectContext) ?: '');
+        $totalTokens += $tokenCounter->countTextTokens(json_encode($this->projectContext) ?: '', $context);
 
-        return (int) ceil($totalChars * self::TOKENS_PER_CHAR);
+        // Impacted files
+        foreach ($this->impactedFiles as $impactedFile) {
+            $totalTokens += $tokenCounter->countTextTokens($impactedFile['content'], $context);
+        }
+
+        return $totalTokens;
     }
 
     /**
@@ -147,6 +155,7 @@ final class ContextBag
             'file_contents' => $this->fileContents,
             'semantics' => $this->semantics,
             'project_context' => $this->projectContext,
+            'impacted_files' => $this->impactedFiles,
             'metadata' => $this->metadata,
         ];
     }
