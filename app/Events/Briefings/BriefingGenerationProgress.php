@@ -4,20 +4,17 @@ declare(strict_types=1);
 
 namespace App\Events\Briefings;
 
-use App\Enums\Queue\Queue;
 use App\Models\BriefingGeneration;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-final class BriefingGenerationProgress implements ShouldBroadcast
+final class BriefingGenerationProgress implements ShouldBroadcastNow
 {
     use Dispatchable;
     use InteractsWithSockets;
-    use Queueable;
     use SerializesModels;
 
     /**
@@ -31,9 +28,7 @@ final class BriefingGenerationProgress implements ShouldBroadcast
         public BriefingGeneration $generation,
         public int $progress,
         public string $message,
-    ) {
-        $this->onQueue(Queue::BriefingsDefault->value);
-    }
+    ) {}
 
     /**
      * @return array<int, \Illuminate\Broadcasting\Channel>
