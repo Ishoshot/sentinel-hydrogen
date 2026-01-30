@@ -5,18 +5,29 @@ declare(strict_types=1);
 namespace App\Services\Reviews;
 
 use App\DataTransferObjects\SentinelConfig\ProviderConfig;
-use App\Enums\AiProvider;
-use App\Enums\FindingCategory;
-use App\Enums\ReviewVerdict;
-use App\Enums\RiskLevel;
-use App\Enums\SentinelConfigSeverity;
+use App\Enums\AI\AiProvider;
+use App\Enums\AI\TokenCountMode;
+use App\Enums\Reviews\FindingCategory;
+use App\Enums\Reviews\ReviewVerdict;
+use App\Enums\Reviews\RiskLevel;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Exceptions\NoProviderKeyException;
 use App\Models\AiOption;
 use App\Models\ProviderKey;
 use App\Models\Repository;
 use App\Services\Context\ContextBag;
+use App\Services\Context\Contracts\TokenCounter;
+use App\Services\Context\Filters\TokenLimitFilter;
+use App\Services\Context\TokenCounting\TokenCounterContext;
 use App\Services\Reviews\Contracts\ProviderKeyResolver;
 use App\Services\Reviews\Contracts\ReviewEngine;
+use App\Services\Reviews\ValueObjects\ModelLimits;
+use App\Services\Reviews\ValueObjects\PromptSnapshot;
+use App\Services\Reviews\ValueObjects\PullRequestMetrics;
+use App\Services\Reviews\ValueObjects\ReviewFinding;
+use App\Services\Reviews\ValueObjects\ReviewMetrics;
+use App\Services\Reviews\ValueObjects\ReviewResult;
+use App\Services\Reviews\ValueObjects\ReviewSummary;
 use Illuminate\Support\Facades\Log;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
@@ -38,12 +49,21 @@ final readonly class PrismReviewEngine implements ReviewEngine
 {
     private const int MAX_FALLBACK_ATTEMPTS = 3;
 
+    private const int DEFAULT_OUTPUT_TOKENS = 8192;
+
+    private const int MIN_CONTEXT_TOKENS = 8000;
+
+    private const int SAFETY_MARGIN_TOKENS = 500;
+
     /**
      * Create a new engine instance.
      */
     public function __construct(
         private ReviewPromptBuilder $promptBuilder,
         private ProviderKeyResolver $keyResolver,
+        private ModelLimitsResolver $modelLimitsResolver,
+        private TokenLimitFilter $tokenLimitFilter,
+        private TokenCounter $tokenCounter,
     ) {}
 
     /**
@@ -53,11 +73,10 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Supports provider preferences and fallback retry logic.
      *
      * @param  array{repository: Repository, policy_snapshot: array<string, mixed>, context_bag: ContextBag}  $context
-     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, input_tokens: int, output_tokens: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
      *
      * @throws NoProviderKeyException When no BYOK provider keys are configured for the repository
      */
-    public function review(array $context): array
+    public function review(array $context): ReviewResult
     {
         /** @var Repository $repository */
         $repository = $context['repository'];
@@ -125,9 +144,8 @@ final readonly class PrismReviewEngine implements ReviewEngine
      * Execute a review with a specific provider.
      *
      * @param  array{repository: Repository, policy_snapshot: array<string, mixed>, context_bag: ContextBag}  $context
-     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, input_tokens: int, output_tokens: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
      */
-    private function executeReview(array $context, AiProvider $aiProvider, ProviderConfig $providerConfig): array
+    private function executeReview(array $context, AiProvider $aiProvider, ProviderConfig $providerConfig): ReviewResult
     {
         $startTime = microtime(true);
 
@@ -144,10 +162,43 @@ final readonly class PrismReviewEngine implements ReviewEngine
         $provider = $this->mapToProvider($aiProvider);
         $model = $this->resolveModel($aiProvider, $providerConfig, $providerKey);
 
-        $systemPrompt = $this->promptBuilder->buildSystemPrompt($context['policy_snapshot']);
-
         $bag = $context['context_bag'];
+        $bag->metadata['token_counter_provider'] = $aiProvider->value;
+        $bag->metadata['token_counter_model'] = $model;
+
+        $tokenCounterContext = new TokenCounterContext($aiProvider, $model);
+        $limits = $this->modelLimitsResolver->resolve($aiProvider, $model);
+        $outputBudget = $this->resolveOutputBudget($limits);
+        $baseSystemPrompt = $this->promptBuilder->buildSystemPrompt($context['policy_snapshot']);
+        $contextBudget = $this->resolveContextBudget($limits, $baseSystemPrompt, $outputBudget, $tokenCounterContext);
+
+        $bag->metadata['context_token_budget'] = $contextBudget;
+        $bag->metadata['output_token_budget'] = $outputBudget;
+        $this->tokenLimitFilter->filter($bag);
+
+        $systemPrompt = $this->promptBuilder->buildSystemPrompt($context['policy_snapshot'], $bag->guidelines);
+        $finalContextBudget = $this->resolveContextBudget($limits, $systemPrompt, $outputBudget, $tokenCounterContext);
+
+        if ($finalContextBudget < $contextBudget) {
+            $bag->metadata['context_token_budget'] = $finalContextBudget;
+            $this->tokenLimitFilter->filter($bag);
+            $systemPrompt = $this->promptBuilder->buildSystemPrompt($context['policy_snapshot'], $bag->guidelines);
+        }
+
         $userPrompt = $this->promptBuilder->buildUserPromptFromBag($bag);
+        $maxInputTokens = $limits->contextWindowTokens - $outputBudget - self::SAFETY_MARGIN_TOKENS;
+        $preciseContext = $tokenCounterContext->withMode(TokenCountMode::Precise, $apiKey);
+        $promptTokens = $this->tokenCounter->countMessageTokens($systemPrompt, $userPrompt, $preciseContext);
+
+        if ($promptTokens > $maxInputTokens) {
+            $overage = $promptTokens - $maxInputTokens;
+            $bag->metadata['context_token_budget'] = max($finalContextBudget - $overage, self::MIN_CONTEXT_TOKENS);
+            $this->tokenLimitFilter->filter($bag);
+            $systemPrompt = $this->promptBuilder->buildSystemPrompt($context['policy_snapshot'], $bag->guidelines);
+            $userPrompt = $this->promptBuilder->buildUserPromptFromBag($bag);
+        }
+
+        $promptSnapshot = $this->buildPromptSnapshot($systemPrompt, $userPrompt);
         $inputMetrics = $bag->metrics;
 
         $enableThinking = $aiProvider === AiProvider::Anthropic
@@ -165,7 +216,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
             ->withSchema($this->buildReviewSchema())
             ->withSystemPrompt($systemPrompt)
             ->withPrompt($userPrompt)
-            ->withMaxTokens(8192)
+            ->withMaxTokens($outputBudget)
             ->usingTemperature($temperature)
             ->withProviderOptions($providerOptions)
             ->withClientOptions(['timeout' => 420])
@@ -173,14 +224,15 @@ final readonly class PrismReviewEngine implements ReviewEngine
 
         $durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
-        /** @var array{files_changed: int, lines_added: int, lines_deleted: int} $metricsForParsing */
-        $metricsForParsing = [
-            'files_changed' => $inputMetrics['files_changed'] ?? 0,
-            'lines_added' => $inputMetrics['lines_added'] ?? 0,
-            'lines_deleted' => $inputMetrics['lines_deleted'] ?? 0,
-        ];
+        $inputMetricsVO = new PullRequestMetrics(
+            filesChanged: $inputMetrics['files_changed'] ?? 0,
+            linesAdded: $inputMetrics['lines_added'] ?? 0,
+            linesDeleted: $inputMetrics['lines_deleted'] ?? 0,
+        );
 
-        return $this->parseStructuredResponse($response, $metricsForParsing, $model, $provider->value, $durationMs);
+        $promptSnapshotVO = PromptSnapshot::fromArray($promptSnapshot);
+
+        return $this->parseStructuredResponse($response, $inputMetricsVO, $model, $provider->value, $durationMs, $promptSnapshotVO);
     }
 
     /**
@@ -273,6 +325,29 @@ final readonly class PrismReviewEngine implements ReviewEngine
     }
 
     /**
+     * Resolve max output tokens for the current model.
+     */
+    private function resolveOutputBudget(ModelLimits $limits): int
+    {
+        return min(self::DEFAULT_OUTPUT_TOKENS, $limits->maxOutputTokens);
+    }
+
+    /**
+     * Resolve the max context tokens for the review prompt.
+     */
+    private function resolveContextBudget(
+        ModelLimits $limits,
+        string $systemPrompt,
+        int $outputBudget,
+        TokenCounterContext $tokenCounterContext
+    ): int {
+        $systemTokens = $this->tokenCounter->countTextTokens($systemPrompt, $tokenCounterContext);
+        $budget = $limits->contextWindowTokens - $systemTokens - $outputBudget - self::SAFETY_MARGIN_TOKENS;
+
+        return max($budget, self::MIN_CONTEXT_TOKENS);
+    }
+
+    /**
      * Build the JSON schema for structured review output.
      */
     private function buildReviewSchema(): ObjectSchema
@@ -325,17 +400,15 @@ final readonly class PrismReviewEngine implements ReviewEngine
 
     /**
      * Parse the structured AI response.
-     *
-     * @param  array{files_changed: int, lines_added: int, lines_deleted: int}  $inputMetrics
-     * @return array{summary: array<string, mixed>, findings: array<int, array<string, mixed>>, metrics: array{files_changed: int, lines_added: int, lines_deleted: int, input_tokens: int, output_tokens: int, tokens_used_estimated: int, model: string, provider: string, duration_ms: int}}
      */
     private function parseStructuredResponse(
         StructuredResponse $response,
-        array $inputMetrics,
+        PullRequestMetrics $inputMetrics,
         string $model,
         string $provider,
-        int $durationMs
-    ): array {
+        int $durationMs,
+        PromptSnapshot $promptSnapshot
+    ): ReviewResult {
         /** @var array<string, mixed> $parsed */
         $parsed = $response->structured;
 
@@ -347,52 +420,76 @@ final readonly class PrismReviewEngine implements ReviewEngine
         /** @var array<int, mixed> $findingsData */
         $findingsData = is_array($rawFindings) ? $rawFindings : [];
 
-        $summary = $this->normalizeSummary($summaryData);
-        $findings = $this->normalizeFindings($findingsData);
+        $summary = $this->normalizeSummaryToVO($summaryData);
+        $findings = $this->normalizeFindingsToVOs($findingsData);
 
         $inputTokens = $response->usage->promptTokens;
         $outputTokens = $response->usage->completionTokens;
 
+        return new ReviewResult(
+            summary: $summary,
+            findings: $findings,
+            metrics: new ReviewMetrics(
+                filesChanged: $inputMetrics->filesChanged,
+                linesAdded: $inputMetrics->linesAdded,
+                linesDeleted: $inputMetrics->linesDeleted,
+                inputTokens: $inputTokens,
+                outputTokens: $outputTokens,
+                tokensUsedEstimated: $inputTokens + $outputTokens,
+                model: $model,
+                provider: $provider,
+                durationMs: $durationMs,
+            ),
+            promptSnapshot: $promptSnapshot,
+        );
+    }
+
+    /**
+     * Build a snapshot of the prompts used for this review.
+     *
+     * @return array{system: array{version: string, hash: string}, user: array{version: string, hash: string}, hash_algorithm: string}
+     */
+    private function buildPromptSnapshot(string $systemPrompt, string $userPrompt): array
+    {
         return [
-            'summary' => $summary,
-            'findings' => $findings,
-            'metrics' => [
-                'files_changed' => $inputMetrics['files_changed'],
-                'lines_added' => $inputMetrics['lines_added'],
-                'lines_deleted' => $inputMetrics['lines_deleted'],
-                'input_tokens' => $inputTokens,
-                'output_tokens' => $outputTokens,
-                'tokens_used_estimated' => $inputTokens + $outputTokens,
-                'model' => $model,
-                'provider' => $provider,
-                'duration_ms' => $durationMs,
+            'system' => [
+                'version' => ReviewPromptBuilder::SYSTEM_PROMPT_VERSION,
+                'hash' => hash('sha256', $systemPrompt),
             ],
+            'user' => [
+                'version' => ReviewPromptBuilder::USER_PROMPT_VERSION,
+                'hash' => hash('sha256', $userPrompt),
+            ],
+            'hash_algorithm' => 'sha256',
         ];
     }
 
     /**
-     * Normalize and validate the summary structure.
+     * Normalize and validate the summary structure to a VO.
      *
      * @param  array<string, mixed>  $summary
-     * @return array{overview: string, verdict: string, risk_level: string, strengths: array<int, string>, concerns: array<int, string>, recommendations: array<int, string>}
      */
-    private function normalizeSummary(array $summary): array
+    private function normalizeSummaryToVO(array $summary): ReviewSummary
     {
         $rawVerdict = $summary['verdict'] ?? null;
         $rawRiskLevel = $summary['risk_level'] ?? null;
 
-        return [
-            'overview' => is_string($summary['overview'] ?? null) ? $summary['overview'] : 'Review completed.',
-            'verdict' => is_string($rawVerdict) && in_array($rawVerdict, ReviewVerdict::values(), true)
-                ? $rawVerdict
-                : ReviewVerdict::Comment->value,
-            'risk_level' => is_string($rawRiskLevel) && in_array($rawRiskLevel, RiskLevel::values(), true)
-                ? $rawRiskLevel
-                : RiskLevel::Low->value,
-            'strengths' => $this->filterStringArray($summary['strengths'] ?? []),
-            'concerns' => $this->filterStringArray($summary['concerns'] ?? []),
-            'recommendations' => $this->filterStringArray($summary['recommendations'] ?? []),
-        ];
+        $verdict = is_string($rawVerdict)
+            ? (ReviewVerdict::tryFrom($rawVerdict) ?? ReviewVerdict::Comment)
+            : ReviewVerdict::Comment;
+
+        $riskLevel = is_string($rawRiskLevel)
+            ? (RiskLevel::tryFrom($rawRiskLevel) ?? RiskLevel::Low)
+            : RiskLevel::Low;
+
+        return new ReviewSummary(
+            overview: is_string($summary['overview'] ?? null) ? $summary['overview'] : 'Review completed.',
+            verdict: $verdict,
+            riskLevel: $riskLevel,
+            strengths: $this->filterStringArray($summary['strengths'] ?? []),
+            concerns: $this->filterStringArray($summary['concerns'] ?? []),
+            recommendations: $this->filterStringArray($summary['recommendations'] ?? []),
+        );
     }
 
     /**
@@ -410,12 +507,12 @@ final readonly class PrismReviewEngine implements ReviewEngine
     }
 
     /**
-     * Normalize and validate the findings array.
+     * Normalize and validate the findings array to VOs.
      *
      * @param  array<int, mixed>  $findings
-     * @return array<int, array<string, mixed>>
+     * @return array<int, ReviewFinding>
      */
-    private function normalizeFindings(array $findings): array
+    private function normalizeFindingsToVOs(array $findings): array
     {
         $normalized = [];
 
@@ -425,9 +522,9 @@ final readonly class PrismReviewEngine implements ReviewEngine
             }
 
             /** @var array<string, mixed> $finding */
-            $normalizedFinding = $this->normalizeFinding($finding);
+            $normalizedFinding = $this->normalizeFindingToVO($finding);
 
-            if ($normalizedFinding !== null) {
+            if ($normalizedFinding instanceof ReviewFinding) {
                 $normalized[] = $normalizedFinding;
             }
         }
@@ -436,12 +533,11 @@ final readonly class PrismReviewEngine implements ReviewEngine
     }
 
     /**
-     * Normalize a single finding.
+     * Normalize a single finding to a VO.
      *
      * @param  array<string, mixed>  $finding
-     * @return array<string, mixed>|null
      */
-    private function normalizeFinding(array $finding): ?array
+    private function normalizeFindingToVO(array $finding): ?ReviewFinding
     {
         if (
             ! isset($finding['severity'], $finding['category'], $finding['title'], $finding['description'])
@@ -453,65 +549,32 @@ final readonly class PrismReviewEngine implements ReviewEngine
             return null;
         }
 
-        $severity = in_array($finding['severity'], SentinelConfigSeverity::values(), true)
-            ? $finding['severity']
-            : SentinelConfigSeverity::Info->value;
-
-        $category = in_array($finding['category'], FindingCategory::values(), true)
-            ? $finding['category']
-            : FindingCategory::Maintainability->value;
+        $severity = SentinelConfigSeverity::tryFrom($finding['severity']) ?? SentinelConfigSeverity::Info;
+        $category = FindingCategory::tryFrom($finding['category']) ?? FindingCategory::Maintainability;
 
         $confidence = isset($finding['confidence']) && is_numeric($finding['confidence'])
             ? max(0.0, min(1.0, (float) $finding['confidence']))
             : 0.5;
 
-        $impact = isset($finding['impact']) && is_string($finding['impact'])
-            ? $finding['impact']
-            : '';
-
-        $result = [
-            'severity' => $severity,
-            'category' => $category,
-            'title' => $finding['title'],
-            'description' => $finding['description'],
-            'impact' => $impact,
-            'confidence' => $confidence,
-        ];
-
-        // Location fields
-        if (isset($finding['file_path']) && is_string($finding['file_path'])) {
-            $result['file_path'] = $finding['file_path'];
-        }
-
-        if (isset($finding['line_start']) && is_int($finding['line_start'])) {
-            $result['line_start'] = $finding['line_start'];
-        }
-
-        if (isset($finding['line_end']) && is_int($finding['line_end'])) {
-            $result['line_end'] = $finding['line_end'];
-        }
-
-        // Code replacement fields (new enhanced structure)
-        if (isset($finding['current_code']) && is_string($finding['current_code'])) {
-            $result['current_code'] = $finding['current_code'];
-        }
-
-        if (isset($finding['replacement_code']) && is_string($finding['replacement_code'])) {
-            $result['replacement_code'] = $finding['replacement_code'];
-        }
-
-        if (isset($finding['explanation']) && is_string($finding['explanation'])) {
-            $result['explanation'] = $finding['explanation'];
-        }
-
-        // References
+        $references = [];
         if (isset($finding['references']) && is_array($finding['references'])) {
-            $references = array_filter($finding['references'], is_string(...));
-            if ($references !== []) {
-                $result['references'] = array_values($references);
-            }
+            $references = array_values(array_filter($finding['references'], is_string(...)));
         }
 
-        return $result;
+        return new ReviewFinding(
+            severity: $severity,
+            category: $category,
+            title: $finding['title'],
+            description: $finding['description'],
+            impact: isset($finding['impact']) && is_string($finding['impact']) ? $finding['impact'] : '',
+            confidence: $confidence,
+            filePath: isset($finding['file_path']) && is_string($finding['file_path']) ? $finding['file_path'] : null,
+            lineStart: isset($finding['line_start']) && is_int($finding['line_start']) ? $finding['line_start'] : null,
+            lineEnd: isset($finding['line_end']) && is_int($finding['line_end']) ? $finding['line_end'] : null,
+            currentCode: isset($finding['current_code']) && is_string($finding['current_code']) ? $finding['current_code'] : null,
+            replacementCode: isset($finding['replacement_code']) && is_string($finding['replacement_code']) ? $finding['replacement_code'] : null,
+            explanation: isset($finding['explanation']) && is_string($finding['explanation']) ? $finding['explanation'] : null,
+            references: $references,
+        );
     }
 }

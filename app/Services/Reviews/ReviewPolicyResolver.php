@@ -5,37 +5,63 @@ declare(strict_types=1);
 namespace App\Services\Reviews;
 
 use App\DataTransferObjects\SentinelConfig\AnnotationsConfig;
+use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\DataTransferObjects\SentinelConfig\ProviderConfig;
 use App\DataTransferObjects\SentinelConfig\ReviewConfig;
+use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
+use App\Services\Reviews\Contracts\ReviewPolicyResolverContract;
+use App\Services\Reviews\ValueObjects\ReviewPolicy;
 
-final readonly class ReviewPolicyResolver
+final readonly class ReviewPolicyResolver implements ReviewPolicyResolverContract
 {
     /**
      * Resolve the review policy for a repository.
      *
-     * @return array<string, mixed>
+     * @param  array<string, mixed>|null  $sentinelConfigData
      */
-    public function resolve(Repository $repository): array
-    {
+    public function resolve(
+        Repository $repository,
+        ?array $sentinelConfigData = null,
+        ?string $configBranch = null
+    ): ReviewPolicy {
         $repository->loadMissing('settings');
 
         /** @var array<string, mixed> $result */
         $result = config('reviews.default_policy', []);
 
         $settings = $repository->settings;
-        $sentinelConfig = $settings?->getConfigOrDefault();
+        $configSource = 'default';
+        $sentinelConfig = null;
+
+        if (is_array($sentinelConfigData)) {
+            /** @var array<string, mixed> $sentinelConfigData */
+            $sentinelConfig = SentinelConfig::fromArray($sentinelConfigData);
+            $configSource = 'branch';
+        } else {
+            $sentinelConfig = $settings?->getSentinelConfigDto();
+            if ($sentinelConfig !== null) {
+                $configSource = 'settings';
+            }
+        }
 
         if ($sentinelConfig !== null) {
             $reviewConfig = $sentinelConfig->getReviewOrDefault();
+            $pathsConfig = $sentinelConfig->getPathsOrDefault();
             $annotationsConfig = $sentinelConfig->getAnnotationsOrDefault();
             $providerConfig = $sentinelConfig->getProviderOrDefault();
             $result = $this->mergeReviewConfig($result, $reviewConfig);
+            $result = $this->mergePathsConfig($result, $pathsConfig);
             $result = $this->mergeAnnotationsConfig($result, $annotationsConfig);
             $result = $this->mergeProviderConfig($result, $providerConfig);
         }
 
-        return $result;
+        $result['config_source'] = $configSource;
+        if ($configBranch !== null) {
+            $result['config_branch'] = $configBranch;
+        }
+
+        return ReviewPolicy::fromArray($result);
     }
 
     /**
@@ -71,6 +97,25 @@ final readonly class ReviewPolicyResolver
         if ($reviewConfig->focus !== []) {
             $policy['focus'] = $reviewConfig->focus;
         }
+
+        return $policy;
+    }
+
+    /**
+     * Merge PathsConfig into the policy array.
+     *
+     * @param  array<string, mixed>  $policy
+     * @return array<string, mixed>
+     */
+    private function mergePathsConfig(array $policy, PathsConfig $pathsConfig): array
+    {
+        $existingIgnored = $policy['ignored_paths'] ?? [];
+        $ignored = array_merge(
+            is_array($existingIgnored) ? $existingIgnored : [],
+            $pathsConfig->ignore
+        );
+
+        $policy['ignored_paths'] = array_values(array_unique($ignored));
 
         return $policy;
     }

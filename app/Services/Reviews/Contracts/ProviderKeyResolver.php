@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews\Contracts;
 
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use App\Models\ProviderKey;
 use App\Models\Repository;
 
