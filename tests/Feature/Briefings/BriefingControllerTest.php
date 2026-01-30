@@ -40,7 +40,22 @@ it('lists available briefings for workspace', function (): void {
     $response->assertOk()
         ->assertJsonStructure([
             'data' => [
-                '*' => ['id', 'title', 'slug', 'description', 'icon'],
+                '*' => [
+                    'id',
+                    'workspace_id',
+                    'title',
+                    'slug',
+                    'description',
+                    'icon',
+                    'eligible_plan_ids',
+                    'output_formats',
+                    'is_schedulable',
+                    'is_system',
+                    'sort_order',
+                    'is_active',
+                    'created_at',
+                    'updated_at',
+                ],
             ],
         ]);
 

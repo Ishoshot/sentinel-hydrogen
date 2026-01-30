@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\BriefingDeliveryChannel;
-use App\Enums\BriefingSchedulePreset;
+use App\Enums\Briefings\BriefingDeliveryChannel;
+use App\Enums\Briefings\BriefingSchedulePreset;
 use App\Models\Briefing;
 use App\Models\BriefingSubscription;
 use App\Models\Plan;
@@ -75,7 +75,9 @@ it('lists user subscriptions for workspace', function (): void {
         ->getJson(route('briefing-subscriptions.index', $this->workspace));
 
     $response->assertOk()
-        ->assertJsonCount(3, 'data');
+        ->assertJsonCount(3, 'data')
+        ->assertJsonPath('data.0.workspace_id', $this->workspace->id)
+        ->assertJsonPath('data.0.user_id', $this->user->id);
 });
 
 it('creates a subscription successfully', function (): void {

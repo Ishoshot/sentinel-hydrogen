@@ -2,17 +2,19 @@
 
 declare(strict_types=1);
 
-use App\Enums\BriefingGenerationStatus;
+use App\Enums\Briefings\BriefingGenerationStatus;
 use App\Jobs\Briefings\ProcessBriefingGeneration;
 use App\Models\Briefing;
 use App\Models\BriefingGeneration;
 use App\Models\Plan;
+use App\Models\Repository;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function (): void {
     Queue::fake();
+    config(['briefings.data_guard.enabled' => false]);
 
     $this->user = User::factory()->create();
     $this->plan = Plan::factory()->create();
@@ -59,6 +61,30 @@ it('lists briefing generations for workspace', function (): void {
         ->assertJsonCount(3, 'data');
 });
 
+it('filters briefing generations by status', function (): void {
+    BriefingGeneration::factory()
+        ->forWorkspace($this->workspace)
+        ->forBriefing($this->briefing)
+        ->completed()
+        ->create(['generated_by_id' => $this->user->id]);
+
+    BriefingGeneration::factory()
+        ->forWorkspace($this->workspace)
+        ->forBriefing($this->briefing)
+        ->processing()
+        ->create(['generated_by_id' => $this->user->id]);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson(route('briefing-generations.index', [
+            $this->workspace,
+            'status' => [BriefingGenerationStatus::Completed->value],
+        ]));
+
+    $response->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.status', BriefingGenerationStatus::Completed->value);
+});
+
 it('shows a specific briefing generation', function (): void {
     $generation = BriefingGeneration::factory()
         ->forWorkspace($this->workspace)
@@ -71,7 +97,11 @@ it('shows a specific briefing generation', function (): void {
 
     $response->assertOk()
         ->assertJsonPath('data.id', $generation->id)
-        ->assertJsonPath('data.status', BriefingGenerationStatus::Completed->value);
+        ->assertJsonPath('data.status', BriefingGenerationStatus::Completed->value)
+        ->assertJsonPath('data.workspace_id', $this->workspace->id)
+        ->assertJsonPath('data.generated_by_id', $this->user->id)
+        ->assertJsonPath('data.generated_by.id', $this->user->id)
+        ->assertJsonPath('data.expires_at', $generation->expires_at?->toIso8601String());
 });
 
 it('generates a briefing and dispatches processing job', function (): void {
@@ -93,6 +123,43 @@ it('generates a briefing and dispatches processing job', function (): void {
     Queue::assertPushed(ProcessBriefingGeneration::class);
 
     expect(BriefingGeneration::where('workspace_id', $this->workspace->id)->count())->toBe(1);
+
+    $generation = BriefingGeneration::query()->where('workspace_id', $this->workspace->id)->firstOrFail();
+
+    expect($generation->expires_at)->not()->toBeNull()
+        ->and($generation->expires_at?->greaterThan(now()))->toBeTrue();
+});
+
+it('rejects briefing generation when date range exceeds configured limit', function (): void {
+    config()->set('briefings.limits.max_date_range_days', 3);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefings.generate', [$this->workspace, $this->briefing->slug]), [
+            'parameters' => [
+                'start_date' => now()->subDays(10)->toDateString(),
+                'end_date' => now()->toDateString(),
+            ],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['end_date']);
+});
+
+it('rejects briefing generation when repository limit is exceeded', function (): void {
+    config()->set('briefings.limits.max_repositories', 1);
+
+    $repoOne = Repository::factory()->create(['workspace_id' => $this->workspace->id]);
+    $repoTwo = Repository::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefings.generate', [$this->workspace, $this->briefing->slug]), [
+            'parameters' => [
+                'repository_ids' => [$repoOne->id, $repoTwo->id],
+            ],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['repository_ids']);
 });
 
 it('returns 404 when generating for non-existent briefing', function (): void {
