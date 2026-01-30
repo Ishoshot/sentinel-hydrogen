@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Enums\InstallationStatus;
-use App\Enums\ProviderType;
+use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
+use App\Enums\Auth\ProviderType;
+use App\Enums\GitHub\InstallationStatus;
 use App\Jobs\GitHub\ProcessInstallationRepositoriesWebhook;
 use App\Jobs\GitHub\ProcessInstallationWebhook;
 use App\Jobs\GitHub\ProcessPullRequestWebhook;
@@ -12,6 +13,7 @@ use App\Models\Installation;
 use App\Models\Provider;
 use App\Models\Repository;
 use App\Services\GitHub\Contracts\GitHubAppServiceContract;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function (): void {
@@ -32,6 +34,15 @@ beforeEach(function (): void {
 
         return $mock;
     });
+
+    $fetchConfigMock = Mockery::mock(FetchesSentinelConfig::class);
+    $fetchConfigMock->shouldReceive('handle')->andReturn([
+        'found' => false,
+        'content' => null,
+        'sha' => null,
+        'error' => null,
+    ]);
+    $this->app->instance(FetchesSentinelConfig::class, $fetchConfigMock);
 });
 
 function createWebhookSignature(string $payload, string $secret = 'test-secret'): string
@@ -69,6 +80,44 @@ it('verifies webhook signature', function (): void {
 
     $response->assertOk();
     Queue::assertPushed(ProcessInstallationWebhook::class);
+});
+
+it('logs webhook receipt without raw payload', function (): void {
+    Queue::fake();
+    Log::spy();
+
+    $payload = json_encode([
+        'action' => 'created',
+        'installation' => [
+            'id' => 12345678,
+            'account' => [
+                'type' => 'User',
+                'login' => 'testuser',
+                'avatar_url' => 'https://example.com/avatar.jpg',
+            ],
+            'permissions' => ['contents' => 'read'],
+            'events' => ['push'],
+        ],
+    ]);
+
+    $response = $this->postJson(
+        route('webhooks.github'),
+        json_decode($payload, true),
+        [
+            'X-Hub-Signature-256' => createWebhookSignature($payload),
+            'X-GitHub-Event' => 'installation',
+            'X-GitHub-Delivery' => 'test-delivery-id',
+            'Content-Type' => 'application/json',
+        ]
+    );
+
+    $response->assertOk();
+
+    Log::shouldHaveReceived('info')->withArgs(function (string $message, array $context) use ($payload): bool {
+        return $message === 'GitHub webhook received'
+            && ! array_key_exists('payload', $context)
+            && ($context['payload_bytes'] ?? null) === mb_strlen($payload, '8bit');
+    });
 });
 
 it('rejects invalid webhook signature', function (): void {

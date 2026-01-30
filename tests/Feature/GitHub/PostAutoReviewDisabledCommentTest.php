@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\GitHub\PostAutoReviewDisabledComment;
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Provider;

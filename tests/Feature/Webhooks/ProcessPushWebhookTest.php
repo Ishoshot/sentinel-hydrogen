@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
 use App\Jobs\GitHub\ProcessPushWebhook;
 use App\Models\Connection;
 use App\Models\Installation;

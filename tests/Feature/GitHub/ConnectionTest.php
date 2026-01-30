@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\ConnectionStatus;
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Workspace\ConnectionStatus;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Provider;

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\GitHub\PostConfigErrorComment;
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
 use App\Models\Connection;
 use App\Models\Installation;
 use App\Models\Provider;
