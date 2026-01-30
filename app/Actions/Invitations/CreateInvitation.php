@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Invitations;
 
 use App\Actions\Activities\LogActivity;
-use App\Enums\ActivityType;
-use App\Enums\TeamRole;
+use App\Enums\Workspace\ActivityType;
+use App\Enums\Workspace\TeamRole;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;

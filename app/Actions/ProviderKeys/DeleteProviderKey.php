@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\ProviderKeys;
 
 use App\Actions\Activities\LogActivity;
-use App\Enums\ActivityType;
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
+use App\Enums\Workspace\ActivityType;
 use App\Models\ProviderKey;
 use App\Models\Repository;
 use App\Models\User;
