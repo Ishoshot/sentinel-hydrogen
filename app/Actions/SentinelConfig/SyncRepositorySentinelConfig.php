@@ -6,7 +6,7 @@ namespace App\Actions\SentinelConfig;
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
-use App\Enums\PlanFeature;
+use App\Enums\Billing\PlanFeature;
 use App\Models\Repository;
 use App\Services\Plans\PlanLimitEnforcer;
 use App\Services\SentinelConfig\Contracts\SentinelConfigParser;

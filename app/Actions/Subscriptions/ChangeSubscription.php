@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace App\Actions\Subscriptions;
 
 use App\Actions\Activities\LogActivity;
-use App\Actions\Promotions\ValidatePromotion;
-use App\Enums\ActivityType;
-use App\Enums\BillingInterval;
-use App\Enums\PlanTier;
-use App\Enums\PromotionUsageStatus;
-use App\Enums\SubscriptionStatus;
+use App\Enums\Billing\BillingInterval;
+use App\Enums\Billing\PlanTier;
+use App\Enums\Billing\SubscriptionStatus;
+use App\Enums\Promotions\PromotionUsageStatus;
+use App\Enums\Workspace\ActivityType;
 use App\Models\Plan;
 use App\Models\Promotion;
 use App\Models\PromotionUsage;
@@ -18,6 +17,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Billing\PolarBillingService;
+use App\Services\Promotions\Contracts\PromotionValidatorContract;
 use App\Support\PlanDefaults;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -32,7 +32,7 @@ final readonly class ChangeSubscription
      */
     public function __construct(
         private PolarBillingService $billingService,
-        private ValidatePromotion $validatePromotion,
+        private PromotionValidatorContract $promotionValidator,
         private LogActivity $logActivity,
     ) {}
 
@@ -63,13 +63,13 @@ final readonly class ChangeSubscription
         $promotion = null;
 
         if (in_array($direction, ['subscribe', 'upgrade'], true) && is_string($promoCode) && $promoCode !== '') {
-            $promoResult = $this->validatePromotion->handle($promoCode);
+            $promoResult = $this->promotionValidator->validate($promoCode);
 
-            if (! $promoResult['valid']) {
-                throw new InvalidArgumentException($promoResult['message'] ?? 'Invalid promotion code.');
+            if ($promoResult->failed()) {
+                throw new InvalidArgumentException($promoResult->message ?? 'Invalid promotion code.');
             }
 
-            $promotion = $promoResult['promotion'];
+            $promotion = $promoResult->promotion;
         }
 
         return match ($direction) {

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Actions\Subscriptions;
 
 use App\Actions\Activities\LogActivity;
-use App\Enums\ActivityType;
-use App\Enums\PlanTier;
-use App\Enums\SubscriptionStatus;
+use App\Enums\Billing\PlanTier;
+use App\Enums\Billing\SubscriptionStatus;
+use App\Enums\Workspace\ActivityType;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
