@@ -7,8 +7,9 @@ namespace App\Http\Controllers;
 use App\Actions\ProviderKeys\DeleteProviderKey;
 use App\Actions\ProviderKeys\StoreProviderKey;
 use App\Actions\ProviderKeys\UpdateProviderKeyModel;
-use App\Enums\AiProvider;
+use App\Enums\AI\AiProvider;
 use App\Http\Requests\ProviderKey\StoreProviderKeyRequest;
+use App\Http\Requests\ProviderKey\UpdateProviderKeyRequest;
 use App\Http\Resources\ProviderKeyResource;
 use App\Models\ProviderKey;
 use App\Models\Repository;
@@ -16,7 +17,6 @@ use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use InvalidArgumentException;
 
 final class ProviderKeyController
 {
@@ -64,19 +64,13 @@ final class ProviderKeyController
         /** @var \App\Models\User|null $user */
         $user = $request->user();
 
-        try {
-            $providerKey = $storeAction->handle(
-                repository: $repository,
-                provider: AiProvider::from($validated['provider']),
-                key: $validated['key'],
-                actor: $user,
-                providerModelId: $validated['provider_model_id'] ?? null,
-            );
-        } catch (InvalidArgumentException $invalidArgumentException) {
-            return response()->json([
-                'message' => $invalidArgumentException->getMessage(),
-            ], 422);
-        }
+        $providerKey = $storeAction->handle(
+            repository: $repository,
+            provider: AiProvider::from($validated['provider']),
+            key: $validated['key'],
+            actor: $user,
+            providerModelId: $validated['provider_model_id'] ?? null,
+        );
 
         return response()->json([
             'data' => new ProviderKeyResource($providerKey),
@@ -88,7 +82,7 @@ final class ProviderKeyController
      * Update the AI model for a provider key.
      */
     public function update(
-        Request $request,
+        UpdateProviderKeyRequest $request,
         Workspace $workspace,
         Repository $repository,
         ProviderKey $providerKey,
@@ -104,21 +98,10 @@ final class ProviderKeyController
 
         Gate::authorize('update', $providerKey);
 
-        /** @var array{provider_model_id?: int|null} $validated */
-        $validated = $request->validate([
-            'provider_model_id' => ['nullable', 'integer', 'exists:provider_models,id'],
-        ]);
-
-        try {
-            $updatedKey = $updateAction->handle(
-                providerKey: $providerKey,
-                providerModelId: $validated['provider_model_id'] ?? null,
-            );
-        } catch (InvalidArgumentException $invalidArgumentException) {
-            return response()->json([
-                'message' => $invalidArgumentException->getMessage(),
-            ], 422);
-        }
+        $updatedKey = $updateAction->handle(
+            providerKey: $providerKey,
+            providerModelId: $request->providerModelId(),
+        );
 
         return response()->json([
             'data' => new ProviderKeyResource($updatedKey->load('providerModel')),

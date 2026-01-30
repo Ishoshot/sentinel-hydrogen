@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Notifications\MarkAllNotificationsAsRead;
+use App\Actions\Notifications\MarkNotificationAsRead;
+use App\Actions\Notifications\MarkNotificationAsUnread;
 use App\Http\Resources\NotificationResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -67,33 +70,11 @@ final class NotificationController
     /**
      * Mark a notification as read.
      */
-    public function markAsRead(Request $request, string $id): JsonResponse
-    {
-        $user = $request->user();
-
-        if ($user === null) {
-            abort(401);
-        }
-
-        $notification = $user->notifications()->find($id);
-
-        if ($notification === null) {
-            abort(404, 'Notification not found.');
-        }
-
-        $notification->markAsRead();
-
-        return response()->json([
-            'data' => new NotificationResource($notification),
-            'message' => 'Notification marked as read.',
-        ]);
-    }
-
-    /**
-     * Mark a notification as unread.
-     */
-    public function markAsUnread(Request $request, string $id): JsonResponse
-    {
+    public function markAsRead(
+        Request $request,
+        string $id,
+        MarkNotificationAsRead $markAsRead,
+    ): JsonResponse {
         $user = $request->user();
 
         if ($user === null) {
@@ -107,10 +88,39 @@ final class NotificationController
             abort(404, 'Notification not found.');
         }
 
-        $notification->update(['read_at' => null]);
+        $notification = $markAsRead->handle($notification);
 
         return response()->json([
-            'data' => new NotificationResource($notification->fresh()),
+            'data' => new NotificationResource($notification),
+            'message' => 'Notification marked as read.',
+        ]);
+    }
+
+    /**
+     * Mark a notification as unread.
+     */
+    public function markAsUnread(
+        Request $request,
+        string $id,
+        MarkNotificationAsUnread $markAsUnread,
+    ): JsonResponse {
+        $user = $request->user();
+
+        if ($user === null) {
+            abort(401);
+        }
+
+        /** @var DatabaseNotification|null $notification */
+        $notification = $user->notifications()->find($id);
+
+        if ($notification === null) {
+            abort(404, 'Notification not found.');
+        }
+
+        $notification = $markAsUnread->handle($notification);
+
+        return response()->json([
+            'data' => new NotificationResource($notification),
             'message' => 'Notification marked as unread.',
         ]);
     }
@@ -118,15 +128,18 @@ final class NotificationController
     /**
      * Mark all notifications as read.
      */
-    public function markAllAsRead(Request $request): JsonResponse
-    {
+    public function markAllAsRead(
+        Request $request,
+        MarkAllNotificationsAsRead $markAllAsRead,
+    ): JsonResponse {
+        /** @var \App\Models\User|null $user */
         $user = $request->user();
 
         if ($user === null) {
             abort(401);
         }
 
-        $user->unreadNotifications()->update(['read_at' => now()]);
+        $markAllAsRead->handle($user);
 
         return response()->json([
             'message' => 'All notifications marked as read.',
