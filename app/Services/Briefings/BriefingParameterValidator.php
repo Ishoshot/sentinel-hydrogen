@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Briefings;
 
 use App\Models\Briefing;
+use App\Services\Briefings\ValueObjects\BriefingParameters;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 final class BriefingParameterValidator
 {
@@ -15,16 +18,16 @@ final class BriefingParameterValidator
      *
      * @param  Briefing  $briefing  The briefing template
      * @param  array<string, mixed>  $parameters  The parameters to validate
-     * @return array<string, mixed> The validated parameters
+     * @return BriefingParameters The validated parameters
      *
      * @throws ValidationException
      */
-    public function validate(Briefing $briefing, array $parameters): array
+    public function validate(Briefing $briefing, array $parameters): BriefingParameters
     {
         $schema = $briefing->parameter_schema ?? [];
 
         if (empty($schema)) {
-            return $parameters;
+            return BriefingParameters::fromArray($parameters);
         }
 
         $rules = $this->buildValidationRules($schema);
@@ -39,7 +42,84 @@ final class BriefingParameterValidator
         /** @var array<string, mixed> $validated */
         $validated = $validator->validated();
 
-        return $validated;
+        $this->enforceConfigLimits($validated);
+
+        return BriefingParameters::fromArray($validated);
+    }
+
+    /**
+     * Enforce global briefing limits from configuration.
+     *
+     * @param  array<string, mixed>  $parameters
+     *
+     * @throws ValidationException
+     */
+    private function enforceConfigLimits(array $parameters): void
+    {
+        $this->enforceRepositoryLimit($parameters);
+        $this->enforceDateRangeLimit($parameters);
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     *
+     * @throws ValidationException
+     */
+    private function enforceRepositoryLimit(array $parameters): void
+    {
+        $maxRepositories = (int) config('briefings.limits.max_repositories', 10);
+
+        if ($maxRepositories <= 0) {
+            return;
+        }
+
+        $repositoryIds = $parameters['repository_ids'] ?? null;
+
+        if (! is_array($repositoryIds)) {
+            return;
+        }
+
+        if (count($repositoryIds) > $maxRepositories) {
+            throw ValidationException::withMessages([
+                'repository_ids' => sprintf('You can select up to %d repositories for a briefing.', $maxRepositories),
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     *
+     * @throws ValidationException
+     */
+    private function enforceDateRangeLimit(array $parameters): void
+    {
+        $maxDays = (int) config('briefings.limits.max_date_range_days', 90);
+
+        if ($maxDays <= 0) {
+            return;
+        }
+
+        $end = isset($parameters['end_date'])
+            ? Carbon::parse((string) $parameters['end_date'])
+            : now();
+
+        $start = isset($parameters['start_date'])
+            ? Carbon::parse((string) $parameters['start_date'])
+            : $end->copy()->subDays(7);
+
+        if ($start->greaterThan($end)) {
+            throw ValidationException::withMessages([
+                'start_date' => 'Start date must be before end date.',
+            ]);
+        }
+
+        $rangeDays = $start->diffInDays($end) + 1;
+
+        if ($rangeDays > $maxDays) {
+            throw ValidationException::withMessages([
+                'end_date' => sprintf('Date range cannot exceed %d days.', $maxDays),
+            ]);
+        }
     }
 
     /**
@@ -50,22 +130,39 @@ final class BriefingParameterValidator
      */
     private function buildValidationRules(array $schema): array
     {
+        /** @var array<string, array<int, string>> $rules */
         $rules = [];
 
-        /** @var array<string, array<string, mixed>> $properties */
-        $properties = is_array($schema['properties'] ?? null) ? $schema['properties'] : [];
+        $properties = $schema['properties'] ?? null;
+
+        if (! is_array($properties) || $properties === []) {
+            throw new RuntimeException('Briefing parameter schema must define properties.');
+        }
 
         /** @var array<int, string> $required */
         $required = is_array($schema['required'] ?? null) ? $schema['required'] : [];
 
         foreach ($properties as $field => $definition) {
+            if (! is_string($field)) {
+                throw new RuntimeException('Briefing parameter schema property names must be strings.');
+            }
+
+            if (! is_array($definition)) {
+                throw new RuntimeException(sprintf('Invalid schema definition for "%s".', $field));
+            }
+
             $fieldRules = [];
 
             // Required check
             $fieldRules[] = in_array($field, $required, true) ? 'required' : 'nullable';
 
             // Type rules
-            $type = (string) ($definition['type'] ?? 'string');
+            $type = $definition['type'] ?? null;
+
+            if (! is_string($type)) {
+                throw new RuntimeException(sprintf('Missing or invalid type for "%s".', $field));
+            }
+
             $fieldRules[] = match ($type) {
                 'string' => 'string',
                 'integer' => 'integer',
@@ -73,7 +170,7 @@ final class BriefingParameterValidator
                 'boolean' => 'boolean',
                 'array' => 'array',
                 'object' => 'array',
-                default => 'string',
+                default => throw new RuntimeException(sprintf('Unsupported type "%s" for "%s".', $type, $field)),
             };
 
             // Format rules

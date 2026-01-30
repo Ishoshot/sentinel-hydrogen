@@ -4,138 +4,221 @@ declare(strict_types=1);
 
 namespace App\Services\Briefings;
 
-use App\Enums\BriefingGenerationStatus;
+use App\Enums\Billing\PlanFeature;
+use App\Enums\Briefings\BriefingGenerationStatus;
 use App\Models\Briefing;
 use App\Models\BriefingGeneration;
+use App\Models\Plan;
 use App\Models\Workspace;
+use App\Services\Briefings\ValueObjects\BriefingLimitResult;
+use App\Services\Briefings\ValueObjects\BriefingParameters;
+use Carbon\CarbonInterface;
 
-final class BriefingLimitEnforcer
+final readonly class BriefingLimitEnforcer
 {
     /**
-     * Check if a workspace can generate a briefing.
-     *
-     * @return array{allowed: bool, reason: string|null}
+     * Create a new briefing limit enforcer.
      */
-    public function canGenerate(Workspace $workspace, Briefing $briefing): array
-    {
+    public function __construct(
+        private BriefingDataGuard $dataGuard,
+    ) {}
+
+    /**
+     * Check if a workspace can generate a briefing.
+     */
+    public function canGenerate(
+        Workspace $workspace,
+        Briefing $briefing,
+        ?BriefingParameters $parameters = null,
+        ?BriefingLimitResult $workspaceEligibility = null,
+    ): BriefingLimitResult {
         if (! $briefing->is_active) {
-            return $this->denied('This briefing is not currently available.');
+            return BriefingLimitResult::deny('This briefing is not currently available.');
         }
 
-        if (! $this->isPlanEligible($workspace, $briefing)) {
-            return $this->denied('This briefing is not available on your current plan.');
+        $workspaceCheck = $workspaceEligibility ?? $this->canGenerateForWorkspace($workspace, $parameters);
+        if ($workspaceCheck->isDenied()) {
+            return $workspaceCheck;
         }
 
-        $monthlyLimitCheck = $this->checkMonthlyLimit($workspace);
-        if (! $monthlyLimitCheck['allowed']) {
-            return $monthlyLimitCheck;
+        $workspace->loadMissing('plan');
+        $plan = $workspace->plan;
+
+        if (! $this->isPlanEligibleForBriefing($plan, $briefing)) {
+            return BriefingLimitResult::deny('This briefing is not available on your current plan.');
+        }
+
+        return BriefingLimitResult::allow();
+    }
+
+    /**
+     * Check if a workspace can generate any briefing.
+     */
+    public function canGenerateForWorkspace(
+        Workspace $workspace,
+        ?BriefingParameters $parameters = null,
+    ): BriefingLimitResult {
+        $workspace->loadMissing('plan');
+        $plan = $workspace->plan;
+
+        if (! $this->isBriefingsFeatureEnabled($plan)) {
+            return BriefingLimitResult::deny('Briefings are not available on your current plan.');
+        }
+
+        $rateLimitCheck = $this->checkRateLimits($workspace, $plan);
+        if ($rateLimitCheck->isDenied()) {
+            return $rateLimitCheck;
         }
 
         $concurrentCheck = $this->checkConcurrentLimit($workspace);
-        if (! $concurrentCheck['allowed']) {
+        if ($concurrentCheck->isDenied()) {
             return $concurrentCheck;
         }
 
-        return $this->allowed();
+        if ($parameters instanceof BriefingParameters) {
+            $dataGuardCheck = $this->dataGuard->check($workspace, $parameters);
+            if ($dataGuardCheck->isDenied()) {
+                return $dataGuardCheck;
+            }
+        }
+
+        return BriefingLimitResult::allow();
     }
 
     /**
      * Check if a workspace can create a subscription.
-     *
-     * @return array{allowed: bool, reason: string|null}
      */
-    public function canSubscribe(Workspace $workspace, Briefing $briefing): array
+    public function canSubscribe(Workspace $workspace, Briefing $briefing): BriefingLimitResult
     {
         if (! $briefing->is_schedulable) {
-            return $this->denied('This briefing does not support scheduling.');
+            return BriefingLimitResult::deny('This briefing does not support scheduling.');
         }
 
-        $features = $this->getPlanFeatures($workspace);
+        $workspace->loadMissing('plan');
+        $plan = $workspace->plan;
 
-        if (! ($features['scheduling_enabled'] ?? false)) {
-            return $this->denied('Briefing scheduling is not available on your current plan.');
+        if (! $this->isBriefingsFeatureEnabled($plan)) {
+            return BriefingLimitResult::deny('Briefings are not available on your current plan.');
         }
 
-        if (! $this->isPlanEligible($workspace, $briefing)) {
-            return $this->denied('This briefing is not available on your current plan.');
+        if (! $this->isPlanEligibleForBriefing($plan, $briefing)) {
+            return BriefingLimitResult::deny('This briefing is not available on your current plan.');
         }
 
-        return $this->allowed();
+        return BriefingLimitResult::allow();
     }
 
     /**
      * Check if a workspace can share a briefing externally.
      *
-     * @return array{allowed: bool, reason: string|null}
+     * Sharing is free for all plans.
      */
-    public function canShare(Workspace $workspace): array
+    public function canShare(): BriefingLimitResult
     {
-        $features = $this->getPlanFeatures($workspace);
-
-        if (! ($features['external_sharing_enabled'] ?? false)) {
-            return $this->denied('External sharing is not available on your current plan.');
-        }
-
-        return $this->allowed();
-    }
-
-    /** Check if the workspace's plan is eligible for a briefing. */
-    private function isPlanEligible(Workspace $workspace, Briefing $briefing): bool
-    {
-        if ($briefing->is_system && empty($briefing->eligible_plan_ids)) {
-            return true;
-        }
-
-        $features = $this->getPlanFeatures($workspace);
-
-        if (! ($features['enabled'] ?? true)) {
-            return false;
-        }
-
-        $allowedBriefingIds = $features['allowed_briefing_ids'] ?? null;
-
-        if ($allowedBriefingIds === null) {
-            return true;
-        }
-
-        return in_array($briefing->id, $allowedBriefingIds, true);
+        return BriefingLimitResult::allow();
     }
 
     /**
-     * Check the monthly generation limit.
-     *
-     * @return array{allowed: bool, reason: string|null}
+     * Check if the briefings feature is enabled for the plan.
      */
-    private function checkMonthlyLimit(Workspace $workspace): array
+    private function isBriefingsFeatureEnabled(?Plan $plan): bool
     {
-        $features = $this->getPlanFeatures($workspace);
-        $limit = $features['generations_per_month'] ?? null;
+        if (! $plan instanceof Plan) {
+            return true;
+        }
+
+        return $plan->hasFeature(PlanFeature::Briefings);
+    }
+
+    /**
+     * Check if the plan is eligible for a specific briefing.
+     *
+     * Uses the briefing's eligible_plan_ids to determine eligibility.
+     * If eligible_plan_ids is null, the briefing is available to all plans.
+     */
+    private function isPlanEligibleForBriefing(?Plan $plan, Briefing $briefing): bool
+    {
+        if ($briefing->eligible_plan_ids === null) {
+            return true;
+        }
+
+        if (! $plan instanceof Plan) {
+            return false;
+        }
+
+        return $briefing->isEligibleForPlan($plan);
+    }
+
+    /**
+     * Check rate limits (daily, weekly, monthly).
+     */
+    private function checkRateLimits(Workspace $workspace, ?Plan $plan): BriefingLimitResult
+    {
+        $dailyCheck = $this->checkLimit($workspace, $plan, 'briefings.daily', now()->startOfDay(), 'daily');
+        if ($dailyCheck->isDenied()) {
+            return $dailyCheck;
+        }
+
+        $weeklyCheck = $this->checkLimit($workspace, $plan, 'briefings.weekly', now()->startOfWeek(), 'weekly');
+        if ($weeklyCheck->isDenied()) {
+            return $weeklyCheck;
+        }
+
+        $monthlyCheck = $this->checkLimit($workspace, $plan, 'briefings.monthly', now()->startOfMonth(), 'monthly');
+        if ($monthlyCheck->isDenied()) {
+            return $monthlyCheck;
+        }
+
+        return BriefingLimitResult::allow();
+    }
+
+    /**
+     * Check a specific rate limit.
+     */
+    private function checkLimit(
+        Workspace $workspace,
+        ?Plan $plan,
+        string $limitPath,
+        CarbonInterface $since,
+        string $period
+    ): BriefingLimitResult {
+        if (! $plan instanceof Plan) {
+            return BriefingLimitResult::allow();
+        }
+
+        $limit = $plan->getLimit($limitPath);
 
         if ($limit === null) {
-            return $this->allowed();
+            return BriefingLimitResult::allow();
+        }
+
+        if ($limit === 0) {
+            return BriefingLimitResult::deny(
+                sprintf('Briefing generation is not available on your current plan (%s limit is 0).', $period)
+            );
         }
 
         $count = BriefingGeneration::query()
             ->where('workspace_id', $workspace->id)
-            ->where('created_at', '>=', now()->startOfMonth())
+            ->where('created_at', '>=', $since)
             ->count();
 
         if ($count >= $limit) {
-            return $this->denied(sprintf(
-                'You have reached your monthly limit of %d briefing generations. Upgrade your plan for more.',
-                $limit
+            return BriefingLimitResult::deny(sprintf(
+                'You have reached your %s limit of %d briefing generation%s. Please try again later or upgrade your plan.',
+                $period,
+                $limit,
+                $limit === 1 ? '' : 's'
             ));
         }
 
-        return $this->allowed();
+        return BriefingLimitResult::allow();
     }
 
     /**
      * Check the concurrent generation limit.
-     *
-     * @return array{allowed: bool, reason: string|null}
      */
-    private function checkConcurrentLimit(Workspace $workspace): array
+    private function checkConcurrentLimit(Workspace $workspace): BriefingLimitResult
     {
         $limit = config('briefings.limits.max_concurrent_generations', 3);
 
@@ -148,68 +231,13 @@ final class BriefingLimitEnforcer
             ->count();
 
         if ($pendingCount >= $limit) {
-            return $this->denied(sprintf(
-                'You have %d briefings currently generating. Please wait for them to complete.',
-                $pendingCount
+            return BriefingLimitResult::deny(sprintf(
+                'You have %d briefing%s currently generating. Please wait for them to complete.',
+                $pendingCount,
+                $pendingCount === 1 ? '' : 's'
             ));
         }
 
-        return $this->allowed();
-    }
-
-    /**
-     * Get briefing features from the workspace's plan.
-     *
-     * @return array<string, mixed>
-     */
-    private function getPlanFeatures(Workspace $workspace): array
-    {
-        $workspace->loadMissing('plan');
-
-        $defaultFeatures = [
-            'enabled' => true,
-            'allowed_briefing_ids' => null,
-            'generations_per_month' => null,
-            'scheduling_enabled' => false,
-            'external_sharing_enabled' => false,
-        ];
-
-        $plan = $workspace->plan;
-
-        if ($plan === null) {
-            return $defaultFeatures;
-        }
-
-        /** @var array<string, mixed>|null $planFeatures */
-        $planFeatures = $plan->features;
-
-        if ($planFeatures === null) {
-            return $defaultFeatures;
-        }
-
-        /** @var array<string, mixed>|null $briefingFeatures */
-        $briefingFeatures = $planFeatures['briefings'] ?? null;
-
-        return is_array($briefingFeatures) ? $briefingFeatures : $defaultFeatures;
-    }
-
-    /**
-     * Return an allowed result.
-     *
-     * @return array{allowed: true, reason: null}
-     */
-    private function allowed(): array
-    {
-        return ['allowed' => true, 'reason' => null];
-    }
-
-    /**
-     * Return a denied result with a reason.
-     *
-     * @return array{allowed: false, reason: string}
-     */
-    private function denied(string $reason): array
-    {
-        return ['allowed' => false, 'reason' => $reason];
+        return BriefingLimitResult::allow();
     }
 }
