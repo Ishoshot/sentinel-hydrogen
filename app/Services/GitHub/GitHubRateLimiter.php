@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\GitHub;
 
+use App\Services\GitHub\Contracts\GitHubRateLimiterContract;
 use Closure;
 use Github\Exception\RuntimeException;
 use Illuminate\Support\Facades\Cache;
@@ -18,7 +19,7 @@ use Throwable;
  * - 5,000 requests per hour for authenticated requests (installation tokens)
  * - Secondary rate limits for abuse detection
  */
-final class GitHubRateLimiter
+final class GitHubRateLimiter implements GitHubRateLimiterContract
 {
     /**
      * Maximum number of retry attempts.

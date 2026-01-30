@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\GitHub;
 
-use App\Enums\GitHubWebhookEvent;
-use App\Enums\PullRequestAction;
+use App\Enums\GitHub\GitHubWebhookEvent;
+use App\Enums\GitHub\PullRequestAction;
+use App\Services\GitHub\Contracts\GitHubWebhookServiceContract;
 
-final class GitHubWebhookService
+final class GitHubWebhookService implements GitHubWebhookServiceContract
 {
     /**
      * Verify the webhook signature from GitHub.

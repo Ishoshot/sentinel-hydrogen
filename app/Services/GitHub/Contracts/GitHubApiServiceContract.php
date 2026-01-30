@@ -191,4 +191,53 @@ interface GitHubApiServiceContract
         int $commentId,
         string $body
     ): array;
+
+    /**
+     * Get a git reference (branch or tag).
+     *
+     * @return array<string, mixed> The reference data
+     */
+    public function getReference(int $installationId, string $owner, string $repo, string $ref): array;
+
+    /**
+     * Create a git reference (branch).
+     *
+     * @return array<string, mixed> The created reference data
+     */
+    public function createReference(int $installationId, string $owner, string $repo, string $ref, string $sha): array;
+
+    /**
+     * Check if a file exists in a repository.
+     */
+    public function fileExists(int $installationId, string $owner, string $repo, string $path, ?string $ref = null): bool;
+
+    /**
+     * Create or update a file in a repository.
+     *
+     * @return array<string, mixed> The commit data
+     */
+    public function createFile(
+        int $installationId,
+        string $owner,
+        string $repo,
+        string $path,
+        string $content,
+        string $message,
+        string $branch
+    ): array;
+
+    /**
+     * Create a pull request.
+     *
+     * @return array<string, mixed> The pull request data
+     */
+    public function createPullRequest(
+        int $installationId,
+        string $owner,
+        string $repo,
+        string $title,
+        string $body,
+        string $head,
+        string $base
+    ): array;
 }

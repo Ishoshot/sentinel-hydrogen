@@ -417,6 +417,121 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
     }
 
     /**
+     * Get a git reference (branch or tag).
+     *
+     * @return array<string, mixed> The reference data
+     */
+    public function getReference(int $installationId, string $owner, string $repo, string $ref): array
+    {
+        $this->authenticateWithInstallationToken($installationId);
+
+        /** @var array<string, mixed> $reference */
+        $reference = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->git()->references()->show($owner, $repo, $ref),
+            sprintf('getReference(%s/%s@%s)', $owner, $repo, $ref)
+        );
+
+        return $reference;
+    }
+
+    /**
+     * Create a git reference (branch).
+     *
+     * @return array<string, mixed> The created reference data
+     */
+    public function createReference(int $installationId, string $owner, string $repo, string $ref, string $sha): array
+    {
+        $this->authenticateWithInstallationToken($installationId);
+
+        /** @var array<string, mixed> $reference */
+        $reference = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->git()->references()->create($owner, $repo, [
+                'ref' => $ref,
+                'sha' => $sha,
+            ]),
+            sprintf('createReference(%s/%s@%s)', $owner, $repo, $ref)
+        );
+
+        return $reference;
+    }
+
+    /**
+     * Check if a file exists in a repository.
+     */
+    public function fileExists(int $installationId, string $owner, string $repo, string $path, ?string $ref = null): bool
+    {
+        try {
+            $this->getFileContents($installationId, $owner, $repo, $path, $ref);
+
+            return true;
+        } catch (\Github\Exception\RuntimeException) {
+            return false;
+        }
+    }
+
+    /**
+     * Create or update a file in a repository.
+     *
+     * @return array<string, mixed> The commit data
+     */
+    public function createFile(
+        int $installationId,
+        string $owner,
+        string $repo,
+        string $path,
+        string $content,
+        string $message,
+        string $branch
+    ): array {
+        $this->authenticateWithInstallationToken($installationId);
+
+        /** @var array<string, mixed> $result */
+        $result = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->repo()->contents()->create(
+                $owner,
+                $repo,
+                $path,
+                $content,
+                $message,
+                $branch
+            ),
+            sprintf('createFile(%s/%s/%s)', $owner, $repo, $path)
+        );
+
+        return $result;
+    }
+
+    /**
+     * Create a pull request.
+     *
+     * @return array<string, mixed> The pull request data
+     */
+    public function createPullRequest(
+        int $installationId,
+        string $owner,
+        string $repo,
+        string $title,
+        string $body,
+        string $head,
+        string $base
+    ): array {
+        $this->authenticateWithInstallationToken($installationId);
+
+        /** @var array<string, mixed> $pullRequest */
+        $pullRequest = $this->rateLimiter->handle(
+            fn (): array => $this->github->connection()->pullRequest()->create($owner, $repo, [
+                'title' => $title,
+                'body' => $body,
+                'head' => $head,
+                'base' => $base,
+            ]),
+            sprintf('createPullRequest(%s/%s %s->%s)', $owner, $repo, $head, $base)
+        );
+
+        return $pullRequest;
+    }
+
+    /**
      * Authenticate with JWT (for app-level operations).
      */
     private function authenticateWithJwt(): void
