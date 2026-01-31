@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\SubscriptionStatus;
+use App\Enums\Billing\SubscriptionStatus;
 
 it('returns all values', function (): void {
     $values = SubscriptionStatus::values();

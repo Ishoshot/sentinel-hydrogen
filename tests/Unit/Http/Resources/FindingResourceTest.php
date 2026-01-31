@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Enums\FindingCategory;
-use App\Enums\ProviderType;
-use App\Enums\SentinelConfigSeverity;
+use App\Enums\Auth\ProviderType;
+use App\Enums\Reviews\FindingCategory;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Http\Resources\FindingResource;
 use App\Models\Annotation;
 use App\Models\Connection;

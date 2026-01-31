@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PlanTier;
+use App\Enums\Billing\PlanTier;
 
 it('returns all values', function (): void {
     $values = PlanTier::values();

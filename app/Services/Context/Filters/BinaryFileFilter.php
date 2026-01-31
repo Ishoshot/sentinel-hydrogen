@@ -27,8 +27,6 @@ final class BinaryFileFilter implements ContextFilter
         'mp3', 'mp4', 'wav', 'avi', 'mov',
         // Lock files
         'lock',
-        // Minified files
-        'min.js', 'min.css',
         // Source maps
         'map',
     ];
@@ -87,6 +85,13 @@ final class BinaryFileFilter implements ContextFilter
         $filename = basename($path);
 
         if (in_array($filename, self::EXCLUDED_FILENAMES, true)) {
+            return true;
+        }
+
+        $lowerPath = mb_strtolower($path);
+
+        // Check for minified files (compound extensions like .min.js)
+        if (str_ends_with($lowerPath, '.min.js') || str_ends_with($lowerPath, '.min.css')) {
             return true;
         }
 

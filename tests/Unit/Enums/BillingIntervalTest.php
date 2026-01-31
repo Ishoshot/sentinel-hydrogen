@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\BillingInterval;
+use App\Enums\Billing\BillingInterval;
 
 it('returns all values', function (): void {
     $values = BillingInterval::values();

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PromotionValueType;
+use App\Enums\Promotions\PromotionValueType;
 
 it('returns all values', function (): void {
     $values = PromotionValueType::values();

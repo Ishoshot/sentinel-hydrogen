@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\OAuthProvider;
+use App\Enums\Auth\OAuthProvider;
 
 it('returns all values', function (): void {
     $values = OAuthProvider::values();

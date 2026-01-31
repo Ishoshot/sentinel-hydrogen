@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\Reviews\ReviewVerdict;
+use App\Enums\Reviews\RiskLevel;
 use App\Services\Context\ContextBag;
 use App\Services\Reviews\DefaultReviewEngine;
+use App\Services\Reviews\ValueObjects\ReviewResult;
 
 beforeEach(function (): void {
     $this->engine = new DefaultReviewEngine;
@@ -25,10 +28,10 @@ it('returns a review result with summary, findings, and metrics', function (): v
 
     $result = $this->engine->review($context);
 
-    expect($result)->toBeArray()
-        ->toHaveKey('summary')
-        ->toHaveKey('findings')
-        ->toHaveKey('metrics');
+    expect($result)->toBeInstanceOf(ReviewResult::class)
+        ->and($result->summary)->not->toBeNull()
+        ->and($result->findings)->toBeArray()
+        ->and($result->metrics)->not->toBeNull();
 });
 
 it('returns empty findings by default', function (): void {
@@ -41,7 +44,7 @@ it('returns empty findings by default', function (): void {
 
     $result = $this->engine->review($context);
 
-    expect($result['findings'])->toBeArray()->toBeEmpty();
+    expect($result->findings)->toBeArray()->toBeEmpty();
 });
 
 it('returns low risk level by default', function (): void {
@@ -54,7 +57,7 @@ it('returns low risk level by default', function (): void {
 
     $result = $this->engine->review($context);
 
-    expect($result['summary']['risk_level'])->toBe('low');
+    expect($result->summary->riskLevel)->toBe(RiskLevel::Low);
 });
 
 it('returns default overview message', function (): void {
@@ -67,7 +70,7 @@ it('returns default overview message', function (): void {
 
     $result = $this->engine->review($context);
 
-    expect($result['summary']['overview'])->toBe('Review completed with no findings.');
+    expect($result->summary->overview)->toBe('Review completed with no findings.');
 });
 
 it('returns empty recommendations by default', function (): void {
@@ -80,7 +83,7 @@ it('returns empty recommendations by default', function (): void {
 
     $result = $this->engine->review($context);
 
-    expect($result['summary']['recommendations'])->toBeArray()->toBeEmpty();
+    expect($result->summary->recommendations)->toBeArray()->toBeEmpty();
 });
 
 it('includes correct metrics from context bag', function (): void {
@@ -99,9 +102,9 @@ it('includes correct metrics from context bag', function (): void {
 
     $result = $this->engine->review($context);
 
-    expect($result['metrics']['files_changed'])->toBe(10)
-        ->and($result['metrics']['lines_added'])->toBe(200)
-        ->and($result['metrics']['lines_deleted'])->toBe(75);
+    expect($result->metrics->filesChanged)->toBe(10)
+        ->and($result->metrics->linesAdded)->toBe(200)
+        ->and($result->metrics->linesDeleted)->toBe(75);
 });
 
 it('uses zero for missing metrics', function (): void {
@@ -114,9 +117,9 @@ it('uses zero for missing metrics', function (): void {
 
     $result = $this->engine->review($context);
 
-    expect($result['metrics']['files_changed'])->toBe(0)
-        ->and($result['metrics']['lines_added'])->toBe(0)
-        ->and($result['metrics']['lines_deleted'])->toBe(0);
+    expect($result->metrics->filesChanged)->toBe(0)
+        ->and($result->metrics->linesAdded)->toBe(0)
+        ->and($result->metrics->linesDeleted)->toBe(0);
 });
 
 it('returns rule-based model identifier', function (): void {
@@ -129,8 +132,8 @@ it('returns rule-based model identifier', function (): void {
 
     $result = $this->engine->review($context);
 
-    expect($result['metrics']['model'])->toBe('rule-based')
-        ->and($result['metrics']['provider'])->toBe('internal');
+    expect($result->metrics->model)->toBe('rule-based')
+        ->and($result->metrics->provider)->toBe('internal');
 });
 
 it('returns zero tokens used', function (): void {
@@ -143,7 +146,7 @@ it('returns zero tokens used', function (): void {
 
     $result = $this->engine->review($context);
 
-    expect($result['metrics']['tokens_used_estimated'])->toBe(0);
+    expect($result->metrics->tokensUsedEstimated)->toBe(0);
 });
 
 it('returns zero duration', function (): void {
@@ -156,5 +159,18 @@ it('returns zero duration', function (): void {
 
     $result = $this->engine->review($context);
 
-    expect($result['metrics']['duration_ms'])->toBe(0);
+    expect($result->metrics->durationMs)->toBe(0);
+});
+
+it('returns approve verdict by default', function (): void {
+    $bag = new ContextBag;
+
+    $context = [
+        'policy_snapshot' => [],
+        'context_bag' => $bag,
+    ];
+
+    $result = $this->engine->review($context);
+
+    expect($result->summary->verdict)->toBe(ReviewVerdict::Approve);
 });

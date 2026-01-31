@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\ConnectionStatus;
+use App\Enums\Workspace\ConnectionStatus;
 
 it('returns all values', function (): void {
     $values = ConnectionStatus::values();

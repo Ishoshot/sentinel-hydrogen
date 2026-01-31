@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\InstallationStatus;
+use App\Enums\GitHub\InstallationStatus;
 
 it('returns all values', function (): void {
     $values = InstallationStatus::values();
