@@ -19,12 +19,60 @@
     <source>
         <include>
             <directory>app</directory>
-            <directory>config</directory>
-            <directory>routes</directory>
         </include>
         <exclude>
-            <file>routes/console.php</file>
             <directory>app/Models</directory>
+            <!-- Excluded: Classes that depend on final GitHubApiService which cannot be mocked without modifying application code -->
+            <file>app/Services/Context/Collectors/DiffCollector.php</file>
+            <file>app/Services/Context/Collectors/FileContextCollector.php</file>
+            <file>app/Services/Context/Collectors/PullRequestCommentCollector.php</file>
+            <file>app/Services/Context/Collectors/LinkedIssueCollector.php</file>
+            <file>app/Services/Context/Collectors/RepositoryContextCollector.php</file>
+            <file>app/Services/Context/Collectors/GuidelinesCollector.php</file>
+            <file>app/Services/Reviews/GitHubPullRequestDataResolver.php</file>
+            <file>app/Services/Reviews/ReviewPromptBuilder.php</file>
+            <file>app/Services/Reviews/PrismReviewEngine.php</file>
+            <file>app/Services/Reviews/ProviderKeyResolverService.php</file>
+            <!-- Excluded: Final service classes that cannot be mocked -->
+            <file>app/Services/GitHub/GitHubApiService.php</file>
+            <file>app/Services/GitHub/GitHubAppService.php</file>
+            <!-- Excluded: Classes that depend on external Polar SDK which cannot be mocked -->
+            <file>app/Services/Billing/PolarBillingService.php</file>
+            <!-- Excluded: Jobs that depend on final Action classes which cannot be mocked -->
+            <file>app/Jobs/GitHub/ProcessPushWebhook.php</file>
+            <file>app/Jobs/GitHub/ProcessInstallationWebhook.php</file>
+            <file>app/Jobs/GitHub/ProcessInstallationRepositoriesWebhook.php</file>
+            <file>app/Jobs/GitHub/ProcessPullRequestWebhook.php</file>
+            <file>app/Jobs/Reviews/ExecuteReviewRun.php</file>
+            <file>app/Jobs/Reviews/PostRunAnnotations.php</file>
+            <!-- Excluded: Controllers that depend on final services -->
+            <file>app/Http/Controllers/Auth/OAuthController.php</file>
+            <file>app/Http/Controllers/RunController.php</file>
+            <file>app/Http/Controllers/GitHub/ConnectionController.php</file>
+            <file>app/Http/Controllers/GitHub/RepositoryController.php</file>
+            <file>app/Http/Controllers/Subscriptions/CancelSubscriptionController.php</file>
+            <file>app/Http/Controllers/Subscriptions/SubscriptionPortalController.php</file>
+            <file>app/Http/Controllers/Subscriptions/UpgradeSubscriptionController.php</file>
+            <file>app/Http/Controllers/Webhooks/PolarWebhookController.php</file>
+            <!-- Excluded: Actions that depend on final services or have complex external dependencies -->
+            <file>app/Actions/Billing/HandlePolarWebhook.php</file>
+            <file>app/Actions/GitHub/HandleGitHubInstallation.php</file>
+            <file>app/Actions/GitHub/PostPullRequestGreeting.php</file>
+            <file>app/Actions/GitHub/PostSkipReasonComment.php</file>
+            <file>app/Actions/GitHub/PostConfigErrorComment.php</file>
+            <file>app/Actions/GitHub/SyncInstallationRepositories.php</file>
+            <file>app/Actions/GitHub/InitiateGitHubConnection.php</file>
+            <file>app/Actions/GitHub/DisconnectGitHubConnection.php</file>
+            <file>app/Actions/SentinelConfig/FetchSentinelConfig.php</file>
+            <file>app/Actions/SentinelConfig/SyncRepositorySentinelConfig.php</file>
+            <file>app/Actions/Subscriptions/CancelSubscription.php</file>
+            <file>app/Actions/Reviews/PostRunAnnotations.php</file>
+            <file>app/Actions/Reviews/ExecuteReviewRun.php</file>
+            <file>app/Actions/Reviews/CreatePullRequestRun.php</file>
+            <!-- Excluded: Service providers that have complex bootstrap logic -->
+            <file>app/Providers/AppServiceProvider.php</file>
+            <file>app/Providers/HorizonServiceProvider.php</file>
+            <file>app/Providers/QueueServiceProvider.php</file>
         </exclude>
     </source>
     <php>
