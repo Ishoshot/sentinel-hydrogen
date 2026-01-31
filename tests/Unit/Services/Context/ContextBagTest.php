@@ -105,3 +105,111 @@ it('converts to array', function (): void {
         ->and($array['file_contents'])->toBe(['test.php' => 'content'])
         ->and($array['metadata'])->toBe(['key' => 'value']);
 });
+
+it('estimates tokens for semantics data', function (): void {
+    $bag = new ContextBag(
+        semantics: [
+            'test.php' => ['functions' => ['foo', 'bar'], 'classes' => ['TestClass']],
+        ],
+    );
+
+    $tokens = $bag->estimateTokens();
+    expect($tokens)->toBeGreaterThan(0);
+});
+
+it('estimates tokens for project context', function (): void {
+    $bag = new ContextBag(
+        projectContext: [
+            'languages' => ['PHP', 'JavaScript'],
+            'frameworks' => [['name' => 'Laravel', 'version' => '11.0']],
+            'dependencies' => [['name' => 'pest', 'version' => '2.0', 'dev' => true]],
+        ],
+    );
+
+    $tokens = $bag->estimateTokens();
+    expect($tokens)->toBeGreaterThan(0);
+});
+
+it('estimates tokens for impacted files', function (): void {
+    $bag = new ContextBag(
+        impactedFiles: [
+            [
+                'file_path' => 'related.php',
+                'content' => 'class RelatedClass { public function useModifiedCode() {} }',
+                'matched_symbol' => 'ModifiedClass',
+                'match_type' => 'class_instantiation',
+                'score' => 0.85,
+                'match_count' => 3,
+                'reason' => 'Instantiates class `ModifiedClass`',
+            ],
+        ],
+    );
+
+    $tokens = $bag->estimateTokens();
+    expect($tokens)->toBeGreaterThan(0);
+});
+
+it('estimates tokens for linked issues with comments', function (): void {
+    $bag = new ContextBag(
+        linkedIssues: [
+            [
+                'number' => 42,
+                'title' => 'Fix critical bug',
+                'body' => 'This issue describes a critical bug that needs fixing',
+                'state' => 'open',
+                'labels' => ['bug', 'critical'],
+                'comments' => [
+                    ['author' => 'dev1', 'body' => 'I can reproduce this'],
+                    ['author' => 'dev2', 'body' => 'Working on a fix'],
+                ],
+            ],
+        ],
+    );
+
+    $tokens = $bag->estimateTokens();
+    expect($tokens)->toBeGreaterThan(10);
+});
+
+it('recalculates metrics from files', function (): void {
+    $bag = new ContextBag(
+        files: [
+            ['filename' => 'a.php', 'status' => 'modified', 'additions' => 10, 'deletions' => 5, 'changes' => 15, 'patch' => '+code'],
+            ['filename' => 'b.php', 'status' => 'added', 'additions' => 25, 'deletions' => 0, 'changes' => 25, 'patch' => '+code'],
+            ['filename' => 'c.php', 'status' => 'deleted', 'additions' => 0, 'deletions' => 15, 'changes' => 15, 'patch' => '-code'],
+        ],
+    );
+
+    $bag->recalculateMetrics();
+
+    expect($bag->metrics['files_changed'])->toBe(3);
+    expect($bag->metrics['lines_added'])->toBe(35);
+    expect($bag->metrics['lines_deleted'])->toBe(20);
+});
+
+it('handles null patches in files', function (): void {
+    $bag = new ContextBag(
+        files: [
+            ['filename' => 'binary.png', 'status' => 'added', 'additions' => 0, 'deletions' => 0, 'changes' => 0, 'patch' => null],
+        ],
+    );
+
+    $tokens = $bag->estimateTokens();
+    expect($tokens)->toBeGreaterThanOrEqual(0);
+});
+
+it('includes all array keys in toArray output', function (): void {
+    $bag = new ContextBag(
+        semantics: ['file.php' => ['data' => 'value']],
+        projectContext: ['languages' => ['PHP']],
+        impactedFiles: [['file_path' => 'test.php', 'content' => 'content', 'matched_symbol' => 'sym', 'match_type' => 'function_call', 'score' => 0.5, 'match_count' => 1, 'reason' => 'reason']],
+    );
+
+    $array = $bag->toArray();
+
+    expect($array)->toHaveKey('semantics');
+    expect($array)->toHaveKey('project_context');
+    expect($array)->toHaveKey('impacted_files');
+    expect($array['semantics'])->toBe(['file.php' => ['data' => 'value']]);
+    expect($array['project_context'])->toBe(['languages' => ['PHP']]);
+    expect($array['impacted_files'])->toHaveCount(1);
+});
