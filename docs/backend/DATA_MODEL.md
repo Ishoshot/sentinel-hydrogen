@@ -312,6 +312,159 @@ Indexes:
 
 ---
 
+## Briefings Tables
+
+### briefings
+
+Represents Briefing templates (system or custom).
+
+Key fields:
+
+-   id
+-   workspace_id (nullable, null = system template)
+-   title
+-   slug (unique)
+-   description
+-   icon
+-   target_roles (JSONB)
+-   parameter_schema (JSONB)
+-   prompt_path
+-   requires_ai
+-   eligible_plan_ids (JSONB)
+-   estimated_duration_seconds
+-   output_formats (JSONB)
+-   is_schedulable
+-   is_system
+-   sort_order
+-   is_active
+-   created_at
+-   updated_at
+
+---
+
+### briefing_generations
+
+Represents generated Briefing instances.
+
+Key fields:
+
+-   id
+-   workspace_id
+-   briefing_id
+-   generated_by_id
+-   parameters (JSONB)
+-   status (pending, processing, completed, failed)
+-   progress
+-   progress_message
+-   started_at
+-   completed_at
+-   narrative (text)
+-   structured_data (JSONB)
+-   achievements (JSONB)
+-   excerpts (JSONB)
+-   output_paths (JSONB)
+-   metadata (JSONB)
+-   error_message
+-   expires_at
+-   created_at
+
+Indexes:
+
+-   workspace_id, created_at DESC
+-   workspace_id, briefing_id, created_at DESC
+-   status
+-   expires_at
+
+---
+
+### briefing_subscriptions
+
+Represents scheduled recurring Briefing generations.
+
+Key fields:
+
+-   id
+-   workspace_id
+-   user_id
+-   briefing_id
+-   schedule_preset (daily, weekly, monthly)
+-   schedule_day
+-   schedule_hour
+-   parameters (JSONB)
+-   delivery_channels (JSONB)
+-   slack_webhook_url (encrypted)
+-   last_generated_at
+-   next_scheduled_at
+-   is_active
+-   created_at
+-   updated_at
+
+---
+
+### briefing_shares
+
+Represents external share links.
+
+Key fields:
+
+-   id
+-   briefing_generation_id
+-   workspace_id
+-   created_by_id
+-   token (unique, 64 chars)
+-   password_hash
+-   access_count
+-   max_accesses
+-   expires_at
+-   is_active
+-   created_at
+
+---
+
+### briefing_downloads
+
+Tracks download/access events for analytics.
+
+Key fields:
+
+-   id
+-   briefing_generation_id
+-   workspace_id
+-   user_id (nullable, null for external shares)
+-   format (html, pdf, markdown, slides)
+-   source (dashboard, share_link, api, email)
+-   ip_address
+-   user_agent
+-   downloaded_at
+
+---
+
+## Activity Tables
+
+### activities
+
+Represents logged events within a Workspace.
+
+Key fields:
+
+-   id
+-   workspace_id
+-   user_id (nullable, null for system actions)
+-   type
+-   subject_type
+-   subject_id
+-   description
+-   metadata (JSONB)
+-   created_at
+
+Indexes:
+
+-   workspace_id, created_at DESC
+-   workspace_id, type
+-   subject_type, subject_id
+
+---
+
 ## Policy & Configuration Tables
 
 ### policies
@@ -342,11 +495,15 @@ Represents available subscription plans.
 Key fields:
 
 -   id
--   tier
+-   tier (foundation, illuminate, orchestrate, sanctum)
+-   description
 -   monthly_runs_limit
+-   monthly_commands_limit
 -   team_size_limit
 -   features (JSONB)
+-   limits (JSONB)
 -   price_monthly (cents)
+-   price_yearly (cents)
 -   created_at
 -   updated_at
 
@@ -382,8 +539,11 @@ Key fields:
 -   period_start
 -   period_end
 -   runs_count
+-   commands_count
+-   briefings_count
 -   findings_count
 -   annotations_count
+-   tokens_estimated
 -   created_at
 -   updated_at
 

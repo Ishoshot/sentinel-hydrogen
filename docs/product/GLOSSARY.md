@@ -186,6 +186,93 @@ Not all Findings result in Annotations.
 
 ---
 
+## Command System
+
+### Command Run
+
+A single execution of an @sentinel command in a GitHub comment.
+
+A Command Run is created when a user mentions @sentinel with a query.
+Command Runs are processed asynchronously and immutable once completed.
+
+A Command Run includes:
+
+-   the original query
+-   context snapshot (relevant code, files)
+-   AI-generated response
+-   execution metrics
+-   tool usage records
+
+---
+
+### Command
+
+An instruction issued to Sentinel via an @sentinel mention.
+
+Commands allow users to:
+
+-   ask questions about the codebase
+-   request explanations of specific code
+-   get implementation suggestions
+-   search across the repository
+
+Commands are natural language and interpreted by AI.
+
+---
+
+## Briefings
+
+### Briefing
+
+A template that defines a type of AI-generated report.
+
+Briefings may be:
+
+-   **System**: Provided by Sentinel, available to all Workspaces
+-   **Custom**: Created by a Workspace (future capability)
+
+A Briefing defines parameters, prompts, and output formats.
+
+---
+
+### Briefing Generation
+
+A specific instance of a Briefing produced with concrete parameters.
+
+A Briefing Generation:
+
+-   is created when a user requests a Briefing with specific parameters
+-   is processed asynchronously in the background
+-   is immutable once completed
+-   contains both narrative content and structured data
+
+---
+
+### Briefing Subscription
+
+A recurring schedule for automatic Briefing generation.
+
+Subscriptions support:
+
+-   schedule presets (daily, weekly, monthly)
+-   delivery channels (push, email, Slack)
+-   automatic parameter defaults
+
+---
+
+### Briefing Share
+
+A token-secured external link for sharing a Briefing Generation.
+
+Shares support:
+
+-   expiration dates
+-   optional password protection
+-   access tracking
+-   revocation
+
+---
+
 ## Configuration & Policy
 
 ### Policy
@@ -279,6 +366,37 @@ A Review Result includes:
 -   a policy snapshot
 
 Review Results are stored and used for analytics and dashboards.
+
+---
+
+## Activity & Audit
+
+### Activity
+
+A logged event representing a significant action within a Workspace.
+
+Activities capture:
+
+-   the actor (User or system)
+-   the action type
+-   relevant entities (Repository, Run, etc.)
+-   timestamp and metadata
+
+Activities are used for audit trails and dashboard feeds.
+
+---
+
+### Activity Type
+
+The classification of an Activity event.
+
+Examples include:
+
+-   `run_completed`
+-   `repository_enabled`
+-   `member_invited`
+-   `plan_limit_reached`
+-   `config_synced`
 
 ---
 
