@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
 
 it('returns all values', function (): void {
     $values = ProviderType::values();

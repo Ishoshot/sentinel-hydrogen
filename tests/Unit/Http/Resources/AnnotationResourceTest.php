@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\ProviderType;
+use App\Enums\Auth\ProviderType;
 use App\Http\Resources\AnnotationResource;
 use App\Models\Annotation;
 use App\Models\Connection;

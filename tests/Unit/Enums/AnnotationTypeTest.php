@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\AnnotationType;
+use App\Enums\Reviews\AnnotationType;
 
 it('returns all values', function (): void {
     $values = AnnotationType::values();

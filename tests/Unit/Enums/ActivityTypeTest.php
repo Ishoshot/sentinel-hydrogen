@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\ActivityType;
+use App\Enums\Workspace\ActivityType;
 
 it('returns all values', function (): void {
     $values = ActivityType::values();

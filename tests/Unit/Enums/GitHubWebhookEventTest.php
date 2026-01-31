@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\GitHubWebhookEvent;
+use App\Enums\GitHub\GitHubWebhookEvent;
 
 it('returns all values', function (): void {
     $values = GitHubWebhookEvent::values();

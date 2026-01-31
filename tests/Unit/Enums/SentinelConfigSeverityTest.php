@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\SentinelConfigSeverity;
+use App\Enums\SentinelConfig\SentinelConfigSeverity;
 
 it('returns all values', function (): void {
     $values = SentinelConfigSeverity::values();

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PlanFeature;
+use App\Enums\Billing\PlanFeature;
 
 it('returns all values', function (): void {
     $values = PlanFeature::values();

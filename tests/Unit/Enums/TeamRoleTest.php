@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\TeamRole;
+use App\Enums\Workspace\TeamRole;
 
 it('returns all values', function (): void {
     $values = TeamRole::values();

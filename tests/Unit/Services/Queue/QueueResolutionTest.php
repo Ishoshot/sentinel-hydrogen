@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\Queue;
-use App\Services\Queue\QueueResolution;
+use App\Enums\Queue\Queue;
+use App\Services\Queue\ValueObjects\QueueResolution;
 
 it('creates forced queue resolution', function (): void {
     $resolution = new QueueResolution(
