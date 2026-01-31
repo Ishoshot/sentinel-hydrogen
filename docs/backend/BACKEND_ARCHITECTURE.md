@@ -26,12 +26,15 @@ The backend is responsible for:
 
 ## Technology Stack
 
--   Language: PHP
--   Framework: Laravel
--   Database: PostgreSQL
+-   Language: PHP 8.4
+-   Framework: Laravel 12
+-   Database: PostgreSQL 15+
 -   Cache / Queue: Redis
--   AI Routing: PrismPHP
--   Workers: Laravel Queue Workers (Horizon)
+-   AI Routing: Prism PHP
+-   Workers: Laravel Horizon
+-   WebSockets: Laravel Reverb
+-   API Auth: Laravel Sanctum
+-   OAuth: Laravel Socialite
 
 The backend is designed to scale horizontally and operate reliably under load.
 
@@ -85,6 +88,39 @@ All integrations are accessed through interfaces and managers.
 
 ---
 
+## Action-Based Architecture
+
+Sentinel uses an **Action-based architecture** where business logic is encapsulated
+in single-purpose Action classes.
+
+### Key Rules
+
+-   Controllers MUST delegate to an Action for all non-trivial flows
+-   Actions represent a single business use-case
+-   Actions orchestrate services, contracts, and jobs
+-   Services MUST NOT coordinate multi-step workflows
+-   Controllers MUST NOT call services directly for complex logic
+-   Actions depend on interfaces/contracts, never concrete implementations
+-   Actions are the primary unit of business-flow testing
+
+### Action Domains
+
+| Domain | Location | Purpose |
+|--------|----------|---------|
+| Reviews | `app/Actions/Reviews/` | Review execution workflow |
+| Briefings | `app/Actions/Briefings/` | Report generation |
+| Commands | `app/Actions/Commands/` | @sentinel command processing |
+| Workspaces | `app/Actions/Workspaces/` | Workspace management |
+| Teams | `app/Actions/Teams/` | Team and member management |
+| Repositories | `app/Actions/Repositories/` | Repository configuration |
+| Subscriptions | `app/Actions/Subscriptions/` | Billing operations |
+| Installations | `app/Actions/Installations/` | GitHub App management |
+| Activities | `app/Actions/Activities/` | Activity logging |
+| ProviderKeys | `app/Actions/ProviderKeys/` | BYOK key management |
+| SentinelConfig | `app/Actions/SentinelConfig/` | Config file sync |
+
+---
+
 ## Domain-Driven Structure
 
 The backend is organized by **domain**, not by technical layer alone.
@@ -105,6 +141,8 @@ Example domains include:
 -   Integrations
 -   Repositories
 -   Reviews
+-   Commands (@sentinel mentions)
+-   Briefings (AI-generated reports)
 -   Usage & Billing
 -   Analytics
 
@@ -129,19 +167,43 @@ No step in this flow blocks an HTTP request.
 
 ---
 
+## Execution Flow (Command Run)
+
+1. A GitHub comment containing `@sentinel` is received via webhook
+2. The comment is parsed to extract the command and query
+3. A Command Run record is created
+4. A background job is dispatched
+5. The worker:
+    - evaluates plan limits
+    - resolves eligible AI providers
+    - builds context from repository (code indexing if needed)
+    - executes the command using AI tools
+    - stores results
+    - emits domain events
+6. Response is posted as a GitHub comment
+7. Usage and analytics are recorded
+
+Commands support multiple tools including code search, file reading, and web search.
+
+---
+
 ## Event-Driven Design
 
 Sentinel uses domain events to decouple responsibilities.
 
 Examples:
 
--   `RunCreated`
--   `RunCompleted`
--   `UsageRecorded`
--   `RepositoryEnabled`
+-   `RunStarted`, `RunCompleted`, `RunFailed`
+-   `CommandRunStarted`, `CommandRunCompleted`
+-   `BriefingGenerationStarted`, `BriefingGenerationCompleted`
+-   `InstallationConnected`, `InstallationSuspended`
+-   `WorkspaceCreated`, `MemberInvited`
+-   `RepositoryEnabled`, `RepositorySynced`
 
 Events trigger listeners that perform secondary actions
 without coupling to core logic.
+
+Broadcast events (via Laravel Reverb) are used for real-time UI updates.
 
 ---
 

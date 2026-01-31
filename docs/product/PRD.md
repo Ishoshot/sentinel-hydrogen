@@ -103,6 +103,7 @@ All without disrupting how teams already work.
 -   Reviews code changes automatically when triggered
 -   Identifies issues related to correctness, security, reliability, and maintainability
 -   Produces structured, explainable findings
+-   Real-time progress updates via WebSockets
 
 ---
 
@@ -111,6 +112,15 @@ All without disrupting how teams already work.
 -   Allows users to manually request a review
 -   Supports comment-based triggers (e.g. `/review`)
 -   Enables targeted reviews when needed
+
+---
+
+### @sentinel Commands
+
+-   Mention @sentinel in any GitHub comment to ask questions
+-   Natural language queries about the codebase
+-   AI-powered code search and analysis
+-   Implementation suggestions with code context
 
 ---
 
@@ -130,12 +140,22 @@ All without disrupting how teams already work.
 
 ---
 
+### Briefings
+
+-   AI-generated narrative reports for teams
+-   Scheduled daily, weekly, or monthly reports
+-   Shareable via secure external links
+-   Multiple formats (HTML, PDF, presentations)
+
+---
+
 ### Dashboards & Analytics
 
 -   Tracks review activity over time
 -   Visualizes findings by severity and category
 -   Shows repository-level trends
 -   Helps teams understand where issues occur most frequently
+-   12+ analytics endpoints covering all aspects of activity
 
 ---
 
@@ -183,31 +203,34 @@ Sentinel is platform-agnostic by design.
 
 ---
 
-## MVP Scope (v0.1)
+## Current Feature Set (v1.0)
 
-The initial release of Sentinel will include:
+Sentinel currently includes:
 
 -   Workspace and Team management
--   Source control integration (single provider initially)
--   Automated review runs
--   Manual review triggers
--   Review result storage
--   Basic dashboards and metrics
--   Subscription enforcement
--   BYOK provider configuration
+-   GitHub integration (GitHub App)
+-   Automated review runs with real-time progress
+-   Manual review triggers via comments
+-   @sentinel command system for codebase Q&A
+-   Briefings: AI-generated team reports
+-   Comprehensive dashboards and analytics
+-   Subscription enforcement (4 plan tiers)
+-   BYOK provider configuration (Anthropic, OpenAI)
+-   Configuration-as-code (`.sentinel/config.yaml`)
+-   Activity logging and audit trail
 
 ---
 
-## Out of Scope for MVP
+## Future Roadmap
 
-The following are explicitly out of scope for v0.1:
+The following are planned for future releases:
 
--   Advanced security scanning
+-   GitLab integration
 -   Custom rule authoring
--   Multi-team per workspace
+-   Advanced security scanning
+-   Voice narration for briefings
+-   Custom briefing templates
 -   Real-time collaboration features
--   Managed AI usage billing
--   Multiple source control providers
 
 ---
 
