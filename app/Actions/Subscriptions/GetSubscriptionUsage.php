@@ -7,9 +7,9 @@ namespace App\Actions\Subscriptions;
 use App\Models\Annotation;
 use App\Models\Finding;
 use App\Models\Run;
-use App\Models\Subscription;
 use App\Models\UsageRecord;
 use App\Models\Workspace;
+use App\Services\Plans\ValueObjects\BillingPeriod;
 use Carbon\CarbonImmutable;
 
 /**
@@ -22,7 +22,9 @@ final class GetSubscriptionUsage
      */
     public function handle(Workspace $workspace): UsageRecord
     {
-        [$periodStart, $periodEnd] = $this->determineBillingPeriod($workspace);
+        $period = BillingPeriod::forWorkspace($workspace);
+        $periodStart = $period->start;
+        $periodEnd = $period->end;
 
         $usage = UsageRecord::query()
             ->where('workspace_id', $workspace->id)
@@ -34,31 +36,6 @@ final class GetSubscriptionUsage
         }
 
         return $this->createUsageRecord($workspace, $periodStart, $periodEnd);
-    }
-
-    /**
-     * Determine the billing period for the workspace.
-     *
-     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
-     */
-    private function determineBillingPeriod(Workspace $workspace): array
-    {
-        $subscription = Subscription::query()
-            ->where('workspace_id', $workspace->id)
-            ->latest()
-            ->first();
-
-        if ($subscription?->current_period_start !== null && $subscription?->current_period_end !== null) {
-            return [
-                CarbonImmutable::parse($subscription->current_period_start),
-                CarbonImmutable::parse($subscription->current_period_end),
-            ];
-        }
-
-        // Fall back to calendar month
-        $periodStart = CarbonImmutable::now()->startOfMonth();
-
-        return [$periodStart, $periodStart->endOfMonth()];
     }
 
     /**

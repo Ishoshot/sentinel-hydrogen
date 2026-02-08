@@ -19,6 +19,7 @@ use App\Models\Workspace;
 use App\Services\Plans\ValueObjects\BillingPeriod;
 use App\Services\Plans\ValueObjects\PlanLimitResult;
 use App\Support\PlanDefaults;
+use DateTimeInterface;
 
 final readonly class PlanLimitEnforcer
 {
@@ -37,7 +38,7 @@ final readonly class PlanLimitEnforcer
         $status = $workspace->subscription_status;
 
         if ($status instanceof SubscriptionStatus && $status->isActive()) {
-            return PlanLimitResult::allow();
+            return $this->validateSubscriptionRecord($workspace);
         }
 
         $message = 'Your subscription is inactive. Upgrade to restore review access.';
@@ -65,7 +66,7 @@ final readonly class PlanLimitEnforcer
             return PlanLimitResult::allow();
         }
 
-        $period = $this->currentPeriod();
+        $period = $this->currentPeriod($workspace);
 
         $runsCount = Run::query()
             ->where('workspace_id', $workspace->id)
@@ -76,6 +77,7 @@ final readonly class PlanLimitEnforcer
                 RunStatus::Completed,
                 RunStatus::Failed,
             ])
+            ->lockForUpdate()
             ->count();
 
         if ($runsCount < $limit) {
@@ -114,7 +116,7 @@ final readonly class PlanLimitEnforcer
             return PlanLimitResult::allow();
         }
 
-        $period = $this->currentPeriod();
+        $period = $this->currentPeriod($workspace);
 
         $commandsCount = CommandRun::query()
             ->where('workspace_id', $workspace->id)
@@ -125,6 +127,7 @@ final readonly class PlanLimitEnforcer
                 CommandRunStatus::Completed,
                 CommandRunStatus::Failed,
             ])
+            ->lockForUpdate()
             ->count();
 
         if ($commandsCount < $limit) {
@@ -229,11 +232,47 @@ final readonly class PlanLimitEnforcer
     }
 
     /**
-     * Get the current billing period.
+     * Get the current billing period for a workspace.
      */
-    public function currentPeriod(): BillingPeriod
+    public function currentPeriod(Workspace $workspace): BillingPeriod
     {
-        return BillingPeriod::currentMonth();
+        return BillingPeriod::forWorkspace($workspace);
+    }
+
+    /**
+     * Validate subscription record and expiry for paid tiers.
+     */
+    private function validateSubscriptionRecord(Workspace $workspace): PlanLimitResult
+    {
+        $plan = $this->resolvePlan($workspace);
+        $tier = PlanTier::tryFrom($plan->tier) ?? PlanTier::Foundation;
+
+        // Foundation (free) tier doesn't require a subscription record
+        if ($tier->isFree()) {
+            return PlanLimitResult::allow();
+        }
+
+        // Paid tiers must have a subscription record
+        $subscription = $workspace->subscriptions()->latest()->first();
+
+        if ($subscription === null) {
+            $message = 'No subscription record found. Please contact support or re-subscribe.';
+            $this->logLimitEvent($workspace, 'subscription_missing', $message);
+
+            return PlanLimitResult::deny($message, 'subscription_missing');
+        }
+
+        // Check subscription period hasn't expired
+        $periodEnd = $subscription->current_period_end;
+
+        if ($periodEnd instanceof DateTimeInterface && $periodEnd->getTimestamp() < time()) {
+            $message = 'Your subscription period has expired. Please renew to continue.';
+            $this->logLimitEvent($workspace, 'subscription_expired', $message);
+
+            return PlanLimitResult::deny($message, 'subscription_expired');
+        }
+
+        return PlanLimitResult::allow();
     }
 
     /**

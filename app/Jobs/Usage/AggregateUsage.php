@@ -9,7 +9,7 @@ use App\Models\Finding;
 use App\Models\Run;
 use App\Models\UsageRecord;
 use App\Models\Workspace;
-use Carbon\CarbonImmutable;
+use App\Services\Plans\ValueObjects\BillingPeriod;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Queue\Queueable;
@@ -31,13 +31,14 @@ final class AggregateUsage implements ShouldQueue
      */
     public function handle(): void
     {
-        $periodStart = CarbonImmutable::now()->startOfMonth();
-        $periodEnd = $periodStart->endOfMonth();
-
         Workspace::query()
             ->select('id')
-            ->chunkById(100, function (Collection $workspaces) use ($periodStart, $periodEnd): void {
+            ->chunkById(100, function (Collection $workspaces): void {
                 foreach ($workspaces as $workspace) {
+                    $period = BillingPeriod::forWorkspace($workspace);
+                    $periodStart = $period->start;
+                    $periodEnd = $period->end;
+
                     $runsCount = Run::query()
                         ->where('workspace_id', $workspace->id)
                         ->whereBetween('created_at', [$periodStart->startOfDay(), $periodEnd->endOfDay()])

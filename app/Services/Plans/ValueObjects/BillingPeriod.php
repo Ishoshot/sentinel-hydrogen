@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Plans\ValueObjects;
 
+use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 
 /**
@@ -18,6 +19,26 @@ final readonly class BillingPeriod
         public CarbonImmutable $start,
         public CarbonImmutable $end,
     ) {}
+
+    /**
+     * Resolve the billing period for a workspace from its latest subscription.
+     *
+     * Uses the subscription's current_period_start/end if available,
+     * otherwise falls back to the current calendar month.
+     */
+    public static function forWorkspace(Workspace $workspace): self
+    {
+        $subscription = $workspace->subscriptions()->latest()->first();
+
+        if ($subscription?->current_period_start !== null && $subscription?->current_period_end !== null) {
+            return new self(
+                start: CarbonImmutable::parse($subscription->current_period_start),
+                end: CarbonImmutable::parse($subscription->current_period_end),
+            );
+        }
+
+        return self::currentMonth();
+    }
 
     /**
      * Create a billing period for the current month.
