@@ -39,6 +39,10 @@ final readonly class PostRunAnnotations
      */
     public function handle(Run $run): int
     {
+        if ($run->findings()->whereHas('annotations')->exists()) {
+            return 0;
+        }
+
         $run->loadMissing(['repository.installation', 'findings', 'workspace']);
 
         $context = $this->resolveContext($run);
@@ -457,13 +461,13 @@ final readonly class PostRunAnnotations
 
         foreach ($findings as $finding) {
             if ($finding->file_path === null) {
-                Log::warning('Finding has no file path', ['finding_id' => $finding?->id]);
+                Log::warning('Finding has no file path', ['finding_id' => $finding->id]);
 
                 continue;
             }
 
             if ($finding->line_start === null) {
-                Log::warning('Finding has no line start', ['finding_id' => $finding?->id]);
+                Log::warning('Finding has no line start', ['finding_id' => $finding->id]);
 
                 continue;
             }
