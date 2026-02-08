@@ -315,21 +315,18 @@ it('allows commands when under the limit', function (): void {
     expect($result->allowed)->toBeTrue();
 });
 
-it('is case insensitive for GitHub username matching', function (): void {
-    // Create a user with GitHub identity (lowercase)
+it('is case insensitive for GitHub username matching', function (string $queryUsername): void {
     $user = User::factory()->create();
     ProviderIdentity::factory()->create([
         'user_id' => $user->id,
         'provider' => OAuthProvider::GitHub,
-        'nickname' => 'testuser', // lowercase
+        'nickname' => 'TestUser',
     ]);
 
-    // Create workspace
     $workspace = Workspace::factory()->create([
         'subscription_status' => SubscriptionStatus::Active,
     ]);
 
-    // Add user to workspace
     $workspace->teamMembers()->create([
         'user_id' => $user->id,
         'team_id' => $workspace->team->id,
@@ -349,13 +346,17 @@ it('is case insensitive for GitHub username matching', function (): void {
         'full_name' => 'owner/testrepo',
     ]);
 
-    // Add provider key
     ProviderKey::factory()->forRepository($repository)->create();
 
-    // Query with exact case
-    $result = $this->service->checkPermission('testuser', 'owner/testrepo');
-    expect($result->allowed)->toBeTrue();
-});
+    $result = $this->service->checkPermission($queryUsername, 'owner/testrepo');
+    expect($result->allowed)->toBeTrue()
+        ->and($result->user->id)->toBe($user->id);
+})->with([
+    'exact case' => ['TestUser'],
+    'lowercase' => ['testuser'],
+    'uppercase' => ['TESTUSER'],
+    'mixed case' => ['tEsTuSeR'],
+]);
 
 it('allows unlimited commands when plan has null limit', function (): void {
     // Create plan with unlimited commands
