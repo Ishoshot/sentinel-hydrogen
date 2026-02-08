@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Reviews\PostRunAnnotations;
 use App\Enums\Auth\ProviderType;
 use App\Enums\Reviews\RunStatus;
+use App\Models\Annotation;
 use App\Models\Connection;
 use App\Models\Finding;
 use App\Models\Installation;
@@ -294,4 +295,37 @@ it('excludes findings without line start from filtering', function (): void {
 
     expect($eligibleFindings)->toHaveCount(1)
         ->and($eligibleFindings->first()->file_path)->toBe('src/WithLine.php');
+});
+
+it('returns zero when annotations already exist (idempotency guard)', function (): void {
+    $provider = Provider::query()->where('type', ProviderType::GitHub)->first();
+    $connection = Connection::factory()->forProvider($provider)->active()->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 77777777,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'full_name' => 'org/idempotent-repo',
+    ]);
+
+    $run = Run::factory()->forRepository($repository)->create([
+        'status' => RunStatus::Completed,
+        'metadata' => [
+            'pull_request_number' => 50,
+            'head_sha' => 'abc123',
+            'review_summary' => ['overview' => 'Done.', 'risk_level' => 'low', 'recommendations' => []],
+        ],
+    ]);
+
+    $finding = Finding::factory()->forRun($run)->create([
+        'severity' => 'high',
+        'file_path' => 'src/AlreadyAnnotated.php',
+        'line_start' => 10,
+    ]);
+
+    Annotation::factory()->forFinding($finding)->forProvider($provider)->create();
+
+    $action = app(PostRunAnnotations::class);
+    $count = $action->handle($run);
+
+    expect($count)->toBe(0);
 });

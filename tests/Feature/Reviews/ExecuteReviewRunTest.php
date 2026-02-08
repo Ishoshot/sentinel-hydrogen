@@ -5,18 +5,24 @@ declare(strict_types=1);
 use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Actions\Reviews\ExecuteReviewRun;
 use App\Enums\Auth\ProviderType;
+use App\Enums\Billing\SubscriptionStatus;
+use App\Enums\GitHub\InstallationStatus;
 use App\Enums\Reviews\RunStatus;
 use App\Jobs\Reviews\PostRunAnnotations;
 use App\Models\Connection;
 use App\Models\Installation;
+use App\Models\Plan;
 use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\RepositorySettings;
 use App\Models\Run;
+use App\Models\Subscription;
+use App\Models\Workspace;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextEngineContract;
 use App\Services\Reviews\Contracts\ReviewEngine;
 use App\Services\Reviews\ValueObjects\ReviewResult;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\mock;
@@ -907,4 +913,87 @@ it('deduplicates findings within a run', function (): void {
     $run->refresh();
 
     expect($run->findings()->count())->toBe(1);
+});
+
+it('skips review when installation is inactive', function (): void {
+    $skipCommentMock = mock(PostsSkipReasonComment::class);
+    $skipCommentMock->shouldReceive('handle')->once();
+
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forProvider($provider)->active()->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 55556666,
+        'status' => InstallationStatus::Suspended,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'full_name' => 'org/inactive-install-repo',
+    ]);
+
+    $run = Run::factory()->forRepository($repository)->create([
+        'status' => RunStatus::Queued,
+        'metadata' => [
+            'repository_full_name' => 'org/inactive-install-repo',
+            'pull_request_number' => 99,
+            'head_sha' => 'deadbeef',
+        ],
+    ]);
+
+    app(ExecuteReviewRun::class)->handle($run);
+
+    $run->refresh();
+
+    expect($run->status)->toBe(RunStatus::Skipped)
+        ->and($run->metadata['skip_reason'])->toBe('installation_inactive');
+});
+
+it('skips review when subscription becomes inactive after queuing', function (): void {
+    $skipCommentMock = mock(PostsSkipReasonComment::class);
+    $skipCommentMock->shouldReceive('handle')->once();
+
+    $plan = Plan::factory()->illuminate()->create();
+
+    $workspace = Workspace::factory()->create([
+        'plan_id' => $plan->id,
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
+
+    Subscription::factory()->create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'current_period_start' => CarbonImmutable::parse('2025-12-01'),
+        'current_period_end' => CarbonImmutable::parse('2025-12-31'),
+    ]);
+
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 77778888,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'workspace_id' => $workspace->id,
+        'full_name' => 'org/expired-sub-repo',
+    ]);
+
+    $run = Run::factory()->forRepository($repository)->create([
+        'workspace_id' => $workspace->id,
+        'status' => RunStatus::Queued,
+        'metadata' => [
+            'repository_full_name' => 'org/expired-sub-repo',
+            'pull_request_number' => 101,
+            'head_sha' => 'cafe1234',
+        ],
+    ]);
+
+    app(ExecuteReviewRun::class)->handle($run);
+
+    $run->refresh();
+
+    expect($run->status)->toBe(RunStatus::Skipped)
+        ->and($run->metadata['skip_reason'])->toBe('plan_limit_reached');
 });
