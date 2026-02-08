@@ -63,7 +63,7 @@ Before executing, show a markdown table with the planned commits:
 For each planned commit:
 
 1. Run `git add <file1> <file2> ...` to stage only the files for that commit
-2. Run `git commit -m "<conventional commit message>"`
+2. Run `git commit -m "<conventional commit message>"` — do NOT include `Co-Authored-By` trailers
 3. Wait for confirmation before proceeding to next commit
 
 ### Step 6: Show Final Summary
