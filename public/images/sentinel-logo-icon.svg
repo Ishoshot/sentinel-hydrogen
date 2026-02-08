@@ -1,40 +1,27 @@
-<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <!-- Sentinel Icon Logo: Shield + Eye + Code Brackets -->
 
-  <!-- Outer angular shield/bracket form -->
-  <path d="M 100 30
-           L 150 60
-           L 150 120
-           L 100 170
-           L 50 120
-           L 50 60
-           Z"
-        fill="none"
-        stroke="#1a1a1a"
-        stroke-width="8"
-        stroke-linejoin="miter"/>
-
-  <!-- Inner eye/watchful element -->
-  <ellipse cx="100" cy="90" rx="40" ry="25"
-           fill="none"
-           stroke="#1a1a1a"
-           stroke-width="6"/>
-
-  <!-- Pupil - the watching sentinel -->
-  <circle cx="100" cy="90" r="12" fill="#1a1a1a"/>
-
-  <!-- Code brackets accent -->
-  <path d="M 70 120 L 60 130 L 70 140"
-        fill="none"
-        stroke="#1a1a1a"
-        stroke-width="6"
-        stroke-linecap="round"
-        stroke-linejoin="round"/>
-
-  <path d="M 130 120 L 140 130 L 130 140"
-        fill="none"
-        stroke="#1a1a1a"
-        stroke-width="6"
-        stroke-linecap="round"
-        stroke-linejoin="round"/>
-</svg>
+                        <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Circle with dog cutout - works on any background -->
+                            <path fill-rule="evenodd" fill="#14b8a6" d="
+                                M 32 4
+                                A 28 28 0 1 1 32 60
+                                A 28 28 0 1 1 32 4
+                                Z
+                                M 18 24 L 14 10 L 28 20 Z
+                                M 46 24 L 50 10 L 36 20 Z
+                                M 18 24
+                                C 16 26 14 30 14 34
+                                L 14 42
+                                C 14 48 18 52 26 52
+                                L 26 46
+                                L 32 48
+                                L 38 46
+                                L 38 52
+                                C 46 52 50 48 50 42
+                                L 50 34
+                                C 50 30 48 26 46 24
+                                C 42 20 38 18 32 18
+                                C 26 18 22 20 18 24
+                                Z
+                            "/>
+                        </svg>
+                    
