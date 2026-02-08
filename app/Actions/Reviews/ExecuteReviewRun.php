@@ -14,8 +14,10 @@ use App\Jobs\Reviews\PostRunAnnotations;
 use App\Models\Finding;
 use App\Models\Run;
 use App\Services\Context\Contracts\ContextEngineContract;
+use App\Services\Plans\PlanLimitEnforcer;
 use App\Services\Reviews\Contracts\ReviewEngine;
 use App\Services\Reviews\Contracts\ReviewPolicyResolverContract;
+use App\Services\Reviews\ValueObjects\PromptSnapshot;
 use App\Services\Reviews\ValueObjects\ReviewFinding;
 use App\Services\Reviews\ValueObjects\ReviewPolicy;
 use App\Services\Reviews\ValueObjects\ReviewResult;
@@ -36,6 +38,7 @@ final readonly class ExecuteReviewRun
         private ReviewEngine $reviewEngine,
         private LogActivity $logActivity,
         private PostsSkipReasonComment $postSkipReasonComment,
+        private PlanLimitEnforcer $planLimitEnforcer,
     ) {}
 
     /**
@@ -53,6 +56,26 @@ final readonly class ExecuteReviewRun
 
         if ($repository === null) {
             return $run;
+        }
+
+        $installation = $repository->installation;
+
+        if ($installation === null || ! $installation->isActive()) {
+            return $this->markSkippedWithReason($run, SkipReason::InstallationInactive, 'Installation is inactive or missing.');
+        }
+
+        $workspace = $run->workspace ?? $repository->workspace;
+
+        if ($workspace !== null) {
+            $subscriptionCheck = $this->planLimitEnforcer->ensureActiveSubscription($workspace);
+
+            if (! $subscriptionCheck->allowed) {
+                return $this->markSkippedWithReason(
+                    $run,
+                    SkipReason::PlanLimitReached,
+                    $subscriptionCheck->message ?? 'Subscription is not active.'
+                );
+            }
         }
 
         $run->forceFill([
@@ -73,12 +96,9 @@ final readonly class ExecuteReviewRun
 
             $sentinelConfigData = $contextBag->metadata['sentinel_config'] ?? null;
             $configBranch = $contextBag->metadata['config_from_branch'] ?? null;
-            $branchConfig = null;
 
-            if (is_array($sentinelConfigData)) {
-                /** @var array<string, mixed> $sentinelConfigData */
-                $branchConfig = $sentinelConfigData;
-            }
+            /** @var array<string, mixed>|null $branchConfig */
+            $branchConfig = is_array($sentinelConfigData) ? $sentinelConfigData : null;
 
             $allowedBranches = array_values(array_unique(array_filter([
                 $contextBag->pullRequest['base_branch'] ?? null,
@@ -122,7 +142,7 @@ final readonly class ExecuteReviewRun
         DB::transaction(function () use ($run, $policySnapshot, $reviewResult, $filteredFindings, $metrics, $durationSeconds): void {
             $metadata = $run->metadata ?? [];
             $metadata['review_summary'] = $reviewResult->summary->toArray();
-            if ($reviewResult->promptSnapshot instanceof \App\Services\Reviews\ValueObjects\PromptSnapshot) {
+            if ($reviewResult->promptSnapshot instanceof PromptSnapshot) {
                 $metadata['prompt_snapshot'] = $reviewResult->promptSnapshot->toArray();
             }
 
@@ -255,29 +275,12 @@ final readonly class ExecuteReviewRun
 
         $filtered = array_values($filtered);
 
-        usort($filtered, function (ReviewFinding $a, ReviewFinding $b): int {
-            $severityCompare = $b->severity->priority() <=> $a->severity->priority();
-            if ($severityCompare !== 0) {
-                return $severityCompare;
-            }
-
-            $confidenceCompare = $b->confidence <=> $a->confidence;
-            if ($confidenceCompare !== 0) {
-                return $confidenceCompare;
-            }
-
-            $pathCompare = $this->compareNullableStrings($a->filePath, $b->filePath);
-            if ($pathCompare !== 0) {
-                return $pathCompare;
-            }
-
-            $lineCompare = $this->compareNullableInts($a->lineStart, $b->lineStart);
-            if ($lineCompare !== 0) {
-                return $lineCompare;
-            }
-
-            return strcmp($a->title, $b->title);
-        });
+        usort($filtered, fn (ReviewFinding $a, ReviewFinding $b): int => ($b->severity->priority() <=> $a->severity->priority())
+            ?: ($b->confidence <=> $a->confidence)
+            ?: $this->compareNullableStrings($a->filePath, $b->filePath)
+            ?: $this->compareNullableInts($a->lineStart, $b->lineStart)
+            ?: strcmp($a->title, $b->title)
+        );
 
         if ($maxFindings < 1) {
             return [];
@@ -390,6 +393,32 @@ final readonly class ExecuteReviewRun
         $escaped = str_replace('\?', '[^\/]', $escaped);
 
         return '/^'.$escaped.'$/';
+    }
+
+    /**
+     * Mark the run as skipped with a specific reason (before review execution).
+     */
+    private function markSkippedWithReason(Run $run, SkipReason $reason, string $message): Run
+    {
+        $metadata = $run->metadata ?? [];
+        $metadata['skip_reason'] = $reason->value;
+        $metadata['skip_message'] = $message;
+
+        $run->forceFill([
+            'status' => RunStatus::Skipped,
+            'completed_at' => now(),
+            'metadata' => $metadata,
+        ])->save();
+
+        Log::info('Review run skipped', [
+            'run_id' => $run->id,
+            'workspace_id' => $run->workspace_id,
+            'reason' => $reason->value,
+        ]);
+
+        $this->postSkipReasonComment->handle($run, $reason, $message);
+
+        return $run;
     }
 
     /**

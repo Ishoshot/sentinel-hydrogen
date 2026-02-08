@@ -29,4 +29,12 @@ final class NoProviderKeyException extends Exception
     {
         return new self(sprintf('No API key configured for provider: %s', $providerName));
     }
+
+    /**
+     * Create exception for an invalid (empty or null) decrypted provider key.
+     */
+    public static function invalidDecryptedKey(): self
+    {
+        return new self('Provider key decrypted to an empty or invalid value');
+    }
 }

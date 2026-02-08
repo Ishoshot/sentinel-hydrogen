@@ -14,6 +14,7 @@ use App\Models\ProviderIdentity;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Plans\PlanLimitEnforcer;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Creates a Run record for a pull request webhook event.
@@ -39,84 +40,106 @@ final readonly class CreatePullRequestRun
     public function handle(Repository $repository, array $payload, ?int $greetingCommentId = null, ?string $skipReason = null): Run
     {
         $workspace = $repository->workspace;
-        $limitCheck = null;
-        $planLimitTriggered = false;
 
-        if ($workspace !== null) {
-            $limitCheck = $this->planLimitEnforcer->ensureRunAllowed($workspace);
+        if ($workspace === null) {
+            $skipReason = 'Repository is not associated with any workspace.';
+        }
 
-            if (! $limitCheck->allowed) {
-                $skipReason = $limitCheck->message ?? 'Run limit reached.';
-                $planLimitTriggered = true;
+        /** @var array{run: Run, skipReason: string|null, planLimitTriggered: bool, metadata: array<string, mixed>} $result */
+        $result = DB::transaction(function () use ($repository, $workspace, $payload, $greetingCommentId, $skipReason): array {
+            $limitCheck = null;
+            $planLimitTriggered = false;
+
+            if ($workspace !== null && $skipReason === null) {
+                $limitCheck = $this->planLimitEnforcer->ensureRunAllowed($workspace);
+
+                if (! $limitCheck->allowed) {
+                    $skipReason = $limitCheck->message ?? 'Run limit reached.';
+                    $planLimitTriggered = true;
+                }
             }
-        }
 
-        $externalReference = sprintf(
-            'github:pull_request:%s:%s',
-            $payload['pull_request_number'],
-            $payload['head_sha']
-        );
+            $externalReference = sprintf(
+                'github:pull_request:%s:%s',
+                $payload['pull_request_number'],
+                $payload['head_sha']
+            );
 
-        $metadata = [
-            'provider' => 'github',
-            'repository_full_name' => $payload['repository_full_name'],
-            'pull_request_number' => $payload['pull_request_number'],
-            'pull_request_title' => $payload['pull_request_title'],
-            'pull_request_body' => $payload['pull_request_body'],
-            'base_branch' => $payload['base_branch'],
-            'head_branch' => $payload['head_branch'],
-            'head_sha' => $payload['head_sha'],
-            'sender_login' => $payload['sender_login'],
-            'action' => $payload['action'],
-            'installation_id' => $payload['installation_id'],
-            'author' => $payload['author'],
-            'is_draft' => $payload['is_draft'],
-            'assignees' => $payload['assignees'],
-            'reviewers' => $payload['reviewers'],
-            'labels' => $payload['labels'],
-        ];
-
-        if ($greetingCommentId !== null) {
-            $metadata['github_comment_id'] = $greetingCommentId;
-        }
-
-        if ($skipReason !== null) {
-            $metadata['skip_reason'] = $skipReason;
-            $metadata['skip_message'] = $skipReason;
-            if ($planLimitTriggered) {
-                $metadata['skip_reason_code'] = $limitCheck?->code ?? 'plan_limit';
-            }
-        }
-
-        $status = $skipReason !== null ? RunStatus::Skipped : RunStatus::Queued;
-
-        $initiatedByUserId = $this->findUserIdByGitHubLogin($payload['author']['login']);
-
-        $run = Run::query()->firstOrCreate(
-            [
-                'workspace_id' => $repository->workspace_id,
-                'repository_id' => $repository->id,
-                'external_reference' => $externalReference,
-            ],
-            [
-                'status' => $status,
-                'started_at' => now(),
-                'completed_at' => $skipReason !== null ? now() : null,
-                'initiated_by_id' => $initiatedByUserId,
-                'pr_number' => $payload['pull_request_number'],
-                'pr_title' => $payload['pull_request_title'],
+            $metadata = [
+                'provider' => 'github',
+                'repository_full_name' => $payload['repository_full_name'],
+                'pull_request_number' => $payload['pull_request_number'],
+                'pull_request_title' => $payload['pull_request_title'],
+                'pull_request_body' => $payload['pull_request_body'],
                 'base_branch' => $payload['base_branch'],
                 'head_branch' => $payload['head_branch'],
+                'head_sha' => $payload['head_sha'],
+                'sender_login' => $payload['sender_login'],
+                'action' => $payload['action'],
+                'installation_id' => $payload['installation_id'],
+                'author' => $payload['author'],
+                'is_draft' => $payload['is_draft'],
+                'assignees' => $payload['assignees'],
+                'reviewers' => $payload['reviewers'],
+                'labels' => $payload['labels'],
+            ];
+
+            if ($greetingCommentId !== null) {
+                $metadata['github_comment_id'] = $greetingCommentId;
+            }
+
+            if ($skipReason !== null) {
+                $metadata['skip_reason'] = $skipReason;
+                $metadata['skip_message'] = $skipReason;
+                if ($planLimitTriggered) {
+                    $metadata['skip_reason_code'] = $limitCheck?->code ?? 'plan_limit';
+                }
+            }
+
+            $status = $skipReason !== null ? RunStatus::Skipped : RunStatus::Queued;
+
+            $initiatedByUserId = $this->findUserIdByGitHubLogin($payload['author']['login']);
+
+            $run = Run::query()->firstOrCreate(
+                [
+                    'workspace_id' => $repository->workspace_id,
+                    'repository_id' => $repository->id,
+                    'external_reference' => $externalReference,
+                ],
+                [
+                    'status' => $status,
+                    'started_at' => now(),
+                    'completed_at' => $skipReason !== null ? now() : null,
+                    'initiated_by_id' => $initiatedByUserId,
+                    'pr_number' => $payload['pull_request_number'],
+                    'pr_title' => $payload['pull_request_title'],
+                    'base_branch' => $payload['base_branch'],
+                    'head_branch' => $payload['head_branch'],
+                    'metadata' => $metadata,
+                    'created_at' => now(),
+                ]
+            );
+
+            return [
+                'run' => $run,
+                'skipReason' => $skipReason,
+                'planLimitTriggered' => $planLimitTriggered,
                 'metadata' => $metadata,
-                'created_at' => now(),
-            ]
-        );
+            ];
+        });
+
+        $run = $result['run'];
+        $skipReason = $result['skipReason'];
+        $planLimitTriggered = $result['planLimitTriggered'];
+        $metadata = $result['metadata'];
 
         if ($run->wasRecentlyCreated) {
             $this->logRunCreated($repository, $run, $payload, $skipReason);
         }
 
-        if ($planLimitTriggered && in_array(($metadata['skip_reason_code'] ?? null), ['runs_limit', 'subscription_inactive'], true)) {
+        if ($workspace === null) {
+            $this->postSkipReasonComment->handle($run, SkipReason::OrphanedRepository);
+        } elseif ($planLimitTriggered && in_array(($metadata['skip_reason_code'] ?? null), ['runs_limit', 'subscription_inactive'], true)) {
             $this->postSkipReasonComment->handle($run, SkipReason::PlanLimitReached, $skipReason);
         }
 
@@ -169,7 +192,7 @@ final readonly class CreatePullRequestRun
     {
         $identity = ProviderIdentity::query()
             ->where('provider', OAuthProvider::GitHub)
-            ->where('nickname', $githubLogin)
+            ->whereRaw('LOWER(nickname) = ?', [mb_strtolower($githubLogin)])
             ->first();
 
         return $identity?->user_id;
