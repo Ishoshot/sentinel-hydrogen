@@ -24,7 +24,7 @@ parameters:
         # Eloquent cast attributes are not properly typed by PHPStan
         - '#Parameter \#2 \$array of function array_key_exists expects array, array\|string given#'
         - '#Result of && is always false#'
-        - '#Instanceof between string and .+ will always evaluate to false#'
+        - '#Instanceof between string(\|.+)? and .+ will always evaluate to false#'
         - '#Method .+::hasFeature\(\) never returns true#'
         - '#Offset string on array\{\}\|string on left side of \?\? does not exist#'
         - '#Call to function array_key_exists\(\) with string and array\{\}\|string will always evaluate to false#'
