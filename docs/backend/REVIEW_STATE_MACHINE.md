@@ -27,7 +27,7 @@ The review system is event-driven and follows a clear state machine pattern:
 
 **Properties**:
 - `status`: `queued`
-- `started_at`: `null`
+- `started_at`: Timestamp (set at run creation time)
 - `completed_at`: `null`
 - `metrics`: `null`
 - `metadata`: Contains PR details, greeting comment ID
@@ -353,22 +353,27 @@ The review system is event-driven and follows a clear state machine pattern:
 ## Queue Architecture
 
 ### Queue Names
-1. **`webhooks`** (High Priority)
+1. **`webhooks`** (Priority 5)
    - ProcessPullRequestWebhook
    - Fast validation and dispatching
    - Target: < 500ms
 
-2. **`reviews-priority`** (Premium Workspaces)
-   - ExecuteReviewRun for paid tiers
-   - Dedicated workers
+2. **`reviews-enterprise`** (Priority 20 -- Enterprise Workspaces)
+   - ExecuteReviewRun for enterprise-tier workspaces
+   - Highest priority review queue with dedicated workers
    - Target: < 30s
 
-3. **`reviews-default`** (Free Workspaces)
-   - ExecuteReviewRun for free tier
+3. **`reviews-paid`** (Priority 30 -- Paid Workspaces)
+   - ExecuteReviewRun for paid-tier workspaces (pro, team)
+   - Mid-priority review queue with dedicated workers
+   - Target: < 30s
+
+4. **`reviews-default`** (Priority 40 -- Free Workspaces)
+   - ExecuteReviewRun for free-tier workspaces
    - Shared workers
    - Target: < 2min
 
-4. **`annotations`** (Low Priority)
+5. **`annotations`** (Priority 50)
    - PostRunAnnotations
    - Can be delayed
    - Target: < 10s
@@ -389,7 +394,7 @@ The review system is event-driven and follows a clear state machine pattern:
     'repository_id' => int,
     'external_reference' => 'pr-123',
     'status' => RunStatus::Queued,
-    'started_at' => null,
+    'started_at' => now(),
     'completed_at' => null,
     'metrics' => null,
     'policy_snapshot' => null,

@@ -70,7 +70,9 @@ Users may create multiple workspaces subject to the following rules:
 
 ---
 
-### Repository Limit
+### Repository Limit (Not Enforced)
+
+> **Note:** This limit is not enforced and is not a planned feature.
 
 The maximum number of repositories that may be enabled for reviews within a Workspace.
 
@@ -79,7 +81,9 @@ The maximum number of repositories that may be enabled for reviews within a Work
 
 ---
 
-### Installation Limit
+### Installation Limit (Not Enforced)
+
+> **Note:** This limit is not enforced and is not a planned feature.
 
 The maximum number of provider installations allowed per Workspace.
 

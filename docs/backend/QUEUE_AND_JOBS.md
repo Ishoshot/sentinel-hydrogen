@@ -36,8 +36,16 @@ Queues are the primary execution mechanism for Sentinel’s backend.
 ## Queue Topology
 
 Queues are separated by priority and responsibility.
+All queue names are defined in `App\Enums\Queue\Queue`.
+Lower priority values are processed first (higher priority).
 
-### webhook
+### system (Priority 1)
+
+Handles critical internal system tasks.
+
+---
+
+### webhooks (Priority 5)
 
 Handles inbound events from external providers.
 
@@ -49,37 +57,52 @@ Characteristics:
 
 ---
 
-### reviews-high
+### reviews-enterprise (Priority 20)
 
-Handles high-priority review executions.
+Handles review executions for enterprise-tier workspaces.
 
-Examples:
-
--   manual review triggers
--   critical policy-enforced reviews
+-   Highest priority review queue
+-   Dedicated workers for enterprise customers
 
 ---
 
-### reviews-default
+### reviews-paid (Priority 30)
 
-Handles standard automated review runs.
+Handles review executions for paid-tier workspaces (pro, team).
 
-This is the primary execution queue for Sentinel reviews.
-
----
-
-### analytics-rollups
-
-Handles aggregation and rollup updates.
-
-Examples:
-
--   daily metrics
--   dashboard aggregates
+-   Mid-priority review queue
+-   Dedicated workers for paying customers
 
 ---
 
-### notifications
+### reviews-default (Priority 40)
+
+Handles standard automated review runs for free-tier workspaces.
+
+-   Lowest priority review queue
+-   Shared workers
+
+---
+
+### briefings-default (Priority 45)
+
+Handles briefing generation jobs.
+
+---
+
+### commands (Priority 48)
+
+Handles command execution jobs.
+
+---
+
+### annotations (Priority 50)
+
+Handles posting review findings as GitHub PR comments.
+
+---
+
+### notifications (Priority 55)
 
 Handles outbound notifications and callbacks.
 
@@ -87,6 +110,36 @@ Examples:
 
 -   posting results to source control platforms
 -   sending emails or webhooks (future)
+
+---
+
+### sync (Priority 70)
+
+Handles synchronization tasks between Sentinel and external providers.
+
+---
+
+### default (Priority 80)
+
+Handles general-purpose background work that does not fit a specialized queue.
+
+---
+
+### code-indexing (Priority 85)
+
+Handles code indexing operations for repository analysis.
+
+---
+
+### long-running (Priority 90)
+
+Handles long-running operations that may take several minutes.
+
+---
+
+### bulk (Priority 100)
+
+Handles bulk operations that process large volumes of data.
 
 ---
 
@@ -119,35 +172,7 @@ Responsibilities:
 -   persist ReviewResult
 -   emit domain events
 
-This job runs on `reviews-high` or `reviews-default`.
-
----
-
-### IngestReviewResults
-
-Responsible for post-processing review output.
-
-Responsibilities:
-
--   normalize findings
--   create annotations
--   enqueue analytics jobs
-
----
-
-## Analytics Jobs
-
-### UpdateWorkspaceRollups
-
-Responsible for updating aggregate tables.
-
-Characteristics:
-
--   asynchronous
--   retryable
--   idempotent
-
-Rollups must never block review execution.
+This job runs on the 3-tier review queue system: `reviews-enterprise`, `reviews-paid`, or `reviews-default`, depending on the workspace's subscription tier.
 
 ---
 
