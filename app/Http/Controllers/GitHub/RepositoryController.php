@@ -28,9 +28,9 @@ final class RepositoryController
     {
         Gate::authorize('viewAny', [Repository::class, $workspace]);
 
-        $repositories = Repository::with('settings')
+        $repositories = Repository::with(['settings', 'providerKeys.providerModel'])
             ->where('workspace_id', $workspace->id)
-            ->orderBy('full_name')
+            ->latest()
             ->paginate($request->perPage());
 
         return RepositoryResource::collection($repositories);
@@ -47,7 +47,7 @@ final class RepositoryController
 
         Gate::authorize('view', $repository);
 
-        $repository->load('settings', 'installation');
+        $repository->load(['settings', 'installation', 'providerKeys.providerModel']);
 
         return response()->json([
             'data' => new RepositoryResource($repository),
@@ -78,7 +78,7 @@ final class RepositoryController
         $updateSettings->handle($repository, $validated, $user);
 
         $repository->refresh();
-        $repository->load('settings');
+        $repository->load(['settings', 'providerKeys.providerModel']);
 
         return response()->json([
             'data' => new RepositoryResource($repository),

@@ -86,6 +86,18 @@ Route::get('/github/callback', [ConnectionController::class, 'callback'])->name(
 
 Route::get('/briefings/share/{token}', [PublicBriefingController::class, 'show'])->name('briefings.share.show');
 
+/*
+|--------------------------------------------------------------------------
+| Public Plans Route
+|--------------------------------------------------------------------------
+|
+| Public endpoint for listing available plans. Used by the landing page
+| and pricing pages to display plan information without authentication.
+|
+*/
+
+Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
+
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/user', [OAuthController::class, 'user'])->name('user');
     Route::post('/user/mark-getting-started-seen', MarkGettingStartedSeenController::class)->name('user.mark-getting-started-seen');
@@ -94,7 +106,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // Broadcasting auth - must be in API routes to use Sanctum properly
     Route::post('/broadcasting/auth', [Illuminate\Broadcasting\BroadcastController::class, 'authenticate'])->name('broadcasting.auth');
 
-    Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
     Route::get('/ai-options/{provider}', AiOptionController::class)->name('ai-options.index');
 
     // Notifications
