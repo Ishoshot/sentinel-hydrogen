@@ -19,6 +19,10 @@ final class RepositoryResource extends JsonResource
     #[Override]
     public function toArray(Request $request): array
     {
+        $providerKey = $this->relationLoaded('providerKeys')
+            ? $this->providerKeys->first()
+            : null;
+
         return [
             'id' => $this->id,
             'github_id' => $this->github_id,
@@ -30,6 +34,8 @@ final class RepositoryResource extends JsonResource
             'language' => $this->language,
             'description' => $this->description,
             'auto_review_enabled' => $this->hasAutoReviewEnabled(),
+            'byok_provider' => $providerKey?->provider?->value,
+            'byok_model' => $providerKey?->getModelIdentifier(),
             'settings' => new RepositorySettingsResource($this->whenLoaded('settings')),
             'installation' => new InstallationResource($this->whenLoaded('installation')),
             'created_at' => $this->created_at?->toISOString(),
