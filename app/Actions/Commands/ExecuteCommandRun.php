@@ -8,7 +8,10 @@ use App\Enums\Commands\CommandRunStatus;
 use App\Models\CommandRun;
 use App\Services\Commands\CommandToolResultSanitizer;
 use App\Services\Commands\Contracts\CommandAgentServiceContract;
+use App\Services\Commands\ValueObjects\ToolCall;
+use App\Services\Plans\PlanLimitEnforcer;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -23,6 +26,7 @@ final readonly class ExecuteCommandRun
         private CommandAgentServiceContract $agentService,
         private PostCommandResponse $postResponse,
         private CommandToolResultSanitizer $toolResultSanitizer,
+        private PlanLimitEnforcer $planLimitEnforcer,
     ) {}
 
     /**
@@ -36,6 +40,27 @@ final readonly class ExecuteCommandRun
             'repository' => $commandRun->repository?->full_name,
         ];
 
+        $workspace = $commandRun->workspace;
+
+        if ($workspace !== null) {
+            $subscriptionCheck = $this->planLimitEnforcer->ensureActiveSubscription($workspace);
+
+            if (! $subscriptionCheck->allowed) {
+                $commandRun->update([
+                    'status' => CommandRunStatus::Failed,
+                    'completed_at' => now(),
+                    'response' => ['error' => $subscriptionCheck->message ?? 'Subscription is not active.'],
+                ]);
+
+                $this->postResponse->handleError(
+                    $commandRun,
+                    new RuntimeException($subscriptionCheck->message ?? 'Subscription is not active.')
+                );
+
+                return;
+            }
+        }
+
         $commandRun->update([
             'status' => CommandRunStatus::InProgress,
             'started_at' => now(),
@@ -44,7 +69,7 @@ final readonly class ExecuteCommandRun
         try {
             $result = $this->agentService->execute($commandRun);
 
-            $toolCallArrays = array_map(fn (\App\Services\Commands\ValueObjects\ToolCall $tc): array => $tc->toArray(), $result->toolCalls);
+            $toolCallArrays = array_map(fn (ToolCall $tc): array => $tc->toArray(), $result->toolCalls);
             $sanitizedToolCalls = $this->toolResultSanitizer->sanitizeToolCalls($toolCallArrays);
 
             $commandRun->update([

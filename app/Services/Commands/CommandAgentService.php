@@ -79,6 +79,10 @@ final readonly class CommandAgentService implements CommandAgentServiceContract
         $model = $this->resolveModel($aiProvider, $providerKey);
         $apiKey = $providerKey->encrypted_key;
 
+        if ($apiKey === '') {
+            throw NoProviderKeyException::invalidDecryptedKey();
+        }
+
         // Build system prompt
         $systemPrompt = $this->promptBuilder->buildSystemPrompt($commandRun->command_type);
 

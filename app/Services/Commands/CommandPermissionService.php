@@ -107,7 +107,7 @@ final readonly class CommandPermissionService
     private function findUserByGitHubUsername(string $username): ?User
     {
         $providerIdentity = ProviderIdentity::where('provider', OAuthProvider::GitHub)
-            ->where('nickname', $username)
+            ->whereRaw('LOWER(nickname) = ?', [mb_strtolower($username)])
             ->first();
 
         return $providerIdentity?->user;
