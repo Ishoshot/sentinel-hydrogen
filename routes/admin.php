@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\AiOptionController;
 use App\Http\Controllers\Admin\Auth\LoginController;
+use App\Http\Controllers\Admin\BriefingController;
 use App\Http\Controllers\Admin\PromotionController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,5 +32,13 @@ Route::middleware('admin.auth')->group(function (): void {
             'show' => 'admin.ai-options.show',
             'update' => 'admin.ai-options.update',
             'destroy' => 'admin.ai-options.destroy',
+        ]);
+    Route::apiResource('briefings', BriefingController::class)
+        ->names([
+            'index' => 'admin.briefings.index',
+            'store' => 'admin.briefings.store',
+            'show' => 'admin.briefings.show',
+            'update' => 'admin.briefings.update',
+            'destroy' => 'admin.briefings.destroy',
         ]);
 });
