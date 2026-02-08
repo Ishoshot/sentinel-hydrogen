@@ -11,6 +11,7 @@ use App\Models\Installation;
 use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\Run;
+use App\Models\Subscription;
 use App\Models\UsageRecord;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
@@ -94,4 +95,42 @@ it('creates zero counts for empty workspaces', function (): void {
         ->and($usageRecord->runs_count)->toBe(0)
         ->and($usageRecord->findings_count)->toBe(0)
         ->and($usageRecord->annotations_count)->toBe(0);
+});
+
+it('uses subscription billing period instead of calendar month', function (): void {
+    $workspace = Workspace::factory()->create();
+    $provider = Provider::where('type', ProviderType::GitHub)->first();
+    $connection = Connection::factory()->forProvider($provider)->forWorkspace($workspace)->create();
+    $installation = Installation::factory()->forConnection($connection)->create();
+    $repository = Repository::factory()->forInstallation($installation)->create();
+
+    // Subscription period: Jan 15 – Feb 14
+    $periodStart = CarbonImmutable::parse('2026-01-15');
+    $periodEnd = CarbonImmutable::parse('2026-02-14');
+
+    Subscription::factory()->create([
+        'workspace_id' => $workspace->id,
+        'current_period_start' => $periodStart,
+        'current_period_end' => $periodEnd,
+    ]);
+
+    // Run within subscription period
+    Run::factory()->forRepository($repository)->create([
+        'created_at' => CarbonImmutable::parse('2026-01-20'),
+    ]);
+
+    // Run outside subscription period (before start)
+    Run::factory()->forRepository($repository)->create([
+        'created_at' => CarbonImmutable::parse('2026-01-10'),
+    ]);
+
+    $job = new AggregateUsage;
+    $job->handle();
+
+    $usageRecord = UsageRecord::where('workspace_id', $workspace->id)->first();
+
+    expect($usageRecord)->not->toBeNull()
+        ->and($usageRecord->period_start->toDateString())->toBe('2026-01-15')
+        ->and($usageRecord->period_end->toDateString())->toBe('2026-02-14')
+        ->and($usageRecord->runs_count)->toBe(1);
 });
