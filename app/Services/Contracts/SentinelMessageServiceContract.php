@@ -55,4 +55,14 @@ interface SentinelMessageServiceContract
      * Build a comment explaining that the review was skipped due to plan limits.
      */
     public function buildPlanLimitReachedComment(?string $message): string;
+
+    /**
+     * Build a comment explaining that the review was skipped because the repository is orphaned.
+     */
+    public function buildOrphanedRepositoryComment(): string;
+
+    /**
+     * Build a comment explaining that the review was skipped because the installation is inactive.
+     */
+    public function buildInstallationInactiveComment(): string;
 }

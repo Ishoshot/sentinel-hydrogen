@@ -14,4 +14,6 @@ enum SkipReason: string
     case NoProviderKeys = 'no_provider_keys';
     case RunFailed = 'run_failed';
     case PlanLimitReached = 'plan_limit_reached';
+    case OrphanedRepository = 'orphaned_repository';
+    case InstallationInactive = 'installation_inactive';
 }

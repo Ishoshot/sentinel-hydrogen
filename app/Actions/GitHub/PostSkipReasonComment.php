@@ -109,6 +109,8 @@ final readonly class PostSkipReasonComment implements PostsSkipReasonComment
             SkipReason::NoProviderKeys => $this->messageService->buildNoProviderKeysComment(),
             SkipReason::RunFailed => $this->messageService->buildRunFailedComment($detail ?? 'Unknown'),
             SkipReason::PlanLimitReached => $this->messageService->buildPlanLimitReachedComment($detail),
+            SkipReason::OrphanedRepository => $this->messageService->buildOrphanedRepositoryComment(),
+            SkipReason::InstallationInactive => $this->messageService->buildInstallationInactiveComment(),
         };
     }
 }

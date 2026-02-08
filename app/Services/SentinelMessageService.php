@@ -203,6 +203,50 @@ final class SentinelMessageService implements SentinelMessageServiceContract
     }
 
     /**
+     * Build a comment explaining that the review was skipped because the repository is orphaned.
+     */
+    public function buildOrphanedRepositoryComment(): string
+    {
+        $branding = $this->getRandomBranding();
+
+        return <<<MARKDOWN
+        ⚠️ **Review Skipped - Repository Not Connected**
+
+        This repository is not associated with any Sentinel workspace. Reviews cannot be performed without a workspace connection.
+
+        **To fix this:**
+        1. Go to your Sentinel dashboard
+        2. Navigate to **Repositories**
+        3. Re-connect this repository to your workspace
+
+        ---
+        <sub>{$branding}</sub>
+        MARKDOWN;
+    }
+
+    /**
+     * Build a comment explaining that the review was skipped because the installation is inactive.
+     */
+    public function buildInstallationInactiveComment(): string
+    {
+        $branding = $this->getRandomBranding();
+
+        return <<<MARKDOWN
+        ⚠️ **Review Skipped - Installation Inactive**
+
+        The GitHub App installation for this repository is no longer active. Reviews cannot be performed without an active installation.
+
+        **To fix this:**
+        1. Go to your GitHub organization/account settings
+        2. Navigate to **Installed GitHub Apps**
+        3. Re-install or re-activate the Sentinel GitHub App
+
+        ---
+        <sub>{$branding}</sub>
+        MARKDOWN;
+    }
+
+    /**
      * Load messages from JSON file with caching.
      *
      * @return array{greetings: array<int, array{emoji: string, message: string}>, branding: array<int, string>}
