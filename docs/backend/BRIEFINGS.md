@@ -108,7 +108,6 @@ Represents Briefing templates.
 | prompt_path | varchar(255) | Blade template path for AI prompt |
 | requires_ai | boolean | Whether this briefing uses AI generation |
 | eligible_plan_ids | jsonb | Array of plan IDs that can access this briefing |
-| estimated_duration_seconds | integer | Expected generation time for UX |
 | output_formats | jsonb | Supported formats (html, pdf, markdown, slides) |
 | is_schedulable | boolean | Whether subscriptions are allowed |
 | is_system | boolean | System template vs workspace-custom |
@@ -172,7 +171,7 @@ Tracks download/access events for analytics.
 | workspace_id | bigint | FK to workspaces |
 | user_id | bigint nullable | FK to users (null for external shares) |
 | format | varchar(20) | html, pdf, markdown, slides |
-| source | varchar(50) | dashboard, share_link, api, email |
+| source | varchar(50) | dashboard, share_link, api, email, scheduled |
 | ip_address | inet | Client IP |
 | user_agent | text | Client user agent |
 | downloaded_at | timestamp | |

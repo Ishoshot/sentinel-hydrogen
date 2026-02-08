@@ -331,7 +331,6 @@ Key fields:
 -   prompt_path
 -   requires_ai
 -   eligible_plan_ids (JSONB)
--   estimated_duration_seconds
 -   output_formats (JSONB)
 -   is_schedulable
 -   is_system
