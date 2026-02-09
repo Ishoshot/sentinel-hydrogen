@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Briefings\Contracts;
 
 use App\Services\Briefings\ValueObjects\BriefingAchievements;
+use App\Services\Briefings\ValueObjects\BriefingAiConfiguration;
 use App\Services\Briefings\ValueObjects\BriefingExcerpts;
 use App\Services\Briefings\ValueObjects\BriefingStructuredData;
 use App\Services\Briefings\ValueObjects\NarrativeGenerationResult;
@@ -17,9 +18,10 @@ interface BriefingNarrativeGenerator
      * @param  string  $promptPath  The Blade template path for the prompt
      * @param  BriefingStructuredData  $structuredData  The collected data
      * @param  BriefingAchievements  $achievements  Detected achievements
+     * @param  BriefingAiConfiguration  $aiConfig  Resolved AI provider, model, and key
      * @return NarrativeGenerationResult The generated narrative with telemetry
      */
-    public function generate(string $promptPath, BriefingStructuredData $structuredData, BriefingAchievements $achievements): NarrativeGenerationResult;
+    public function generate(string $promptPath, BriefingStructuredData $structuredData, BriefingAchievements $achievements, BriefingAiConfiguration $aiConfig): NarrativeGenerationResult;
 
     /**
      * Generate smart excerpts for various channels.

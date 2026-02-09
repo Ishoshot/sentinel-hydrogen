@@ -28,6 +28,9 @@ return [
         // Maximum number of repositories allowed per briefing generation
         'max_repositories' => (int) env('BRIEFINGS_MAX_REPOSITORIES', 10),
 
+        // Lifetime free generations for workspaces without a BYOK key
+        'free_generations' => (int) env('BRIEFINGS_FREE_GENERATIONS', 3),
+
         // Maximum concurrent generations per workspace
         'max_concurrent_generations' => (int) env('BRIEFINGS_MAX_CONCURRENT', 3),
 
@@ -137,20 +140,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | AI Configuration
+    | Platform AI Configuration
     |--------------------------------------------------------------------------
     |
-    | Settings for AI-powered narrative generation.
+    | Settings for platform-provided AI narrative generation.
+    | Model is resolved from the AiOption defaults in the database.
     |
     */
-    'ai' => [
-        // Default AI provider for narrative generation
-        'provider' => env('BRIEFINGS_AI_PROVIDER', 'anthropic'),
-
-        // Default model for narrative generation
-        'model' => env('BRIEFINGS_AI_MODEL', 'claude-sonnet-4-20250514'),
+    'platform' => [
+        // Default AI provider for narrative generation (used when workspace has no BYOK key)
+        'provider' => env('BRIEFINGS_PLATFORM_PROVIDER', 'anthropic'),
 
         // Maximum tokens for narrative generation
-        'max_tokens' => (int) env('BRIEFINGS_AI_MAX_TOKENS', 2000),
+        'max_tokens' => (int) env('BRIEFINGS_PLATFORM_MAX_TOKENS', 2000),
     ],
 ];

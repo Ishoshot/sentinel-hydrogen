@@ -6,6 +6,7 @@ namespace App\Services\Briefings;
 
 use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
 use App\Services\Briefings\ValueObjects\BriefingAchievements;
+use App\Services\Briefings\ValueObjects\BriefingAiConfiguration;
 use App\Services\Briefings\ValueObjects\BriefingExcerpts;
 use App\Services\Briefings\ValueObjects\BriefingStructuredData;
 use App\Services\Briefings\ValueObjects\BriefingSummary;
@@ -28,30 +29,23 @@ final class NarrativeGeneratorService implements BriefingNarrativeGenerator
      * @param  string  $promptPath  The Blade template path for the prompt
      * @param  BriefingStructuredData  $structuredData  The collected data
      * @param  BriefingAchievements  $achievements  Detected achievements
+     * @param  BriefingAiConfiguration  $aiConfig  Resolved AI provider, model, and key
      * @return NarrativeGenerationResult The generated narrative with telemetry
      */
-    public function generate(string $promptPath, BriefingStructuredData $structuredData, BriefingAchievements $achievements): NarrativeGenerationResult
+    public function generate(string $promptPath, BriefingStructuredData $structuredData, BriefingAchievements $achievements, BriefingAiConfiguration $aiConfig): NarrativeGenerationResult
     {
         // Build the prompt from the template
         $prompt = $this->buildPrompt($promptPath, $structuredData, $achievements);
 
         try {
-            $provider = (string) config('briefings.ai.provider');
-            $model = (string) config('briefings.ai.model');
-            $maxTokens = (int) config('briefings.ai.max_tokens', 0);
-
-            if ($provider === '') {
-                throw new RuntimeException('Briefing AI provider is not configured.');
-            }
-
-            if ($model === '') {
-                throw new RuntimeException('Briefing AI model is not configured.');
-            }
+            $maxTokens = (int) config('briefings.platform.max_tokens', 2000);
 
             $startTime = microtime(true);
 
+            $providerOptions = $aiConfig->apiKey !== null ? ['api_key' => $aiConfig->apiKey] : [];
+
             $request = Prism::text()
-                ->using($provider, $model)
+                ->using($aiConfig->provider->value, $aiConfig->model, $providerOptions)
                 ->withSystemPrompt($this->systemPrompt())
                 ->withPrompt($prompt);
 
@@ -68,8 +62,8 @@ final class NarrativeGeneratorService implements BriefingNarrativeGenerator
             return new NarrativeGenerationResult(
                 text: (string) $response->text,
                 telemetry: new NarrativeGenerationTelemetry(
-                    provider: $provider,
-                    model: $model,
+                    provider: $aiConfig->provider->value,
+                    model: $aiConfig->model,
                     promptTokens: $promptTokens,
                     completionTokens: $completionTokens,
                     totalTokens: $promptTokens + $completionTokens,

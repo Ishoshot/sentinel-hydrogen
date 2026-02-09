@@ -11,6 +11,7 @@ use App\Events\Briefings\BriefingGenerationFailed;
 use App\Events\Briefings\BriefingGenerationProgress;
 use App\Events\Briefings\BriefingGenerationStarted;
 use App\Models\BriefingGeneration;
+use App\Services\Briefings\BriefingProviderKeyResolver;
 use App\Services\Briefings\Contracts\BriefingDataCollector;
 use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
 use App\Services\Briefings\Contracts\BriefingSlidesBuilder;
@@ -43,17 +44,26 @@ final class ProcessBriefingGeneration implements ShouldQueue
         BriefingDataCollector $dataCollector,
         BriefingNarrativeGenerator $narrativeGenerator,
         BriefingSlidesBuilder $slidesBuilder,
+        BriefingProviderKeyResolver $providerKeyResolver,
     ): void {
         try {
             $this->updateProgress(BriefingGenerationStatus::Processing, 0, 'Starting briefing generation...');
             BriefingGenerationStarted::dispatch($this->generation);
 
-            $this->generation->loadMissing('briefing');
+            $this->generation->loadMissing(['briefing', 'workspace']);
             $briefing = $this->generation->briefing;
+            $workspace = $this->generation->workspace;
 
             if ($briefing === null) {
                 throw new RuntimeException('Briefing template not found');
             }
+
+            if ($workspace === null) {
+                throw new RuntimeException('Workspace not found');
+            }
+
+            // Resolve full AI configuration (provider, model, key) for this workspace
+            $aiConfig = $providerKeyResolver->resolveConfiguration($workspace);
 
             $this->updateProgress(BriefingGenerationStatus::Processing, 20, 'Collecting data...');
             $parameters = BriefingParameters::fromArray($this->generation->parameters ?? []);
@@ -68,6 +78,7 @@ final class ProcessBriefingGeneration implements ShouldQueue
 
             $narrative = null;
             $metadata = $this->generation->metadata ?? [];
+            $metadata['byok'] = $aiConfig->isByok;
 
             if ($briefing->requires_ai && $briefing->prompt_path !== null) {
                 $this->updateProgress(BriefingGenerationStatus::Processing, 60, 'Generating narrative...');
@@ -75,6 +86,7 @@ final class ProcessBriefingGeneration implements ShouldQueue
                     $briefing->prompt_path,
                     $structuredData,
                     $achievements,
+                    $aiConfig,
                 );
                 $narrative = $narrativeResult->text;
                 $metadata['ai_telemetry'] = $narrativeResult->telemetry->toArray();
