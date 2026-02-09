@@ -23,6 +23,10 @@ enum ActivityType: string
     case RepositoriesSynced = 'repositories.synced';
     case RepositorySettingsUpdated = 'repository.settings_updated';
 
+    // Slack Integration
+    case SlackConnected = 'slack.connected';
+    case SlackDisconnected = 'slack.disconnected';
+
     // Reviews
     case RunCreated = 'run.created';
     case RunCompleted = 'run.completed';
@@ -66,6 +70,8 @@ enum ActivityType: string
             self::GitHubDisconnected => 'GitHub Disconnected',
             self::RepositoriesSynced => 'Repositories Synced',
             self::RepositorySettingsUpdated => 'Repository Settings Updated',
+            self::SlackConnected => 'Slack Connected',
+            self::SlackDisconnected => 'Slack Disconnected',
             self::RunCreated => 'Review Run Created',
             self::RunCompleted => 'Review Run Completed',
             self::RunFailed => 'Review Run Failed',
@@ -98,6 +104,8 @@ enum ActivityType: string
             self::GitHubDisconnected => 'github',
             self::RepositoriesSynced => 'refresh',
             self::RepositorySettingsUpdated => 'settings',
+            self::SlackConnected => 'message-square',
+            self::SlackDisconnected => 'message-square',
             self::RunCreated => 'play',
             self::RunCompleted => 'check-circle',
             self::RunFailed => 'x-circle',
@@ -130,6 +138,8 @@ enum ActivityType: string
             self::GitHubDisconnected,
             self::RepositoriesSynced,
             self::RepositorySettingsUpdated => 'github',
+            self::SlackConnected,
+            self::SlackDisconnected => 'slack',
             self::RunCreated,
             self::RunCompleted,
             self::RunFailed,

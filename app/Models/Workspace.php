@@ -159,6 +159,22 @@ final class Workspace extends Model
     }
 
     /**
+     * @return HasMany<ProviderKey, $this>
+     */
+    public function workspaceProviderKeys(): HasMany
+    {
+        return $this->hasMany(ProviderKey::class)->whereNull('repository_id');
+    }
+
+    /**
+     * @return HasOne<SlackIntegration, $this>
+     */
+    public function slackIntegration(): HasOne
+    {
+        return $this->hasOne(SlackIntegration::class);
+    }
+
+    /**
      * Get the current tier for this workspace.
      */
     public function getCurrentTier(): string
