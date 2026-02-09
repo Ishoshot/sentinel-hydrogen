@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Enums\Billing\PlanFeature;
 use App\Enums\Briefings\BriefingGenerationStatus;
+use App\Enums\Briefings\BriefingLimitReasonCode;
 use App\Models\Briefing;
 use App\Models\BriefingGeneration;
 use App\Models\Plan;
+use App\Models\ProviderKey;
 use App\Models\Workspace;
 use App\Services\Briefings\BriefingLimitEnforcer;
 
@@ -30,7 +32,8 @@ describe('canGenerate', function (): void {
         $result = $this->enforcer->canGenerate($this->workspace, $this->briefing);
 
         expect($result->isDenied())->toBeTrue()
-            ->and($result->getMessage())->toContain('not currently available');
+            ->and($result->getMessage())->toContain('not currently available')
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::BriefingInactive);
     });
 
     it('denies generation when briefings feature is disabled', function (): void {
@@ -43,7 +46,8 @@ describe('canGenerate', function (): void {
         $result = $this->enforcer->canGenerate($this->workspace, $this->briefing);
 
         expect($result->isDenied())->toBeTrue()
-            ->and($result->getMessage())->toContain('not available on your current plan');
+            ->and($result->getMessage())->toContain('not available on your current plan')
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::FeatureDisabled);
     });
 
     it('denies generation when plan is not eligible for briefing', function (): void {
@@ -52,7 +56,8 @@ describe('canGenerate', function (): void {
         $result = $this->enforcer->canGenerate($this->workspace, $this->briefing);
 
         expect($result->isDenied())->toBeTrue()
-            ->and($result->getMessage())->toContain('not available on your current plan');
+            ->and($result->getMessage())->toContain('not available on your current plan')
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::PlanNotEligible);
     });
 
     it('allows generation when briefing has no plan restrictions', function (): void {
@@ -72,7 +77,140 @@ describe('canGenerate', function (): void {
     });
 });
 
+describe('free allowance (no BYOK key)', function (): void {
+    it('allows generation when under free limit', function (): void {
+        config()->set('briefings.limits.free_generations', 3);
+
+        BriefingGeneration::factory()
+            ->forWorkspace($this->workspace)
+            ->forBriefing($this->briefing)
+            ->completed()
+            ->count(2)
+            ->create();
+
+        $result = $this->enforcer->canGenerateForWorkspace($this->workspace);
+
+        expect($result->isAllowed())->toBeTrue();
+    });
+
+    it('denies generation when free limit is reached', function (): void {
+        config()->set('briefings.limits.free_generations', 3);
+
+        BriefingGeneration::factory()
+            ->forWorkspace($this->workspace)
+            ->forBriefing($this->briefing)
+            ->completed()
+            ->count(3)
+            ->create();
+
+        $result = $this->enforcer->canGenerateForWorkspace($this->workspace);
+
+        expect($result->isDenied())->toBeTrue()
+            ->and($result->getMessage())->toContain('used all 3 of your free briefings')
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::FreeAllowanceExhausted);
+    });
+
+    it('denies generation when over free limit', function (): void {
+        config()->set('briefings.limits.free_generations', 3);
+
+        BriefingGeneration::factory()
+            ->forWorkspace($this->workspace)
+            ->forBriefing($this->briefing)
+            ->completed()
+            ->count(5)
+            ->create();
+
+        $result = $this->enforcer->canGenerateForWorkspace($this->workspace);
+
+        expect($result->isDenied())->toBeTrue()
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::FreeAllowanceExhausted);
+    });
+
+    it('only counts completed generations towards free limit', function (): void {
+        config()->set('briefings.limits.free_generations', 3);
+
+        BriefingGeneration::factory()
+            ->forWorkspace($this->workspace)
+            ->forBriefing($this->briefing)
+            ->completed()
+            ->count(2)
+            ->create();
+
+        // Pending and failed should not count
+        BriefingGeneration::factory()
+            ->forWorkspace($this->workspace)
+            ->forBriefing($this->briefing)
+            ->create(['status' => BriefingGenerationStatus::Pending]);
+
+        BriefingGeneration::factory()
+            ->forWorkspace($this->workspace)
+            ->forBriefing($this->briefing)
+            ->create(['status' => BriefingGenerationStatus::Failed]);
+
+        $result = $this->enforcer->canGenerateForWorkspace($this->workspace);
+
+        expect($result->isAllowed())->toBeTrue();
+    });
+
+    it('denies immediately when free generations config is zero', function (): void {
+        config()->set('briefings.limits.free_generations', 0);
+
+        $result = $this->enforcer->canGenerateForWorkspace($this->workspace);
+
+        expect($result->isDenied())->toBeTrue()
+            ->and($result->getMessage())->toBe('Add your API key in workspace settings to generate briefings.')
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::FreeAllowanceExhausted);
+    });
+});
+
+describe('BYOK key bypasses free allowance', function (): void {
+    beforeEach(function (): void {
+        ProviderKey::factory()
+            ->forWorkspaceLevel($this->workspace)
+            ->anthropic()
+            ->create();
+    });
+
+    it('allows unlimited generation with BYOK key', function (): void {
+        config()->set('briefings.limits.free_generations', 3);
+
+        BriefingGeneration::factory()
+            ->forWorkspace($this->workspace)
+            ->forBriefing($this->briefing)
+            ->completed()
+            ->count(100)
+            ->create();
+
+        $result = $this->enforcer->canGenerateForWorkspace($this->workspace);
+
+        expect($result->isAllowed())->toBeTrue();
+    });
+
+    it('still enforces concurrent limit with BYOK key', function (): void {
+        config()->set('briefings.limits.max_concurrent_generations', 2);
+
+        BriefingGeneration::factory()
+            ->forWorkspace($this->workspace)
+            ->forBriefing($this->briefing)
+            ->count(2)
+            ->create(['status' => BriefingGenerationStatus::Processing]);
+
+        $result = $this->enforcer->canGenerateForWorkspace($this->workspace);
+
+        expect($result->isDenied())->toBeTrue()
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::ConcurrentLimitReached);
+    });
+});
+
 describe('rate limits', function (): void {
+    beforeEach(function (): void {
+        // Add BYOK key to bypass free allowance for rate limit testing
+        ProviderKey::factory()
+            ->forWorkspaceLevel($this->workspace)
+            ->anthropic()
+            ->create();
+    });
+
     it('denies generation when daily limit is reached', function (): void {
         $this->plan->update([
             'limits' => ['briefings' => ['daily' => 2, 'weekly' => null, 'monthly' => null]],
@@ -87,7 +225,8 @@ describe('rate limits', function (): void {
         $result = $this->enforcer->canGenerate($this->workspace, $this->briefing);
 
         expect($result->isDenied())->toBeTrue()
-            ->and($result->getMessage())->toContain('daily limit of 2');
+            ->and($result->getMessage())->toContain('daily limit of 2')
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::RateLimitReached);
     });
 
     it('allows generation when daily limit is not reached', function (): void {
@@ -136,7 +275,8 @@ describe('rate limits', function (): void {
         $result = $this->enforcer->canGenerate($this->workspace, $this->briefing);
 
         expect($result->isDenied())->toBeTrue()
-            ->and($result->getMessage())->toContain('weekly limit of 5');
+            ->and($result->getMessage())->toContain('weekly limit of 5')
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::RateLimitReached);
     });
 
     it('denies generation when monthly limit is reached', function (): void {
@@ -153,7 +293,8 @@ describe('rate limits', function (): void {
         $result = $this->enforcer->canGenerate($this->workspace, $this->briefing);
 
         expect($result->isDenied())->toBeTrue()
-            ->and($result->getMessage())->toContain('monthly limit of 10');
+            ->and($result->getMessage())->toContain('monthly limit of 10')
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::RateLimitReached);
     });
 
     it('allows unlimited generation when limit is null', function (): void {
@@ -181,7 +322,8 @@ describe('rate limits', function (): void {
         $result = $this->enforcer->canGenerate($this->workspace, $this->briefing);
 
         expect($result->isDenied())->toBeTrue()
-            ->and($result->getMessage())->toContain('daily limit is 0');
+            ->and($result->getMessage())->toContain('daily limit is 0')
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::RateLimitReached);
     });
 
     it('allows generation when no limits are configured', function (): void {
@@ -195,10 +337,11 @@ describe('rate limits', function (): void {
 
 describe('concurrent limits', function (): void {
     beforeEach(function (): void {
-        // Disable rate limits to test concurrent limits in isolation
-        $this->plan->update([
-            'limits' => ['briefings' => ['daily' => null, 'weekly' => null, 'monthly' => null]],
-        ]);
+        // Add BYOK key to bypass free allowance
+        ProviderKey::factory()
+            ->forWorkspaceLevel($this->workspace)
+            ->anthropic()
+            ->create();
     });
 
     it('denies generation when concurrent limit is reached', function (): void {
@@ -213,7 +356,8 @@ describe('concurrent limits', function (): void {
         $result = $this->enforcer->canGenerate($this->workspace, $this->briefing);
 
         expect($result->isDenied())->toBeTrue()
-            ->and($result->getMessage())->toContain('currently generating');
+            ->and($result->getMessage())->toContain('currently generating')
+            ->and($result->reasonCode)->toBe(BriefingLimitReasonCode::ConcurrentLimitReached);
     });
 
     it('allows generation when pending count is below limit', function (): void {

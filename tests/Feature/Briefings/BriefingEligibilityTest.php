@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\Billing\PlanFeature;
+use App\Models\BriefingGeneration;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
@@ -33,7 +35,47 @@ it('returns workspace-level eligibility for briefings', function (): void {
         ->assertJsonStructure([
             'can_generate',
             'restriction_reason',
+            'reason_code',
         ]);
+});
+
+it('includes reason_code when generation is denied', function (): void {
+    $this->plan->update([
+        'features' => [PlanFeature::Briefings->value => false],
+    ]);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson(route('briefings.eligibility', $this->workspace));
+
+    $response->assertOk()
+        ->assertJsonPath('can_generate', false)
+        ->assertJsonPath('reason_code', 'feature_disabled');
+});
+
+it('returns free_allowance_exhausted when limit reached', function (): void {
+    config()->set('briefings.limits.free_generations', 2);
+
+    BriefingGeneration::factory()
+        ->forWorkspace($this->workspace)
+        ->completed()
+        ->count(2)
+        ->create();
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson(route('briefings.eligibility', $this->workspace));
+
+    $response->assertOk()
+        ->assertJsonPath('can_generate', false)
+        ->assertJsonPath('reason_code', 'free_allowance_exhausted');
+});
+
+it('returns null reason_code when generation is allowed', function (): void {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson(route('briefings.eligibility', $this->workspace));
+
+    $response->assertOk()
+        ->assertJsonPath('can_generate', true)
+        ->assertJsonPath('reason_code', null);
 });
 
 it('requires authentication to check briefing eligibility', function (): void {
