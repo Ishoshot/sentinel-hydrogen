@@ -2,18 +2,21 @@
 
 declare(strict_types=1);
 
+use App\Enums\AI\AiProvider;
 use App\Services\Briefings\NarrativeGeneratorService;
 use App\Services\Briefings\ValueObjects\BriefingAchievements;
+use App\Services\Briefings\ValueObjects\BriefingAiConfiguration;
 use App\Services\Briefings\ValueObjects\BriefingStructuredData;
 use Illuminate\Support\Facades\View;
 use Prism\Prism\Facades\Prism;
 
 test('it fails fast when ai narrative generation throws', function () {
-    config([
-        'briefings.ai.provider' => 'anthropic',
-        'briefings.ai.model' => 'claude-test',
-        'briefings.ai.max_tokens' => 1000,
-    ]);
+    $aiConfig = new BriefingAiConfiguration(
+        provider: AiProvider::Anthropic,
+        model: 'claude-test',
+        apiKey: null,
+        isByok: false,
+    );
 
     View::shouldReceive('exists')
         ->once()
@@ -37,6 +40,6 @@ test('it fails fast when ai narrative generation throws', function () {
     $structuredData = BriefingStructuredData::fromArray([]);
     $achievements = BriefingAchievements::fromArray([]);
 
-    expect(fn () => $service->generate('briefings.prompts.default', $structuredData, $achievements))
+    expect(fn () => $service->generate('briefings.prompts.default', $structuredData, $achievements, $aiConfig))
         ->toThrow(RuntimeException::class, 'Briefing narrative generation failed.');
 });
