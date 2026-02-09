@@ -25,7 +25,6 @@ final readonly class CreateBriefingSubscription
      * @param  BriefingParameters  $parameters  Parameters for the briefing run
      * @param  int|null  $scheduleDay  Optional schedule day override
      * @param  int  $scheduleHour  The hour of day to schedule deliveries
-     * @param  string|null  $slackWebhookUrl  Optional Slack webhook URL
      * @return BriefingSubscription The created subscription
      */
     public function handle(
@@ -37,7 +36,6 @@ final readonly class CreateBriefingSubscription
         BriefingParameters $parameters,
         ?int $scheduleDay = null,
         int $scheduleHour = 9,
-        ?string $slackWebhookUrl = null,
     ): BriefingSubscription {
         $subscription = new BriefingSubscription([
             'workspace_id' => $workspace->id,
@@ -48,7 +46,6 @@ final readonly class CreateBriefingSubscription
             'schedule_hour' => $scheduleHour,
             'parameters' => $parameters->toArray(),
             'delivery_channels' => $deliveryChannels->toArray(),
-            'slack_webhook_url' => $slackWebhookUrl,
             'is_active' => true,
         ]);
 

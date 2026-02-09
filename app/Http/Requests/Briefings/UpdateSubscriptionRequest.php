@@ -6,6 +6,8 @@ namespace App\Http\Requests\Briefings;
 
 use App\Enums\Briefings\BriefingDeliveryChannel;
 use App\Enums\Briefings\BriefingSchedulePreset;
+use App\Models\SlackIntegration;
+use App\Models\Workspace;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -33,8 +35,37 @@ final class UpdateSubscriptionRequest extends FormRequest
             'parameters' => ['nullable', 'array'],
             'delivery_channels' => ['nullable', 'array', 'min:1'],
             'delivery_channels.*' => ['string', Rule::enum(BriefingDeliveryChannel::class)],
-            'slack_webhook_url' => ['nullable', 'url'],
             'is_active' => ['nullable', 'boolean'],
         ];
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    {
+        $validator->after(function (\Illuminate\Validation\Validator $validator): void {
+            $channels = $this->input('delivery_channels', []);
+
+            if (in_array(BriefingDeliveryChannel::Slack->value, $channels, true)) {
+                $workspace = $this->route('workspace');
+
+                if (! $workspace instanceof Workspace) {
+                    return;
+                }
+
+                $hasSlack = SlackIntegration::query()
+                    ->where('workspace_id', $workspace->id)
+                    ->where('is_active', true)
+                    ->exists();
+
+                if (! $hasSlack) {
+                    $validator->errors()->add(
+                        'delivery_channels',
+                        'Slack delivery requires a connected Slack integration. Connect Slack in Settings > Integrations.',
+                    );
+                }
+            }
+        });
     }
 }

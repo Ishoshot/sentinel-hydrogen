@@ -20,7 +20,6 @@ final readonly class UpdateBriefingSubscription
      * @param  BriefingParameters|null  $parameters  The parameters to apply
      * @param  int|null  $scheduleDay  Optional schedule day override
      * @param  int|null  $scheduleHour  Optional schedule hour override
-     * @param  string|null  $slackWebhookUrl  Optional Slack webhook URL
      * @param  bool|null  $isActive  Optional activation flag
      * @return BriefingSubscription The updated subscription
      */
@@ -31,7 +30,6 @@ final readonly class UpdateBriefingSubscription
         ?BriefingParameters $parameters = null,
         ?int $scheduleDay = null,
         ?int $scheduleHour = null,
-        ?string $slackWebhookUrl = null,
         ?bool $isActive = null,
     ): BriefingSubscription {
         $scheduleChanged = false;
@@ -57,10 +55,6 @@ final readonly class UpdateBriefingSubscription
 
         if ($parameters instanceof BriefingParameters) {
             $subscription->parameters = $parameters->toArray();
-        }
-
-        if ($slackWebhookUrl !== null) {
-            $subscription->slack_webhook_url = $slackWebhookUrl;
         }
 
         if ($isActive !== null) {

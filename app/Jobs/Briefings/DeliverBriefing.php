@@ -9,9 +9,9 @@ use App\Enums\Queue\Queue;
 use App\Models\BriefingGeneration;
 use App\Models\BriefingSubscription;
 use App\Notifications\Briefings\BriefingDeliveryNotification;
+use App\Services\Slack\Contracts\SlackServiceContract;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -37,7 +37,7 @@ final class DeliverBriefing implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(): void
+    public function handle(SlackServiceContract $slackService): void
     {
         $channel = BriefingDeliveryChannel::tryFrom($this->channel);
 
@@ -52,7 +52,7 @@ final class DeliverBriefing implements ShouldQueue
 
         match ($channel) {
             BriefingDeliveryChannel::Email => $this->deliverViaEmail(),
-            BriefingDeliveryChannel::Slack => $this->deliverViaSlack(),
+            BriefingDeliveryChannel::Slack => $this->deliverViaSlack($slackService),
             BriefingDeliveryChannel::Push => $this->deliverViaPush(),
         };
     }
@@ -94,13 +94,15 @@ final class DeliverBriefing implements ShouldQueue
     /**
      * Deliver the briefing via Slack.
      */
-    private function deliverViaSlack(): void
+    private function deliverViaSlack(SlackServiceContract $slackService): void
     {
-        $webhookUrl = $this->subscription->slack_webhook_url;
+        $this->subscription->loadMissing('workspace.slackIntegration');
+        $slackIntegration = $this->subscription->workspace?->slackIntegration;
 
-        if ($webhookUrl === null) {
-            Log::warning('Cannot deliver briefing via Slack - no webhook URL', [
+        if ($slackIntegration === null || ! $slackIntegration->isFullyConfigured()) {
+            Log::warning('Cannot deliver briefing via Slack - no fully configured Slack integration', [
                 'subscription_id' => $this->subscription->id,
+                'workspace_id' => $this->subscription->workspace_id,
             ]);
 
             return;
@@ -118,10 +120,15 @@ final class DeliverBriefing implements ShouldQueue
             return;
         }
 
+        /** @var string $channelId */
+        $channelId = $slackIntegration->channel_id;
+
         try {
-            Http::post($webhookUrl, [
-                'text' => $this->generation->briefing?->title ?? 'Briefing Ready',
-                'blocks' => [
+            $slackService->sendMessage(
+                integration: $slackIntegration,
+                channelId: $channelId,
+                text: $this->generation->briefing?->title ?? 'Briefing Ready',
+                blocks: [
                     [
                         'type' => 'section',
                         'text' => [
@@ -130,7 +137,7 @@ final class DeliverBriefing implements ShouldQueue
                         ],
                     ],
                 ],
-            ]);
+            );
 
             Log::info('Briefing delivered via Slack', [
                 'generation_id' => $this->generation->id,
