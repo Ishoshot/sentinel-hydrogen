@@ -6,6 +6,7 @@ namespace App\Services\Briefings;
 
 use App\Enums\Billing\PlanFeature;
 use App\Enums\Briefings\BriefingGenerationStatus;
+use App\Enums\Briefings\BriefingLimitReasonCode;
 use App\Models\Briefing;
 use App\Models\BriefingGeneration;
 use App\Models\Plan;
@@ -21,6 +22,7 @@ final readonly class BriefingLimitEnforcer
      */
     public function __construct(
         private BriefingDataGuard $dataGuard,
+        private BriefingProviderKeyResolver $providerKeyResolver,
     ) {}
 
     /**
@@ -33,7 +35,10 @@ final readonly class BriefingLimitEnforcer
         ?BriefingLimitResult $workspaceEligibility = null,
     ): BriefingLimitResult {
         if (! $briefing->is_active) {
-            return BriefingLimitResult::deny('This briefing is not currently available.');
+            return BriefingLimitResult::deny(
+                'This briefing is not currently available.',
+                BriefingLimitReasonCode::BriefingInactive,
+            );
         }
 
         $workspaceCheck = $workspaceEligibility ?? $this->canGenerateForWorkspace($workspace, $parameters);
@@ -45,7 +50,10 @@ final readonly class BriefingLimitEnforcer
         $plan = $workspace->plan;
 
         if (! $this->isPlanEligibleForBriefing($plan, $briefing)) {
-            return BriefingLimitResult::deny('This briefing is not available on your current plan.');
+            return BriefingLimitResult::deny(
+                'This briefing is not available on your current plan.',
+                BriefingLimitReasonCode::PlanNotEligible,
+            );
         }
 
         return BriefingLimitResult::allow();
@@ -62,7 +70,20 @@ final readonly class BriefingLimitEnforcer
         $plan = $workspace->plan;
 
         if (! $this->isBriefingsFeatureEnabled($plan)) {
-            return BriefingLimitResult::deny('Briefings are not available on your current plan.');
+            return BriefingLimitResult::deny(
+                'Briefings are not available on your current plan.',
+                BriefingLimitReasonCode::FeatureDisabled,
+            );
+        }
+
+        // BYOK check: workspaces with a key get unlimited generations
+        $hasByokKey = $this->providerKeyResolver->hasAnyKey($workspace);
+
+        if (! $hasByokKey) {
+            $freeCheck = $this->checkFreeAllowance($workspace);
+            if ($freeCheck->isDenied()) {
+                return $freeCheck;
+            }
         }
 
         $rateLimitCheck = $this->checkRateLimits($workspace, $plan);
@@ -98,11 +119,17 @@ final readonly class BriefingLimitEnforcer
         $plan = $workspace->plan;
 
         if (! $this->isBriefingsFeatureEnabled($plan)) {
-            return BriefingLimitResult::deny('Briefings are not available on your current plan.');
+            return BriefingLimitResult::deny(
+                'Briefings are not available on your current plan.',
+                BriefingLimitReasonCode::FeatureDisabled,
+            );
         }
 
         if (! $this->isPlanEligibleForBriefing($plan, $briefing)) {
-            return BriefingLimitResult::deny('This briefing is not available on your current plan.');
+            return BriefingLimitResult::deny(
+                'This briefing is not available on your current plan.',
+                BriefingLimitReasonCode::PlanNotEligible,
+            );
         }
 
         return BriefingLimitResult::allow();
@@ -115,6 +142,32 @@ final readonly class BriefingLimitEnforcer
      */
     public function canShare(): BriefingLimitResult
     {
+        return BriefingLimitResult::allow();
+    }
+
+    /**
+     * Check the lifetime free allowance for workspaces without BYOK keys.
+     */
+    private function checkFreeAllowance(Workspace $workspace): BriefingLimitResult
+    {
+        $freeLimit = (int) config('briefings.limits.free_generations', 3);
+
+        $count = BriefingGeneration::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('status', BriefingGenerationStatus::Completed)
+            ->count();
+
+        if ($count >= $freeLimit) {
+            $message = $freeLimit > 0
+                ? sprintf(
+                    "You've used all %d of your free briefings. Add your API key in workspace settings to generate unlimited briefings.",
+                    $freeLimit,
+                )
+                : 'Add your API key in workspace settings to generate briefings.';
+
+            return BriefingLimitResult::deny($message, BriefingLimitReasonCode::FreeAllowanceExhausted);
+        }
+
         return BriefingLimitResult::allow();
     }
 
@@ -194,7 +247,8 @@ final readonly class BriefingLimitEnforcer
 
         if ($limit === 0) {
             return BriefingLimitResult::deny(
-                sprintf('Briefing generation is not available on your current plan (%s limit is 0).', $period)
+                sprintf('Briefing generation is not available on your current plan (%s limit is 0).', $period),
+                BriefingLimitReasonCode::RateLimitReached,
             );
         }
 
@@ -204,12 +258,15 @@ final readonly class BriefingLimitEnforcer
             ->count();
 
         if ($count >= $limit) {
-            return BriefingLimitResult::deny(sprintf(
-                'You have reached your %s limit of %d briefing generation%s. Please try again later or upgrade your plan.',
-                $period,
-                $limit,
-                $limit === 1 ? '' : 's'
-            ));
+            return BriefingLimitResult::deny(
+                sprintf(
+                    'You have reached your %s limit of %d briefing generation%s. Please try again later or upgrade your plan.',
+                    $period,
+                    $limit,
+                    $limit === 1 ? '' : 's'
+                ),
+                BriefingLimitReasonCode::RateLimitReached,
+            );
         }
 
         return BriefingLimitResult::allow();
@@ -231,11 +288,14 @@ final readonly class BriefingLimitEnforcer
             ->count();
 
         if ($pendingCount >= $limit) {
-            return BriefingLimitResult::deny(sprintf(
-                'You have %d briefing%s currently generating. Please wait for them to complete.',
-                $pendingCount,
-                $pendingCount === 1 ? '' : 's'
-            ));
+            return BriefingLimitResult::deny(
+                sprintf(
+                    'You have %d briefing%s currently generating. Please wait for them to complete.',
+                    $pendingCount,
+                    $pendingCount === 1 ? '' : 's'
+                ),
+                BriefingLimitReasonCode::ConcurrentLimitReached,
+            );
         }
 
         return BriefingLimitResult::allow();

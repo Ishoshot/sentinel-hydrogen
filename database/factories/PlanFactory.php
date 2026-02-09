@@ -37,9 +37,9 @@ final class PlanFactory extends Factory
             ],
             'limits' => [
                 'briefings' => [
-                    'daily' => 2,
-                    'weekly' => 5,
-                    'monthly' => 10,
+                    'daily' => null,
+                    'weekly' => null,
+                    'monthly' => null,
                 ],
             ],
             'price_monthly' => 0,
@@ -68,9 +68,9 @@ final class PlanFactory extends Factory
             ],
             'limits' => [
                 'briefings' => [
-                    'daily' => 10,
-                    'weekly' => 30,
-                    'monthly' => 100,
+                    'daily' => null,
+                    'weekly' => null,
+                    'monthly' => null,
                 ],
             ],
             'price_monthly' => 2000,
@@ -99,7 +99,7 @@ final class PlanFactory extends Factory
             ],
             'limits' => [
                 'briefings' => [
-                    'daily' => 50,
+                    'daily' => null,
                     'weekly' => null,
                     'monthly' => null,
                 ],

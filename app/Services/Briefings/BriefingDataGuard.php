@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Briefings;
 
+use App\Enums\Briefings\BriefingLimitReasonCode;
 use App\Models\Run;
 use App\Models\Workspace;
 use App\Services\Briefings\ValueObjects\BriefingDateRange;
@@ -55,7 +56,8 @@ final class BriefingDataGuard
                     'Not enough run history to generate this briefing. Need at least %d runs in the selected period (found %d).',
                     $minRuns,
                     $totalRuns
-                )
+                ),
+                BriefingLimitReasonCode::InsufficientData,
             );
         }
 
@@ -69,7 +71,8 @@ final class BriefingDataGuard
                     'Not enough activity days to generate this briefing. Need activity on at least %d days in the selected period (found %d).',
                     $minActiveDays,
                     $activeDays
-                )
+                ),
+                BriefingLimitReasonCode::InsufficientData,
             );
         }
 
@@ -83,7 +86,8 @@ final class BriefingDataGuard
                     'Not enough repository coverage to generate this briefing. Need activity across at least %d repositories in the selected period (found %d).',
                     $minRepositories,
                     $repositoryCount
-                )
+                ),
+                BriefingLimitReasonCode::InsufficientData,
             );
         }
 
