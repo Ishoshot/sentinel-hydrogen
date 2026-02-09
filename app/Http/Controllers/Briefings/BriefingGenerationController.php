@@ -73,6 +73,7 @@ final readonly class BriefingGenerationController
         if ($canGenerate->isDenied()) {
             return response()->json([
                 'message' => $canGenerate->reason,
+                'reason_code' => $canGenerate->reasonCode?->value,
             ], 403);
         }
 

@@ -29,7 +29,8 @@ Sentinel integrations fall into three primary categories:
 
 1. Source Control Providers
 2. AI Providers
-3. Billing and External Services (future)
+3. Notification Integrations
+4. Billing and External Services (future)
 
 Each category follows consistent design principles.
 
@@ -148,6 +149,72 @@ Sentinel:
 -   does not switch providers silently unless policy allows
 
 Failures must be explicit and visible.
+
+---
+
+## Notification Integrations
+
+### Slack Integration
+
+Slack is integrated via **OAuth 2.0**, providing a workspace-level notification channel with bot token access.
+
+#### OAuth Flow
+
+1. User clicks "Add to Slack" — backend generates state, stores on `SlackIntegration`, returns OAuth URL
+2. User authorizes in Slack — redirected to `/api/slack/callback` with `code` and `state`
+3. Backend validates state (constant-time comparison, 15-minute expiry), exchanges code for bot token
+4. Token, team info, and bot details stored on `SlackIntegration`; activity logged
+5. User selects a default channel from a dropdown (populated via `conversations.list`)
+
+#### Model
+
+`SlackIntegration` — one per workspace (unique constraint on `workspace_id`).
+
+Fields: `access_token` (encrypted), `bot_user_id`, `slack_team_id`, `team_name`, `scope`, `authed_user_id`, `channel_id`, `channel_name`, `state`, `state_expires_at`, `is_active`, `connected_at`.
+
+Helpers: `hasValidToken()`, `isFullyConfigured()` (token + channel), `hasValidState()`.
+
+#### Service Contract
+
+`SlackServiceContract` defines:
+
+-   `exchangeCodeForToken(code, redirectUri)` — POST `oauth.v2.access`, return token data
+-   `sendMessage(integration, channelId, text, blocks)` — POST `chat.postMessage`
+-   `listChannels(integration)` — GET `conversations.list`
+-   `testConnection(integration)` — POST `auth.test`
+-   `revokeToken(integration)` — POST `auth.revoke`
+
+Bound via `SlackServiceProvider`.
+
+#### Routes
+
+| Method | Path                                          | Controller                              | Name                          |
+|--------|-----------------------------------------------|-----------------------------------------|-------------------------------|
+| GET    | `/slack/callback`                             | SlackCallbackController@__invoke        | slack.callback                |
+| GET    | `/workspaces/{workspace}/slack/integration`   | SlackIntegrationController@show         | slack.integration.show        |
+| POST   | `/workspaces/{workspace}/slack/connect`       | SlackIntegrationController@store        | slack.integration.connect     |
+| DELETE | `/workspaces/{workspace}/slack/disconnect`    | SlackIntegrationController@destroy      | slack.integration.destroy     |
+| GET    | `/workspaces/{workspace}/slack/channels`      | SlackChannelController@index            | slack.integration.channels    |
+| PATCH  | `/workspaces/{workspace}/slack/channel`       | SlackChannelController@update           | slack.integration.update-channel |
+
+The callback route is public (no auth middleware), alongside the GitHub callback.
+
+#### Actions
+
+-   `InitiateSlackConnection` — generates state, creates/updates pending integration, builds OAuth URL
+-   `HandleSlackCallback` — validates state, exchanges code for token, activates integration, logs activity
+-   `UpdateSlackChannel` — saves selected channel_id and channel_name
+-   `DisconnectSlack` — revokes token (best-effort), deletes integration, logs activity
+
+#### Authorization
+
+-   Any workspace member can view integration status and channels
+-   Only owners and admins can connect, disconnect, or update channel
+
+#### Briefing Delivery
+
+Briefing subscriptions reference the workspace's Slack integration.
+The `DeliverBriefing` job loads `workspace.slackIntegration`, checks `isFullyConfigured()`, and uses `SlackServiceContract::sendMessage()` with the integration's `channel_id`.
 
 ---
 

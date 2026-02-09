@@ -34,6 +34,9 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProviderKeyController;
 use App\Http\Controllers\RunController;
+use App\Http\Controllers\Slack\SlackCallbackController;
+use App\Http\Controllers\Slack\SlackChannelController;
+use App\Http\Controllers\Slack\SlackIntegrationController;
 use App\Http\Controllers\Subscriptions\ChangeSubscriptionController;
 use App\Http\Controllers\Subscriptions\ShowSubscriptionController;
 use App\Http\Controllers\Subscriptions\SubscriptionPortalController;
@@ -42,6 +45,7 @@ use App\Http\Controllers\TeamMemberController;
 use App\Http\Controllers\Webhooks\GitHubWebhookController;
 use App\Http\Controllers\Webhooks\PolarWebhookController;
 use App\Http\Controllers\WorkspaceController;
+use App\Http\Controllers\WorkspaceProviderKeyController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -73,6 +77,8 @@ Route::post('/webhooks/github', [GitHubWebhookController::class, 'handle'])->nam
 Route::post('/webhooks/polar', [PolarWebhookController::class, 'handle'])->name('webhooks.polar');
 
 Route::get('/github/callback', [ConnectionController::class, 'callback'])->name('github.callback');
+
+Route::get('/slack/callback', SlackCallbackController::class)->name('slack.callback');
 
 /*
 |--------------------------------------------------------------------------
@@ -140,6 +146,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/github/connect', [ConnectionController::class, 'store'])->name('github.connection.store');
         Route::delete('/github/disconnect', [ConnectionController::class, 'destroy'])->name('github.connection.destroy');
 
+        // Slack Integration
+        Route::get('/slack/integration', [SlackIntegrationController::class, 'show'])->name('slack.integration.show');
+        Route::post('/slack/connect', [SlackIntegrationController::class, 'store'])->name('slack.integration.connect');
+        Route::delete('/slack/disconnect', [SlackIntegrationController::class, 'destroy'])->name('slack.integration.destroy');
+        Route::get('/slack/channels', [SlackChannelController::class, 'index'])->name('slack.integration.channels');
+        Route::patch('/slack/channel', [SlackChannelController::class, 'update'])->name('slack.integration.update-channel');
+
         Route::get('/repositories', [RepositoryController::class, 'index'])->name('repositories.index');
         Route::post('/repositories/sync', [RepositoryController::class, 'sync'])->name('repositories.sync');
         Route::get('/repositories/{repository}', [RepositoryController::class, 'show'])->name('repositories.show');
@@ -147,11 +160,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/repositories/{repository}/create-config-pr', [RepositoryController::class, 'createConfigPr'])->name('repositories.create-config-pr');
         Route::get('/repositories/{repository}/runs', [RunController::class, 'index'])->name('runs.index');
 
-        // Provider Keys (BYOK)
+        // Provider Keys (BYOK) - Repository level
         Route::get('/repositories/{repository}/provider-keys', [ProviderKeyController::class, 'index'])->name('provider-keys.index');
         Route::post('/repositories/{repository}/provider-keys', [ProviderKeyController::class, 'store'])->name('provider-keys.store');
         Route::patch('/repositories/{repository}/provider-keys/{providerKey}', [ProviderKeyController::class, 'update'])->name('provider-keys.update');
         Route::delete('/repositories/{repository}/provider-keys/{providerKey}', [ProviderKeyController::class, 'destroy'])->name('provider-keys.destroy');
+
+        // Provider Keys (BYOK) - Workspace level
+        Route::get('/provider-keys', [WorkspaceProviderKeyController::class, 'index'])->name('workspace-provider-keys.index');
+        Route::post('/provider-keys', [WorkspaceProviderKeyController::class, 'store'])->name('workspace-provider-keys.store');
+        Route::delete('/provider-keys/{providerKey}', [WorkspaceProviderKeyController::class, 'destroy'])->name('workspace-provider-keys.destroy');
 
         // Workspace-level runs
         Route::get('/runs', ListWorkspaceRunsController::class)->name('runs.workspace');

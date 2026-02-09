@@ -90,7 +90,6 @@ final readonly class BriefingSubscriptionController
             parameters: $parameters,
             scheduleDay: $request->input('schedule_day'),
             scheduleHour: $request->input('schedule_hour', 9),
-            slackWebhookUrl: $request->input('slack_webhook_url'),
         );
 
         return response()->json([
@@ -135,7 +134,6 @@ final readonly class BriefingSubscriptionController
             parameters: $parameters,
             scheduleDay: $request->input('schedule_day'),
             scheduleHour: $request->input('schedule_hour'),
-            slackWebhookUrl: $request->input('slack_webhook_url'),
             isActive: $request->input('is_active'),
         );
 

@@ -376,6 +376,31 @@ Indexes:
 
 ---
 
+### slack_integrations
+
+Represents workspace-level Slack OAuth integrations.
+
+Key fields:
+
+-   id
+-   workspace_id (unique FK)
+-   access_token (encrypted, nullable)
+-   bot_user_id (nullable)
+-   slack_team_id (nullable)
+-   team_name (nullable)
+-   scope (nullable)
+-   authed_user_id (nullable)
+-   channel_id (nullable)
+-   channel_name (nullable)
+-   state (nullable, for OAuth flow)
+-   state_expires_at (nullable)
+-   is_active
+-   connected_at
+-   created_at
+-   updated_at
+
+---
+
 ### briefing_subscriptions
 
 Represents scheduled recurring Briefing generations.
@@ -391,7 +416,6 @@ Key fields:
 -   schedule_hour
 -   parameters (JSONB)
 -   delivery_channels (JSONB)
--   slack_webhook_url (encrypted)
 -   last_generated_at
 -   next_scheduled_at
 -   is_active

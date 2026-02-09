@@ -60,6 +60,7 @@ Subscriptions support:
 
 - Schedule presets: daily, weekly, monthly
 - Delivery channels: push notification, email, Slack
+- Slack delivery uses workspace-level `SlackIntegration` (see `INTEGRATIONS.md`)
 - Automatic parameter defaults
 
 ---
@@ -199,7 +200,6 @@ Represents scheduled recurring Briefing generations.
 | schedule_hour | integer | 0-23 UTC |
 | parameters | jsonb | Default params for scheduled runs |
 | delivery_channels | jsonb | Array of channels (push, email, slack) |
-| slack_webhook_url | text nullable | Encrypted webhook URL |
 | last_generated_at | timestamp nullable | |
 | next_scheduled_at | timestamp | |
 | is_active | boolean | |
