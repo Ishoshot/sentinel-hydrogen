@@ -11,6 +11,7 @@ return [
 
     // Domain-specific providers
     App\Providers\GitHubServiceProvider::class,
+    App\Providers\SlackServiceProvider::class,
     App\Providers\ReviewServiceProvider::class,
     App\Providers\CommandServiceProvider::class,
     App\Providers\BriefingServiceProvider::class,
