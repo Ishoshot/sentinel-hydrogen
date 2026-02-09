@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\AI\AiProvider;
 use Database\Factories\ProviderKeyFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * BYOK (Bring Your Own Key) provider key for a repository.
  *
  * @property int $id
- * @property int $repository_id
+ * @property int|null $repository_id
  * @property int $workspace_id
  * @property AiProvider $provider
  * @property int|null $provider_model_id
@@ -75,6 +76,25 @@ final class ProviderKey extends Model
     public function getModelIdentifier(): ?string
     {
         return $this->providerModel?->identifier;
+    }
+
+    /**
+     * Scope to workspace-level keys (no repository).
+     *
+     * @param  Builder<ProviderKey>  $query
+     * @return Builder<ProviderKey>
+     */
+    public function scopeWorkspaceLevel(Builder $query): Builder
+    {
+        return $query->whereNull('repository_id');
+    }
+
+    /**
+     * Check if this key is a workspace-level key (not tied to a repository).
+     */
+    public function isWorkspaceLevel(): bool
+    {
+        return $this->repository_id === null;
     }
 
     /**

@@ -66,4 +66,15 @@ final class ProviderKeyFactory extends Factory
             'workspace_id' => $repository->workspace_id,
         ]);
     }
+
+    /**
+     * Create a workspace-level key (no repository).
+     */
+    public function forWorkspaceLevel(Workspace $workspace): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'repository_id' => null,
+            'workspace_id' => $workspace->id,
+        ]);
+    }
 }
