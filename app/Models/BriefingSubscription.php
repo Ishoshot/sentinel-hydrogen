@@ -23,7 +23,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $schedule_hour
  * @property array<string, mixed>|null $parameters
  * @property array<string> $delivery_channels
- * @property string|null $slack_webhook_url
  * @property \Carbon\Carbon|null $last_generated_at
  * @property \Carbon\Carbon $next_scheduled_at
  * @property bool $is_active
@@ -47,17 +46,9 @@ final class BriefingSubscription extends Model
         'schedule_hour',
         'parameters',
         'delivery_channels',
-        'slack_webhook_url',
         'last_generated_at',
         'next_scheduled_at',
         'is_active',
-    ];
-
-    /**
-     * @var list<string>
-     */
-    protected $hidden = [
-        'slack_webhook_url',
     ];
 
     /**
@@ -174,7 +165,6 @@ final class BriefingSubscription extends Model
             'schedule_preset' => BriefingSchedulePreset::class,
             'parameters' => 'array',
             'delivery_channels' => 'array',
-            'slack_webhook_url' => 'encrypted',
             'last_generated_at' => 'datetime',
             'next_scheduled_at' => 'datetime',
             'is_active' => 'boolean',

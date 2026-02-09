@@ -55,6 +55,7 @@ final readonly class BriefingController
             'data' => new BriefingResource($briefing),
             'can_generate' => $canGenerate->allowed,
             'restriction_reason' => $canGenerate->reason,
+            'reason_code' => $canGenerate->reasonCode?->value,
         ]);
     }
 }

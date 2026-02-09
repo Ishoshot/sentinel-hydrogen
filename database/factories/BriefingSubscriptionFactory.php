@@ -37,7 +37,6 @@ final class BriefingSubscriptionFactory extends Factory
                 'date_range_days' => 7,
             ],
             'delivery_channels' => [BriefingDeliveryChannel::Push->value],
-            'slack_webhook_url' => null,
             'last_generated_at' => null,
             'next_scheduled_at' => now()->addWeek()->startOfDay()->addHours(9),
             'is_active' => true,
@@ -121,16 +120,15 @@ final class BriefingSubscriptionFactory extends Factory
     }
 
     /**
-     * Set with Slack delivery.
+     * Set with Slack delivery channel enabled.
      */
-    public function withSlack(string $webhookUrl = 'https://hooks.slack.com/services/test'): static
+    public function withSlack(): static
     {
         return $this->state(fn (array $attributes): array => [
             'delivery_channels' => [
                 BriefingDeliveryChannel::Push->value,
                 BriefingDeliveryChannel::Slack->value,
             ],
-            'slack_webhook_url' => $webhookUrl,
         ]);
     }
 }

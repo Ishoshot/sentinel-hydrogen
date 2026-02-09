@@ -26,6 +26,7 @@ final class BriefingEligibilityController
         return response()->json([
             'can_generate' => $eligibility->allowed,
             'restriction_reason' => $eligibility->reason,
+            'reason_code' => $eligibility->reasonCode?->value,
         ]);
     }
 }
