@@ -7,6 +7,7 @@ use App\Enums\Briefings\BriefingSchedulePreset;
 use App\Models\Briefing;
 use App\Models\BriefingSubscription;
 use App\Models\Plan;
+use App\Models\SlackIntegration;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -101,7 +102,11 @@ it('creates a subscription successfully', function (): void {
     expect(BriefingSubscription::where('workspace_id', $this->workspace->id)->count())->toBe(1);
 });
 
-it('creates a subscription with slack delivery', function (): void {
+it('creates a subscription with slack delivery when workspace has slack integration', function (): void {
+    SlackIntegration::factory()
+        ->forWorkspace($this->workspace)
+        ->create();
+
     $response = $this->actingAs($this->user, 'sanctum')
         ->postJson(route('briefing-subscriptions.store', $this->workspace), [
             'briefing_id' => $this->briefing->id,
@@ -111,18 +116,29 @@ it('creates a subscription with slack delivery', function (): void {
                 BriefingDeliveryChannel::Push->value,
                 BriefingDeliveryChannel::Slack->value,
             ],
-            'slack_webhook_url' => 'https://hooks.slack.com/services/test',
             'parameters' => [],
         ]);
 
     $response->assertCreated();
 
-    // Verify the subscription was created with Slack channel
     expect($response->json('data.delivery_channels'))->toContain(BriefingDeliveryChannel::Slack->value);
+});
 
-    // Verify the webhook URL was stored (slack_webhook_url is hidden from API responses for security)
-    $subscription = BriefingSubscription::find($response->json('data.id'));
-    expect($subscription->slack_webhook_url)->toBe('https://hooks.slack.com/services/test');
+it('cannot select slack channel when workspace has no slack integration', function (): void {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefing-subscriptions.store', $this->workspace), [
+            'briefing_id' => $this->briefing->id,
+            'schedule_preset' => BriefingSchedulePreset::Daily->value,
+            'schedule_hour' => 10,
+            'delivery_channels' => [
+                BriefingDeliveryChannel::Push->value,
+                BriefingDeliveryChannel::Slack->value,
+            ],
+            'parameters' => [],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['delivery_channels']);
 });
 
 it('updates a subscription', function (): void {
