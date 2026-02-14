@@ -15,7 +15,9 @@ use App\Services\Context\Collectors\RepositoryContextCollector;
 use App\Services\Context\Collectors\ReviewHistoryCollector;
 use App\Services\Context\Collectors\SemanticCollector;
 use App\Services\Context\ContextEngine;
+use App\Services\Context\Contracts\ContextCollector;
 use App\Services\Context\Contracts\ContextEngineContract;
+use App\Services\Context\Contracts\ContextFilter;
 use App\Services\Context\Contracts\TokenCounter;
 use App\Services\Context\Filters\BinaryFileFilter;
 use App\Services\Context\Filters\ConfiguredPathFilter;
@@ -50,6 +52,30 @@ use Override;
  */
 final class ReviewServiceProvider extends ServiceProvider
 {
+    /** @var array<int, class-string<ContextCollector>> */
+    private const array COLLECTOR_CLASSES = [
+        DiffCollector::class,
+        FileContextCollector::class,
+        SemanticCollector::class,
+        LinkedIssueCollector::class,
+        ImpactAnalysisCollector::class,
+        PullRequestCommentCollector::class,
+        ReviewHistoryCollector::class,
+        ProjectContextCollector::class,
+        RepositoryContextCollector::class,
+        GuidelinesCollector::class,
+    ];
+
+    /** @var array<int, class-string<ContextFilter>> */
+    private const array FILTER_CLASSES = [
+        VendorPathFilter::class,
+        ConfiguredPathFilter::class,
+        BinaryFileFilter::class,
+        SensitiveDataFilter::class,
+        RelevanceFilter::class,
+        TokenLimitFilter::class,
+    ];
+
     /**
      * Register review services.
      */
@@ -79,50 +105,32 @@ final class ReviewServiceProvider extends ServiceProvider
      */
     private function registerContextEngine(): void
     {
+        $this->app->tag(self::COLLECTOR_CLASSES, 'context.collectors');
+        $this->app->tag(self::FILTER_CLASSES, 'context.filters');
+
         $this->app->singleton(ContextEngine::class, function (): ContextEngine {
             $engine = new ContextEngine;
 
-            $this->registerCollectors($engine);
-            $this->registerFilters($engine);
+            foreach ($this->app->tagged('context.collectors') as $collector) {
+                if (! $collector instanceof ContextCollector) {
+                    continue;
+                }
+
+                $engine->registerCollector($collector);
+            }
+
+            foreach ($this->app->tagged('context.filters') as $filter) {
+                if (! $filter instanceof ContextFilter) {
+                    continue;
+                }
+
+                $engine->registerFilter($filter);
+            }
 
             return $engine;
         });
 
         $this->app->bind(ContextEngineContract::class, ContextEngine::class);
-    }
-
-    /**
-     * Register context collectors on the engine.
-     *
-     * Collectors gather context data. Higher priority runs first.
-     */
-    private function registerCollectors(ContextEngine $engine): void
-    {
-        $engine->registerCollector(app(DiffCollector::class));               // Priority 100
-        $engine->registerCollector(app(FileContextCollector::class));        // Priority 85
-        $engine->registerCollector(app(SemanticCollector::class));           // Priority 80
-        $engine->registerCollector(app(LinkedIssueCollector::class));        // Priority 80
-        $engine->registerCollector(app(ImpactAnalysisCollector::class));     // Priority 75
-        $engine->registerCollector(app(PullRequestCommentCollector::class)); // Priority 70
-        $engine->registerCollector(app(ReviewHistoryCollector::class));      // Priority 60
-        $engine->registerCollector(app(ProjectContextCollector::class));     // Priority 55
-        $engine->registerCollector(app(RepositoryContextCollector::class));  // Priority 50
-        $engine->registerCollector(app(GuidelinesCollector::class));         // Priority 45
-    }
-
-    /**
-     * Register context filters on the engine.
-     *
-     * Filters process/reduce context. Lower order runs first.
-     */
-    private function registerFilters(ContextEngine $engine): void
-    {
-        $engine->registerFilter(app(VendorPathFilter::class));      // Order 10
-        $engine->registerFilter(app(ConfiguredPathFilter::class));  // Order 15
-        $engine->registerFilter(app(BinaryFileFilter::class));      // Order 20
-        $engine->registerFilter(app(SensitiveDataFilter::class));   // Order 30
-        $engine->registerFilter(app(RelevanceFilter::class));       // Order 40
-        $engine->registerFilter(app(TokenLimitFilter::class));      // Order 100
     }
 
     /**

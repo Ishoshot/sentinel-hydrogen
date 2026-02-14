@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\Billing\Contracts\PolarBillingServiceContract;
+use App\Services\Billing\PolarBillingService;
 use App\Services\Promotions\Contracts\PromotionValidatorContract;
 use App\Services\Promotions\PromotionValidator;
 use Illuminate\Support\ServiceProvider;
@@ -30,6 +32,8 @@ final class AppServiceProvider extends ServiceProvider
     #[Override]
     public function register(): void
     {
+        $this->app->bind(PolarBillingServiceContract::class, PolarBillingService::class);
+
         // Promotion validation
         $this->app->bind(PromotionValidatorContract::class, PromotionValidator::class);
     }

@@ -10,6 +10,14 @@ use App\Services\Briefings\Contracts\BriefingDataCollector;
 use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
 use App\Services\Briefings\Contracts\BriefingSlidesBuilder;
 use App\Services\Briefings\NarrativeGeneratorService;
+use App\Services\Briefings\Support\BriefingTemplateCollectorRegistry;
+use App\Services\Briefings\Templates\CodeHealthTemplateCollector;
+use App\Services\Briefings\Templates\CompanyUpdateTemplateCollector;
+use App\Services\Briefings\Templates\DeliveryVelocityTemplateCollector;
+use App\Services\Briefings\Templates\EngineerSpotlightTemplateCollector;
+use App\Services\Briefings\Templates\SprintRetrospectiveTemplateCollector;
+use App\Services\Briefings\Templates\StandupUpdateTemplateCollector;
+use App\Services\Briefings\Templates\WeeklyTeamSummaryTemplateCollector;
 use Illuminate\Support\ServiceProvider;
 use Override;
 
@@ -27,6 +35,23 @@ final class BriefingServiceProvider extends ServiceProvider
     #[Override]
     public function register(): void
     {
+        $templateCollectors = [
+            StandupUpdateTemplateCollector::class,
+            WeeklyTeamSummaryTemplateCollector::class,
+            DeliveryVelocityTemplateCollector::class,
+            EngineerSpotlightTemplateCollector::class,
+            CompanyUpdateTemplateCollector::class,
+            SprintRetrospectiveTemplateCollector::class,
+            CodeHealthTemplateCollector::class,
+        ];
+
+        $this->app->tag($templateCollectors, 'briefing.template-collectors');
+
+        $this->app
+            ->when(BriefingTemplateCollectorRegistry::class)
+            ->needs('$templateCollectors')
+            ->giveTagged('briefing.template-collectors');
+
         $this->app->bind(BriefingDataCollector::class, BriefingDataCollectorService::class);
         $this->app->bind(BriefingNarrativeGenerator::class, NarrativeGeneratorService::class);
         $this->app->bind(BriefingSlidesBuilder::class, BriefingSlidesBuilderService::class);
