@@ -9,6 +9,8 @@ use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextFilter;
 use App\Services\Context\Filters\Support\ConfiguredPathInclusionDecider;
 use App\Services\Context\Filters\Support\ConfiguredPathRepositoryContextFilter;
+use App\Services\Context\Filters\Support\ContextBagPathFilterer;
+use App\Services\Context\Filters\Support\SensitiveFileMarker;
 use App\Support\PathRuleMatcher;
 use Illuminate\Support\Facades\Log;
 
@@ -21,7 +23,9 @@ use Illuminate\Support\Facades\Log;
  */
 final readonly class ConfiguredPathFilter implements ContextFilter
 {
-    private ConfiguredPathInclusionDecider $pathInclusionDecider;
+    private ContextBagPathFilterer $bagPathFilterer;
+
+    private SensitiveFileMarker $sensitiveFileMarker;
 
     private ConfiguredPathRepositoryContextFilter $repositoryContextFilter;
 
@@ -30,8 +34,10 @@ final readonly class ConfiguredPathFilter implements ContextFilter
      */
     public function __construct(PathRuleMatcher $matcher)
     {
-        $this->pathInclusionDecider = new ConfiguredPathInclusionDecider($matcher);
-        $this->repositoryContextFilter = new ConfiguredPathRepositoryContextFilter($this->pathInclusionDecider);
+        $inclusionDecider = new ConfiguredPathInclusionDecider($matcher);
+        $this->bagPathFilterer = new ContextBagPathFilterer($inclusionDecider);
+        $this->sensitiveFileMarker = new SensitiveFileMarker($inclusionDecider);
+        $this->repositoryContextFilter = new ConfiguredPathRepositoryContextFilter($inclusionDecider);
     }
 
     /**
@@ -61,63 +67,30 @@ final readonly class ConfiguredPathFilter implements ContextFilter
             return;
         }
 
-        $originalCount = count($bag->files);
-
-        $this->filterFiles($bag, $pathsConfig);
-
-        $sensitiveCount = $this->markSensitiveFiles($bag, $pathsConfig);
-        $removedFileContents = $this->filterFileContents($bag, $pathsConfig);
-        $removedSemantics = $this->filterSemantics($bag, $pathsConfig);
-        $removedGuidelines = $this->filterGuidelines($bag, $pathsConfig);
+        $counts = $this->bagPathFilterer->filter($bag, $pathsConfig);
+        $sensitiveCount = $this->sensitiveFileMarker->mark($bag, $pathsConfig);
         $removedRepositoryContext = $this->filterRepositoryContext($bag, $pathsConfig);
         $bag->recalculateMetrics();
 
-        $removedCount = $originalCount - count($bag->files);
         if (
-            $removedCount > 0
+            $counts['removed_files'] > 0
             || $sensitiveCount > 0
-            || $removedFileContents > 0
-            || $removedSemantics > 0
-            || $removedGuidelines > 0
+            || $counts['removed_file_contents'] > 0
+            || $counts['removed_semantics'] > 0
+            || $counts['removed_guidelines'] > 0
             || $removedRepositoryContext > 0
         ) {
             Log::debug('ConfiguredPathFilter: Applied path rules', [
-                'original_files' => $originalCount,
-                'removed_files' => $removedCount,
+                'original_files' => $counts['removed_files'] + count($bag->files),
+                'removed_files' => $counts['removed_files'],
                 'sensitive_files' => $sensitiveCount,
                 'remaining_files' => count($bag->files),
-                'removed_file_contents' => $removedFileContents,
-                'removed_semantics' => $removedSemantics,
-                'removed_guidelines' => $removedGuidelines,
+                'removed_file_contents' => $counts['removed_file_contents'],
+                'removed_semantics' => $counts['removed_semantics'],
+                'removed_guidelines' => $counts['removed_guidelines'],
                 'removed_repository_context' => $removedRepositoryContext,
             ]);
         }
-    }
-
-    /**
-     * Mark files matching sensitive patterns.
-     */
-    private function markSensitiveFiles(ContextBag $bag, PathsConfig $pathsConfig): int
-    {
-        if ($pathsConfig->sensitive === []) {
-            return 0;
-        }
-
-        $sensitiveFiles = [];
-        $bag->files = array_map(function (array $file) use ($pathsConfig, &$sensitiveFiles): array {
-            if ($this->pathInclusionDecider->isSensitive($file['filename'], $pathsConfig)) {
-                $file['is_sensitive'] = true;
-                $sensitiveFiles[] = $file['filename'];
-            }
-
-            return $file;
-        }, $bag->files);
-
-        if ($sensitiveFiles !== []) {
-            $bag->metadata['sensitive_files'] = $sensitiveFiles;
-        }
-
-        return count($sensitiveFiles);
     }
 
     /**
@@ -133,76 +106,6 @@ final readonly class ConfiguredPathFilter implements ContextFilter
 
         /** @var array<string, mixed> $pathsData */
         return PathsConfig::fromArray($pathsData);
-    }
-
-    /**
-     * Filter files using configured path rules.
-     */
-    private function filterFiles(ContextBag $bag, PathsConfig $pathsConfig): void
-    {
-        $bag->files = array_values(array_filter(
-            $bag->files,
-            fn (array $file): bool => $this->pathInclusionDecider->shouldInclude($file['filename'], $pathsConfig)
-        ));
-    }
-
-    /**
-     * Filter file contents using configured path rules.
-     */
-    private function filterFileContents(ContextBag $bag, PathsConfig $pathsConfig): int
-    {
-        if ($bag->fileContents === []) {
-            return 0;
-        }
-
-        $before = count($bag->fileContents);
-
-        $bag->fileContents = array_filter(
-            $bag->fileContents,
-            fn (string $path): bool => $this->pathInclusionDecider->shouldInclude($path, $pathsConfig),
-            ARRAY_FILTER_USE_KEY
-        );
-
-        return $before - count($bag->fileContents);
-    }
-
-    /**
-     * Filter semantic data using configured path rules.
-     */
-    private function filterSemantics(ContextBag $bag, PathsConfig $pathsConfig): int
-    {
-        if ($bag->semantics === []) {
-            return 0;
-        }
-
-        $before = count($bag->semantics);
-
-        $bag->semantics = array_filter(
-            $bag->semantics,
-            fn (string $path): bool => $this->pathInclusionDecider->shouldInclude($path, $pathsConfig),
-            ARRAY_FILTER_USE_KEY
-        );
-
-        return $before - count($bag->semantics);
-    }
-
-    /**
-     * Filter guidelines using configured path rules.
-     */
-    private function filterGuidelines(ContextBag $bag, PathsConfig $pathsConfig): int
-    {
-        if ($bag->guidelines === []) {
-            return 0;
-        }
-
-        $before = count($bag->guidelines);
-
-        $bag->guidelines = array_values(array_filter(
-            $bag->guidelines,
-            fn (array $guideline): bool => $this->pathInclusionDecider->shouldInclude($guideline['path'], $pathsConfig)
-        ));
-
-        return $before - count($bag->guidelines);
     }
 
     /**
