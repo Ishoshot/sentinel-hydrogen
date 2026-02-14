@@ -6,51 +6,26 @@ namespace App\Services\Slack;
 
 use App\Models\SlackIntegration;
 use App\Services\Slack\Contracts\SlackServiceContract;
+use App\Services\Slack\Support\SlackOAuthClient;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 use Throwable;
 
 final class SlackService implements SlackServiceContract
 {
     /**
+     * Create a new service instance.
+     */
+    public function __construct(
+        private readonly SlackOAuthClient $oauthClient = new SlackOAuthClient,
+    ) {}
+
+    /**
      * {@inheritDoc}
      */
     public function exchangeCodeForToken(string $code, string $redirectUri): array
     {
-        $response = Http::asForm()->post(config('slack.oauth_access_url'), [
-            'client_id' => config('slack.client_id'),
-            'client_secret' => config('slack.client_secret'),
-            'code' => $code,
-            'redirect_uri' => $redirectUri,
-        ]);
-
-        $response->throw();
-
-        /** @var array<string, mixed> $data */
-        $data = $response->json();
-
-        if (($data['ok'] ?? false) !== true) {
-            /** @var string $error */
-            $error = $data['error'] ?? 'unknown_error';
-            Log::error('Slack OAuth token exchange failed', ['error' => $error]);
-
-            throw new RuntimeException('Slack OAuth failed: '.$error);
-        }
-
-        /** @var array{id: string, name: string} $team */
-        $team = $data['team'] ?? ['id' => '', 'name' => ''];
-
-        /** @var array{id: string} $authedUser */
-        $authedUser = $data['authed_user'] ?? ['id' => ''];
-
-        return [
-            'access_token' => (string) ($data['access_token'] ?? ''),
-            'bot_user_id' => (string) ($data['bot_user_id'] ?? ''),
-            'team' => $team,
-            'scope' => (string) ($data['scope'] ?? ''),
-            'authed_user' => $authedUser,
-        ];
+        return $this->oauthClient->exchangeCodeForToken($code, $redirectUri);
     }
 
     /**

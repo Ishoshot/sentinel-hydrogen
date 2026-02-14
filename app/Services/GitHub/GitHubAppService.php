@@ -5,13 +5,10 @@ declare(strict_types=1);
 namespace App\Services\GitHub;
 
 use App\Services\GitHub\Contracts\GitHubAppServiceContract;
-use DateTimeImmutable;
+use App\Services\GitHub\Support\GitHubInstallationUrlBuilder;
+use App\Services\GitHub\Support\GitHubJwtGenerator;
 use GrahamCampbell\GitHub\GitHubManager;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
-use Lcobucci\JWT\Configuration;
-use Lcobucci\JWT\Signer\Key\InMemory;
-use Lcobucci\JWT\Signer\Rsa\Sha256;
 use RuntimeException;
 
 final readonly class GitHubAppService implements GitHubAppServiceContract
@@ -20,7 +17,9 @@ final readonly class GitHubAppService implements GitHubAppServiceContract
      * Create a new service instance.
      */
     public function __construct(
-        private GitHubManager $github
+        private GitHubManager $github,
+        private GitHubJwtGenerator $jwtGenerator = new GitHubJwtGenerator,
+        private GitHubInstallationUrlBuilder $urlBuilder = new GitHubInstallationUrlBuilder,
     ) {}
 
     /**
@@ -32,34 +31,7 @@ final readonly class GitHubAppService implements GitHubAppServiceContract
      */
     public function generateJwt(): string
     {
-        $privateKey = $this->getPrivateKey();
-
-        if ($privateKey === '') {
-            throw new RuntimeException('GitHub App private key is empty');
-        }
-
-        $config = Configuration::forAsymmetricSigner(
-            new Sha256,
-            InMemory::plainText($privateKey),
-            InMemory::plainText($privateKey)
-        );
-
-        $now = new DateTimeImmutable('@'.time());
-        $exp = new DateTimeImmutable('@'.(time() + 600));
-
-        /** @var string|int $appIdRaw */
-        $appIdRaw = config('github.app_id');
-
-        /** @var non-empty-string $appId */
-        $appId = (string) $appIdRaw;
-
-        $token = $config->builder()
-            ->issuedBy($appId)
-            ->issuedAt($now)
-            ->expiresAt($exp)
-            ->getToken($config->signer(), $config->signingKey());
-
-        return $token->toString();
+        return $this->jwtGenerator->generate();
     }
 
     /**
@@ -113,15 +85,7 @@ final readonly class GitHubAppService implements GitHubAppServiceContract
      */
     public function getInstallationUrl(?string $state = null): string
     {
-        /** @var string $appName */
-        $appName = config('github.app_name');
-        $url = sprintf('https://github.com/apps/%s/installations/new', $appName);
-
-        if ($state !== null) {
-            $url .= '?state='.urlencode($state);
-        }
-
-        return $url;
+        return $this->urlBuilder->getInstallationUrl($state);
     }
 
     /**
@@ -129,10 +93,7 @@ final readonly class GitHubAppService implements GitHubAppServiceContract
      */
     public function getAppName(): string
     {
-        /** @var string $appName */
-        $appName = config('github.app_name');
-
-        return $appName;
+        return $this->urlBuilder->getAppName();
     }
 
     /**
@@ -144,47 +105,6 @@ final readonly class GitHubAppService implements GitHubAppServiceContract
      */
     public function getInstallationConfigureUrl(int $installationId, string $accountLogin, bool $isOrganization): string
     {
-        if ($isOrganization) {
-            return sprintf(
-                'https://github.com/organizations/%s/settings/installations/%d',
-                urlencode($accountLogin),
-                $installationId
-            );
-        }
-
-        return sprintf('https://github.com/settings/installations/%d', $installationId);
-    }
-
-    /**
-     * Get the private key from environment variable or file.
-     *
-     * @throws RuntimeException If the private key cannot be read
-     */
-    private function getPrivateKey(): string
-    {
-        $privateKeyFromEnv = config('github.private_key');
-        if (is_string($privateKeyFromEnv) && $privateKeyFromEnv !== '') {
-            return $privateKeyFromEnv;
-        }
-
-        /** @var string $configPath */
-        $configPath = config('github.private_key_path');
-        $privateKeyPath = str_starts_with($configPath, '/') ? $configPath : base_path($configPath);
-
-        if (! file_exists($privateKeyPath)) {
-            Log::error('GitHub App private key not found', ['path' => $privateKeyPath]);
-
-            throw new RuntimeException('GitHub App private key not found at: '.$privateKeyPath);
-        }
-
-        $privateKey = file_get_contents($privateKeyPath);
-
-        if ($privateKey === false || $privateKey === '') {
-            Log::error('Failed to read GitHub App private key', ['path' => $privateKeyPath]);
-
-            throw new RuntimeException('Failed to read GitHub App private key');
-        }
-
-        return $privateKey;
+        return $this->urlBuilder->getInstallationConfigureUrl($installationId, $accountLogin, $isOrganization);
     }
 }
