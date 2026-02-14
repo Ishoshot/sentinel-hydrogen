@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Commands\Support;
 
+use App\Actions\Commands\Builders\FooterMetricsBuilder;
 use App\Models\CommandRun;
 use Throwable;
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Commands\Support;
+namespace App\Services\Commands\Mappers;
 
 use App\Services\Commands\ValueObjects\ToolCall;
 use Prism\Prism\Text\Response as TextResponse;

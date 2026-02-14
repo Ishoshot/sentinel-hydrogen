@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Commands\Support;
+namespace App\Services\Commands\Loggers;
 
 use App\Models\CommandRun;
+use App\Services\Commands\Support\CommandAgentExecutionContext;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
