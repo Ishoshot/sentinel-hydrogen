@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Billing\Support;
+namespace App\Actions\Billing\Parsers;
 
 use Carbon\CarbonImmutable;
 use Throwable;
