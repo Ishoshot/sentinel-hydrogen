@@ -11,6 +11,7 @@ use App\Services\Plans\Support\PlanLimitEventLogger;
 use App\Services\Plans\Support\PlanPeriodUsageCounter;
 use App\Services\Plans\Support\PlanResolver;
 use App\Services\Plans\Support\PlanSubscriptionEligibilityChecker;
+use App\Services\Plans\Support\PlanUsageLimitChecker;
 use App\Services\Plans\Support\WorkspaceCreationEligibilityChecker;
 use App\Services\Plans\ValueObjects\BillingPeriod;
 use App\Services\Plans\ValueObjects\PlanLimitResult;
@@ -26,6 +27,7 @@ final readonly class PlanLimitEnforcer
         private PlanPeriodUsageCounter $periodUsageCounter,
         private WorkspaceCreationEligibilityChecker $workspaceCreationEligibilityChecker,
         private PlanLimitEventLogger $eventLogger,
+        private PlanUsageLimitChecker $usageLimitChecker,
     ) {}
 
     /**
@@ -52,31 +54,17 @@ final readonly class PlanLimitEnforcer
         }
 
         $plan = $this->planResolver->resolve($workspace);
-        $limit = $plan->monthly_runs_limit;
-
-        if ($limit === null) {
-            return PlanLimitResult::allow();
-        }
-
         $period = $this->currentPeriod($workspace);
         $runsCount = $this->periodUsageCounter->countRuns($workspace, $period);
 
-        if ($runsCount < $limit) {
-            return PlanLimitResult::allow();
-        }
-
-        $message = sprintf(
-            'Run limit reached (%d/%d). Upgrade your plan to run more reviews.',
+        return $this->usageLimitChecker->check(
+            $workspace,
+            $plan->monthly_runs_limit,
             $runsCount,
-            $limit
+            'runs_limit',
+            'Run limit reached (%d/%d). Upgrade your plan to run more reviews.',
+            ['runs_count' => $runsCount],
         );
-
-        $this->eventLogger->log($workspace, 'runs_limit', $message, [
-            'runs_count' => $runsCount,
-            'limit' => $limit,
-        ]);
-
-        return PlanLimitResult::deny($message, 'runs_limit');
     }
 
     /**
@@ -91,31 +79,17 @@ final readonly class PlanLimitEnforcer
         }
 
         $plan = $this->planResolver->resolve($workspace);
-        $limit = $plan->monthly_commands_limit;
-
-        if ($limit === null) {
-            return PlanLimitResult::allow();
-        }
-
         $period = $this->currentPeriod($workspace);
         $commandsCount = $this->periodUsageCounter->countCommands($workspace, $period);
 
-        if ($commandsCount < $limit) {
-            return PlanLimitResult::allow();
-        }
-
-        $message = sprintf(
-            'Command limit reached (%d/%d). Upgrade your plan to run more commands.',
+        return $this->usageLimitChecker->check(
+            $workspace,
+            $plan->monthly_commands_limit,
             $commandsCount,
-            $limit
+            'commands_limit',
+            'Command limit reached (%d/%d). Upgrade your plan to run more commands.',
+            ['commands_count' => $commandsCount],
         );
-
-        $this->eventLogger->log($workspace, 'commands_limit', $message, [
-            'commands_count' => $commandsCount,
-            'limit' => $limit,
-        ]);
-
-        return PlanLimitResult::deny($message, 'commands_limit');
     }
 
     /**

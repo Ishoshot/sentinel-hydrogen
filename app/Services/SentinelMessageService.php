@@ -15,7 +15,8 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      * Create a new service instance.
      */
     public function __construct(
-        private readonly SentinelMessageCatalogLoader $catalogLoader = new SentinelMessageCatalogLoader,
+        private readonly SentinelBrandingResolver $brandingResolver = new SentinelBrandingResolver,
+        private readonly SentinelStatusCommentBuilder $statusCommentBuilder = new SentinelStatusCommentBuilder,
     ) {}
 
     /**
@@ -25,14 +26,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function getRandomGreeting(): array
     {
-        $messages = $this->catalogLoader->load();
-
-        /** @var non-empty-array<int, array{emoji: string, message: string}> $greetings */
-        $greetings = $messages['greetings'];
-
-        $index = random_int(0, count($greetings) - 1);
-
-        return $greetings[$index];
+        return $this->brandingResolver->getRandomGreeting();
     }
 
     /**
@@ -40,14 +34,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function getRandomBranding(): string
     {
-        $messages = $this->catalogLoader->load();
-
-        /** @var non-empty-array<int, string> $branding */
-        $branding = $messages['branding'];
-
-        $index = random_int(0, count($branding) - 1);
-
-        return $branding[$index];
+        return $this->brandingResolver->getRandomBranding();
     }
 
     /**
@@ -55,8 +42,8 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function buildGreetingComment(): string
     {
-        $greeting = $this->getRandomGreeting();
-        $branding = $this->getRandomBranding();
+        $greeting = $this->brandingResolver->getRandomGreeting();
+        $branding = $this->brandingResolver->getRandomBranding();
 
         return <<<MARKDOWN
         {$greeting['emoji']} {$greeting['message']}
@@ -71,7 +58,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function buildReviewSignOff(string $runUrl): string
     {
-        $branding = $this->getRandomBranding();
+        $branding = $this->brandingResolver->getRandomBranding();
 
         return <<<MARKDOWN
 
@@ -87,24 +74,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function buildConfigErrorComment(string $error): string
     {
-        $branding = $this->getRandomBranding();
-
-        return <<<MARKDOWN
-        ⚠️ **Sentinel Configuration Error**
-
-        Your `.sentinel/config.yaml` file contains an error:
-
-        ```
-        {$error}
-        ```
-
-        Review has been skipped until this is resolved. Please fix the configuration and push again.
-
-        📖 [Configuration documentation](https://docs.useSentinel.com/configuration)
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        return $this->statusCommentBuilder->buildConfigErrorComment($error);
     }
 
     /**
@@ -112,23 +82,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function buildNoProviderKeysComment(): string
     {
-        $branding = $this->getRandomBranding();
-
-        return <<<MARKDOWN
-        ⚠️ **Review Skipped - No API Key Configured**
-
-        Sentinel cannot perform a code review because no AI provider API key has been configured for this repository.
-
-        **To enable reviews:**
-        1. Go to your repository settings in the Sentinel dashboard
-        2. Navigate to **API Keys**
-        3. Add your Anthropic or OpenAI API key
-
-        Your API key is encrypted and never exposed after saving.
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        return $this->statusCommentBuilder->buildNoProviderKeysComment();
     }
 
     /**
@@ -136,24 +90,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function buildRunFailedComment(string $errorType): string
     {
-        $branding = $this->getRandomBranding();
-
-        return <<<MARKDOWN
-        ❌ **Review Failed**
-
-        Sentinel encountered an error while reviewing this pull request.
-
-        **Error Type:** `{$errorType}`
-
-        This has been logged and will be investigated. You can try:
-        - Pushing a new commit to trigger a new review
-        - Checking your repository settings in the Sentinel dashboard
-
-        If the issue persists, please contact support.
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        return $this->statusCommentBuilder->buildRunFailedComment($errorType);
     }
 
     /**
@@ -161,21 +98,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function buildAutoReviewDisabledComment(): string
     {
-        $branding = $this->getRandomBranding();
-
-        return <<<MARKDOWN
-        > [!IMPORTANT]
-        > ## Review skipped
-        >
-        > Auto reviews are disabled on this repository.
-        >
-        > Please check the settings in the Sentinel UI or the `.sentinel/config.yaml` file in this repository. To trigger a single review, invoke the `@sentinel review` command.
-        >
-        > You can disable this status message by setting the `reviews.review_status` to `false` in the Sentinel configuration file.
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        return $this->statusCommentBuilder->buildAutoReviewDisabledComment();
     }
 
     /**
@@ -183,19 +106,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function buildPlanLimitReachedComment(?string $message): string
     {
-        $branding = $this->getRandomBranding();
-        $details = $message ?? 'Your current plan has reached its limit.';
-
-        return <<<MARKDOWN
-        ⚠️ **Review Skipped - Plan Limit Reached**
-
-        {$details}
-
-        Upgrade your plan in the Sentinel dashboard to continue running reviews.
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        return $this->statusCommentBuilder->buildPlanLimitReachedComment($message);
     }
 
     /**
@@ -203,21 +114,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function buildOrphanedRepositoryComment(): string
     {
-        $branding = $this->getRandomBranding();
-
-        return <<<MARKDOWN
-        ⚠️ **Review Skipped - Repository Not Connected**
-
-        This repository is not associated with any Sentinel workspace. Reviews cannot be performed without a workspace connection.
-
-        **To fix this:**
-        1. Go to your Sentinel dashboard
-        2. Navigate to **Repositories**
-        3. Re-connect this repository to your workspace
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        return $this->statusCommentBuilder->buildOrphanedRepositoryComment();
     }
 
     /**
@@ -225,20 +122,6 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function buildInstallationInactiveComment(): string
     {
-        $branding = $this->getRandomBranding();
-
-        return <<<MARKDOWN
-        ⚠️ **Review Skipped - Installation Inactive**
-
-        The GitHub App installation for this repository is no longer active. Reviews cannot be performed without an active installation.
-
-        **To fix this:**
-        1. Go to your GitHub organization/account settings
-        2. Navigate to **Installed GitHub Apps**
-        3. Re-install or re-activate the Sentinel GitHub App
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        return $this->statusCommentBuilder->buildInstallationInactiveComment();
     }
 }

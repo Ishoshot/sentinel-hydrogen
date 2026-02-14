@@ -11,6 +11,7 @@ use App\Models\ProviderKey;
 use App\Models\Repository;
 use App\Services\Context\ContextBag;
 use App\Services\Reviews\Contracts\ReviewEngine;
+use App\Services\Reviews\Support\PrismReviewFallbackLoop;
 use App\Services\Reviews\Support\PrismReviewPromptPreparer;
 use App\Services\Reviews\Support\PrismReviewPromptSnapshotFactory;
 use App\Services\Reviews\Support\PrismReviewProviderResolver;
@@ -18,8 +19,6 @@ use App\Services\Reviews\Support\PrismReviewResponseFactory;
 use App\Services\Reviews\Support\PrismStructuredReviewClient;
 use App\Services\Reviews\ValueObjects\PullRequestMetrics;
 use App\Services\Reviews\ValueObjects\ReviewResult;
-use Illuminate\Support\Facades\Log;
-use Throwable;
 
 /**
  * AI-powered review engine using PrismPHP for LLM integration.
@@ -29,8 +28,6 @@ use Throwable;
  */
 final readonly class PrismReviewEngine implements ReviewEngine
 {
-    private const int MAX_FALLBACK_ATTEMPTS = 3;
-
     /**
      * Create a new engine instance.
      */
@@ -41,6 +38,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
         private PrismReviewPromptPreparer $promptPreparer,
         private PrismStructuredReviewClient $structuredReviewClient,
         private PrismReviewPromptSnapshotFactory $promptSnapshotFactory,
+        private PrismReviewFallbackLoop $fallbackLoop,
     ) {}
 
     /**
@@ -68,53 +66,11 @@ final readonly class PrismReviewEngine implements ReviewEngine
             throw NoProviderKeyException::noProvidersConfigured();
         }
 
-        $attempts = 0;
-        $maxAttempts = $providerConfig->fallback ? min(count($providersToTry), self::MAX_FALLBACK_ATTEMPTS) : 1;
-
-        /** @var Throwable|null $lastException */
-        $lastException = null;
-
-        foreach ($providersToTry as $aiProvider) {
-            if ($attempts >= $maxAttempts) {
-                break;
-            }
-
-            $attempts++;
-
-            try {
-                return $this->executeReview($context, $aiProvider, $providerConfig);
-            } catch (NoProviderKeyException $e) {
-                $lastException = $e;
-                Log::warning('Provider key not available, trying fallback', [
-                    'provider' => $aiProvider->value,
-                    'attempt' => $attempts,
-                    'fallback_enabled' => $providerConfig->fallback,
-                ]);
-
-                if (! $providerConfig->fallback) {
-                    throw $e;
-                }
-            } catch (Throwable $e) {
-                $lastException = $e;
-                Log::warning('Provider failed, trying fallback', [
-                    'provider' => $aiProvider->value,
-                    'attempt' => $attempts,
-                    'error' => $e->getMessage(),
-                    'fallback_enabled' => $providerConfig->fallback,
-                ]);
-
-                if (! $providerConfig->fallback) {
-                    throw $e;
-                }
-            }
-        }
-
-        // All attempts failed - throw the last exception or a default one
-        if ($lastException !== null) {
-            throw $lastException;
-        }
-
-        throw NoProviderKeyException::noProvidersConfigured();
+        return $this->fallbackLoop->execute(
+            $providersToTry,
+            $providerConfig,
+            fn (AiProvider $aiProvider): ReviewResult => $this->executeReview($context, $aiProvider, $providerConfig),
+        );
     }
 
     /**
