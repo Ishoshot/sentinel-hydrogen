@@ -6,12 +6,13 @@ namespace App\Services\Context\Collectors;
 
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Context\Collectors\Support\FileContentFetcher;
 use App\Services\Context\Collectors\Support\FileSelectionPolicy;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
-use App\Services\GitHub\Support\GitHubContentDecoder;
 use App\Services\GitHub\Support\RepositoryCoordinatesResolver;
+use App\Services\GitHub\ValueObjects\RepositoryCoordinates;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -24,18 +25,13 @@ use Throwable;
 final readonly class FileContextCollector implements ContextCollector
 {
     /**
-     * Maximum file size in bytes (skip large files).
-     */
-    private const int MAX_FILE_SIZE = 50000;
-
-    /**
      * Create a new FileContextCollector instance.
      */
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,
         private FileSelectionPolicy $selectionPolicy = new FileSelectionPolicy,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
-        private GitHubContentDecoder $contentDecoder = new GitHubContentDecoder,
+        private ?FileContentFetcher $fileContentFetcher = null,
     ) {}
 
     /**
@@ -78,7 +74,7 @@ final readonly class FileContextCollector implements ContextCollector
         $metadata = $run->metadata ?? [];
         $coordinates = $this->coordinatesResolver->resolve($repository);
 
-        if (! $coordinates instanceof \App\Services\GitHub\ValueObjects\RepositoryCoordinates) {
+        if (! $coordinates instanceof RepositoryCoordinates) {
             return;
         }
 
@@ -103,6 +99,8 @@ final readonly class FileContextCollector implements ContextCollector
             return;
         }
 
+        $fetcher = $this->fileContentFetcher ?? new FileContentFetcher($this->gitHubApiService);
+
         $fileContents = [];
         $fetchedCount = 0;
 
@@ -110,7 +108,7 @@ final readonly class FileContextCollector implements ContextCollector
             $filename = $file['filename'];
 
             try {
-                $content = $this->fetchFileContent(
+                $content = $fetcher->fetch(
                     $coordinates->installationId,
                     $coordinates->owner,
                     $coordinates->repo,
@@ -137,41 +135,5 @@ final readonly class FileContextCollector implements ContextCollector
             'files_fetched' => $fetchedCount,
             'files_requested' => count($filesToFetch),
         ]);
-    }
-
-    /**
-     * Fetch file content from GitHub.
-     */
-    private function fetchFileContent(
-        int $installationId,
-        string $owner,
-        string $repo,
-        string $path,
-        string $ref
-    ): ?string {
-        $response = $this->gitHubApiService->getFileContents(
-            $installationId,
-            $owner,
-            $repo,
-            $path,
-            $ref
-        );
-
-        if (is_string($response)) {
-            return mb_strlen($response) <= self::MAX_FILE_SIZE ? $response : null;
-        }
-
-        $size = $response['size'] ?? 0;
-        if (! is_int($size) || $size > self::MAX_FILE_SIZE) {
-            return null;
-        }
-
-        $content = $this->contentDecoder->decode($response);
-
-        if ($content === null) {
-            return null;
-        }
-
-        return mb_strlen($content) <= self::MAX_FILE_SIZE ? $content : null;
     }
 }

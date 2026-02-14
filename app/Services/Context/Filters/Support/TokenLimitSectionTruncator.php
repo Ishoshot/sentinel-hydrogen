@@ -14,9 +14,9 @@ use App\Services\Context\TokenCounting\TokenCounterContext;
 final class TokenLimitSectionTruncator
 {
     /**
-     * Token counting context derived from request metadata.
+     * Context manager for token counting state and propagation.
      */
-    private TokenCounterContext $tokenCounterContext;
+    private readonly TokenLimitContextManager $contextManager;
 
     /**
      * Create a new section truncator instance.
@@ -28,7 +28,12 @@ final class TokenLimitSectionTruncator
         private readonly TokenLimitSupplementalSectionTruncator $supplementalSectionTruncator,
         private readonly TokenLimitProgressiveTruncator $progressiveTruncator,
     ) {
-        $this->tokenCounterContext = TokenCounterContext::fromMetadata([]);
+        $this->contextManager = new TokenLimitContextManager(
+            $this->tokenCounter,
+            $this->filePatchTruncator,
+            $this->codeSectionTruncator,
+            $this->supplementalSectionTruncator,
+        );
     }
 
     /**
@@ -36,10 +41,7 @@ final class TokenLimitSectionTruncator
      */
     public function setContext(TokenCounterContext $tokenCounterContext): void
     {
-        $this->tokenCounterContext = $tokenCounterContext;
-        $this->filePatchTruncator->setContext($tokenCounterContext);
-        $this->codeSectionTruncator->setContext($tokenCounterContext);
-        $this->supplementalSectionTruncator->setContext($tokenCounterContext);
+        $this->contextManager->setContext($tokenCounterContext);
     }
 
     /**
@@ -47,7 +49,7 @@ final class TokenLimitSectionTruncator
      */
     public function estimateBagTokens(ContextBag $bag): int
     {
-        return $bag->estimateTokens($this->tokenCounter, $this->tokenCounterContext);
+        return $this->contextManager->estimateBagTokens($bag);
     }
 
     /**
@@ -168,7 +170,7 @@ final class TokenLimitSectionTruncator
         $this->progressiveTruncator->progressiveTruncation(
             $bag,
             $maxContextTokens,
-            fn (ContextBag $candidateBag, int $maxTokens): bool => $this->estimateBagTokens($candidateBag) > $maxTokens
+            fn (ContextBag $candidateBag, int $maxTokens): bool => $this->contextManager->isOverBudget($candidateBag, $maxTokens)
         );
     }
 }
