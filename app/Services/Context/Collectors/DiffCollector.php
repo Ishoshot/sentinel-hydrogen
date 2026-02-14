@@ -12,7 +12,7 @@ use App\Services\Context\Collectors\Support\SentinelConfigBranchFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
-use App\Services\GitHub\Support\RepositoryCoordinatesResolver;
+use App\Services\GitHub\Resolvers\RepositoryCoordinatesResolver;
 use App\Support\MetadataExtractor;
 use Illuminate\Support\Facades\Log;
 

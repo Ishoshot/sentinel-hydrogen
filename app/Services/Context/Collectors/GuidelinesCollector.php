@@ -11,7 +11,7 @@ use App\Services\Context\Collectors\Support\GuidelineBatchFetcher;
 use App\Services\Context\Collectors\Support\GuidelineContentFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
-use App\Services\GitHub\Support\RepositoryCoordinatesResolver;
+use App\Services\GitHub\Resolvers\RepositoryCoordinatesResolver;
 use Illuminate\Support\Facades\Log;
 
 /**
