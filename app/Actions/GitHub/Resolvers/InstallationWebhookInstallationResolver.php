@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\GitHub\Support;
+namespace App\Actions\GitHub\Resolvers;
 
 use App\Models\Installation;
 

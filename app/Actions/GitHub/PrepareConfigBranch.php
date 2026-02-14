@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
+use App\Actions\GitHub\Builders\GitHubConfigCompareUrlBuilder;
 use App\Actions\GitHub\Support\GitHubConfigBranchOperations;
-use App\Actions\GitHub\Support\GitHubConfigCompareUrlBuilder;
 use App\Actions\GitHub\Support\GitHubDefaultConfigContentReader;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\GitHub\ValueObjects\ConfigPullRequestResult;

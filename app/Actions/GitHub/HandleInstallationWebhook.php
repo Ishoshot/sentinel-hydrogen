@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
-use App\Actions\GitHub\Support\InstallationWebhookInstallationResolver;
+use App\Actions\GitHub\Resolvers\InstallationWebhookInstallationResolver;
 use App\Actions\GitHub\Support\InstallationWebhookLifecycleUpdater;
 use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use App\Services\GitHub\GitHubWebhookService;

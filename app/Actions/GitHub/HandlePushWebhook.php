@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
+use App\Actions\GitHub\Resolvers\PushWebhookPayloadContextResolver;
+use App\Actions\GitHub\Resolvers\PushWebhookRepositoryResolver;
 use App\Actions\GitHub\Support\PushWebhookCodeIndexingTrigger;
-use App\Actions\GitHub\Support\PushWebhookPayloadContextResolver;
-use App\Actions\GitHub\Support\PushWebhookRepositoryResolver;
 use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
 use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Log;
