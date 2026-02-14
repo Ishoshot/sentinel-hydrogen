@@ -7,12 +7,12 @@ namespace App\Services\Plans;
 use App\Enums\Billing\PlanFeature;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Plans\Support\PlanLimitEventLogger;
+use App\Services\Plans\Checkers\PlanSubscriptionEligibilityChecker;
+use App\Services\Plans\Checkers\PlanTeamInviteEligibilityChecker;
+use App\Services\Plans\Checkers\WorkspaceCreationEligibilityChecker;
+use App\Services\Plans\Loggers\PlanLimitEventLogger;
+use App\Services\Plans\Resolvers\PlanResolver;
 use App\Services\Plans\Support\PlanMeteredUsageEnforcer;
-use App\Services\Plans\Support\PlanResolver;
-use App\Services\Plans\Support\PlanSubscriptionEligibilityChecker;
-use App\Services\Plans\Support\PlanTeamInviteEligibilityChecker;
-use App\Services\Plans\Support\WorkspaceCreationEligibilityChecker;
 use App\Services\Plans\ValueObjects\BillingPeriod;
 use App\Services\Plans\ValueObjects\PlanLimitResult;
 

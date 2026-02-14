@@ -6,11 +6,11 @@ namespace App\Services\CodeIndexing;
 
 use App\Models\Repository;
 use App\Services\CodeIndexing\Contracts\CodeSearchServiceContract;
-use App\Services\CodeIndexing\Support\CodeSearchCacheKeyFactory;
+use App\Services\CodeIndexing\Executors\KeywordCodeSearchExecutor;
+use App\Services\CodeIndexing\Executors\SemanticCodeSearchExecutor;
+use App\Services\CodeIndexing\Executors\SymbolCodeSearchExecutor;
+use App\Services\CodeIndexing\Factories\CodeSearchCacheKeyFactory;
 use App\Services\CodeIndexing\Support\HybridSearchResultMerger;
-use App\Services\CodeIndexing\Support\KeywordCodeSearchExecutor;
-use App\Services\CodeIndexing\Support\SemanticCodeSearchExecutor;
-use App\Services\CodeIndexing\Support\SymbolCodeSearchExecutor;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
