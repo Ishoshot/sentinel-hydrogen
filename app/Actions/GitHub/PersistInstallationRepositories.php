@@ -39,7 +39,7 @@ final readonly class PersistInstallationRepositories
             );
             /** @var array<int, int> $githubRepoIds */
             $githubRepoIds = array_map(
-                static fn (mixed $githubId): int => (int) $githubId,
+                static fn (mixed $githubId): int => $githubId,
                 array_column($githubRepos, 'id'),
             );
 

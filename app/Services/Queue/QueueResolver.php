@@ -24,14 +24,19 @@ final class QueueResolver
      */
     private array $rules = [];
 
-    private QueueRuleEvaluationRunner $ruleEvaluationRunner;
+    /**
+     * Applies queue rules and returns accumulated scoring context.
+     */
+    private readonly QueueRuleEvaluationRunner $ruleEvaluationRunner;
 
     /**
      * @param  iterable<QueueRule>  $rules
      */
     public function __construct(
         iterable $rules = [],
+        /** Queue scoring strategy for tie-breaking and default selection. */
         private readonly QueueScorer $scorer = new QueueScorer(),
+        /** Logger used to emit queue resolution traces. */
         private readonly ResolutionLogger $logger = new ResolutionLogger(),
         ?QueueRuleEvaluationRunner $ruleEvaluationRunner = null,
     ) {
@@ -70,7 +75,7 @@ final class QueueResolver
     {
         $evaluation = $this->ruleEvaluationRunner->evaluate($this->rules, $context);
 
-        if ($evaluation->wasForced() && $evaluation->forcedQueue !== null && $evaluation->forcedBy !== null) {
+        if ($evaluation->wasForced() && $evaluation->forcedQueue instanceof \App\Enums\Queue\Queue && $evaluation->forcedBy !== null) {
             return $this->logger->buildResolution(
                 queue: $evaluation->forcedQueue,
                 trace: $evaluation->trace,

@@ -11,22 +11,22 @@ use App\Services\Context\TokenCounting\TokenCounterContext;
 /**
  * Performs token-aware truncation for context sections.
  */
-final class TokenLimitSectionTruncator
+final readonly class TokenLimitSectionTruncator
 {
     /**
      * Context manager for token counting state and propagation.
      */
-    private readonly TokenLimitContextManager $contextManager;
+    private TokenLimitContextManager $contextManager;
 
     /**
      * Create a new section truncator instance.
      */
     public function __construct(
-        private readonly TokenCounter $tokenCounter,
-        private readonly TokenLimitFilePatchTruncator $filePatchTruncator,
-        private readonly TokenLimitCodeSectionTruncator $codeSectionTruncator,
-        private readonly TokenLimitSupplementalSectionTruncator $supplementalSectionTruncator,
-        private readonly TokenLimitProgressiveTruncator $progressiveTruncator,
+        private TokenCounter $tokenCounter,
+        private TokenLimitFilePatchTruncator $filePatchTruncator,
+        private TokenLimitCodeSectionTruncator $codeSectionTruncator,
+        private TokenLimitSupplementalSectionTruncator $supplementalSectionTruncator,
+        private TokenLimitProgressiveTruncator $progressiveTruncator,
         ?TokenLimitContextManager $contextManager = null,
     ) {
         $this->contextManager = $contextManager ?? new TokenLimitContextManager(

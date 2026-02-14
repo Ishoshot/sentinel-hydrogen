@@ -61,7 +61,7 @@ final readonly class HandlePullRequestWebhook
         }
 
         $repository = $this->repositoryResolver->resolve($data, $webhookCtx);
-        if ($repository === null) {
+        if (! $repository instanceof \App\Models\Repository) {
             return;
         }
 

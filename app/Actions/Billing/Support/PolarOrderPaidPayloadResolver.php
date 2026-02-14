@@ -42,6 +42,7 @@ final readonly class PolarOrderPaidPayloadResolver
         if (is_array($subscriptionData) && $metadata === []) {
             $metadata = $subscriptionData['metadata'] ?? [];
         }
+
         /** @var array<string, mixed> $metadata */
 
         /** @var array<string, mixed> $typedOrder */

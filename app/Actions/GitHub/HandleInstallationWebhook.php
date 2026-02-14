@@ -52,7 +52,7 @@ final readonly class HandleInstallationWebhook
     {
         $installation = $this->installationResolver->resolve((int) $data['installation_id']);
 
-        if ($installation === null) {
+        if (! $installation instanceof \App\Models\Installation) {
             Log::warning('Installation created webhook received but no installation record found', [
                 'installation_id' => $data['installation_id'],
             ]);
@@ -66,7 +66,7 @@ final readonly class HandleInstallationWebhook
     {
         $installation = $this->installationResolver->resolve((int) $data['installation_id']);
 
-        if ($installation === null) {
+        if (! $installation instanceof \App\Models\Installation) {
             return;
         }
 
@@ -89,7 +89,7 @@ final readonly class HandleInstallationWebhook
     {
         $installation = $this->installationResolver->resolve((int) $data['installation_id']);
 
-        if ($installation === null) {
+        if (! $installation instanceof \App\Models\Installation) {
             return;
         }
 
@@ -107,7 +107,7 @@ final readonly class HandleInstallationWebhook
     {
         $installation = $this->installationResolver->resolve((int) $data['installation_id']);
 
-        if ($installation === null) {
+        if (! $installation instanceof \App\Models\Installation) {
             return;
         }
 

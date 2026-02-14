@@ -15,7 +15,7 @@ use App\Models\Subscription;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 
-final class PolarWebhookSupport
+final readonly class PolarWebhookSupport
 {
     /**
      * Create a new helper instance.

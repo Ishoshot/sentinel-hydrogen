@@ -14,7 +14,7 @@ use stdClass;
 /**
  * List workspace runs with filtering, sorting, and optional grouping.
  */
-final class ListWorkspaceRuns
+final readonly class ListWorkspaceRuns
 {
     /**
      * Create a new action instance.

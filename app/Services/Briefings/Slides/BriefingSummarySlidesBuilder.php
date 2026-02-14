@@ -15,14 +15,14 @@ use App\Services\Briefings\ValueObjects\BriefingSummary;
 /**
  * Builds summary-oriented slides for a briefing deck.
  */
-final class BriefingSummarySlidesBuilder
+final readonly class BriefingSummarySlidesBuilder
 {
     /**
      * Create a new slides builder instance.
      */
     public function __construct(
-        private readonly SlideSummaryTextResolver $textResolver = new SlideSummaryTextResolver,
-        private readonly SlideMetricsFactory $metricsFactory = new SlideMetricsFactory,
+        private SlideSummaryTextResolver $textResolver = new SlideSummaryTextResolver,
+        private SlideMetricsFactory $metricsFactory = new SlideMetricsFactory,
     ) {}
 
     /**

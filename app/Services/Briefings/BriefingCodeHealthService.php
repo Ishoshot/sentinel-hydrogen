@@ -13,14 +13,14 @@ use App\Services\Briefings\ValueObjects\BriefingDateRange;
 /**
  * Aggregates code-health metrics for briefing payloads.
  */
-final class BriefingCodeHealthService
+final readonly class BriefingCodeHealthService
 {
     /**
      * Create a new service instance.
      */
     public function __construct(
-        private readonly CodeHealthAggregator $aggregator = new CodeHealthAggregator,
-        private readonly CodeHealthCriticalFindingsFetcher $criticalFindingsFetcher = new CodeHealthCriticalFindingsFetcher,
+        private CodeHealthAggregator $aggregator = new CodeHealthAggregator,
+        private CodeHealthCriticalFindingsFetcher $criticalFindingsFetcher = new CodeHealthCriticalFindingsFetcher,
     ) {}
 
     /**
@@ -71,7 +71,7 @@ final class BriefingCodeHealthService
                 'top_critical_findings' => $criticalFindings,
             ],
             'critical_finding_ids' => array_map(
-                static fn (mixed $id): int => (int) $id,
+                static fn (mixed $id): int => $id,
                 array_column($criticalFindings, 'id')
             ),
         ];

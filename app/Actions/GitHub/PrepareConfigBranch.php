@@ -19,11 +19,10 @@ final readonly class PrepareConfigBranch
 
     private const string CONFIG_PATH = '.sentinel/config.yaml';
 
+    /**
+     * Branch operations for Sentinel config bootstrap.
+     */
     private GitHubConfigBranchOperations $operations;
-
-    private GitHubConfigCompareUrlBuilder $compareUrlBuilder;
-
-    private GitHubDefaultConfigContentReader $defaultConfigContentReader;
 
     /**
      * Create a new action instance.
@@ -31,12 +30,12 @@ final readonly class PrepareConfigBranch
     public function __construct(
         GitHubApiServiceContract $gitHubApiService,
         ?GitHubConfigBranchOperations $operations = null,
-        ?GitHubConfigCompareUrlBuilder $compareUrlBuilder = null,
-        ?GitHubDefaultConfigContentReader $defaultConfigContentReader = null,
+        /** Builds GitHub compare URLs for follow-up pull request links. */
+        private GitHubConfigCompareUrlBuilder $compareUrlBuilder = new GitHubConfigCompareUrlBuilder,
+        /** Loads the default Sentinel config file content. */
+        private GitHubDefaultConfigContentReader $defaultConfigContentReader = new GitHubDefaultConfigContentReader,
     ) {
         $this->operations = $operations ?? new GitHubConfigBranchOperations($gitHubApiService);
-        $this->compareUrlBuilder = $compareUrlBuilder ?? new GitHubConfigCompareUrlBuilder;
-        $this->defaultConfigContentReader = $defaultConfigContentReader ?? new GitHubDefaultConfigContentReader;
     }
 
     /**

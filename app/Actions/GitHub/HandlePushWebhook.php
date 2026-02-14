@@ -44,7 +44,7 @@ final readonly class HandlePushWebhook
         $resolution = $this->repositoryResolver->resolve((int) $context->installationId, (int) $context->repositoryId);
         $installation = $resolution->installation;
 
-        if ($installation === null) {
+        if (! $installation instanceof \App\Models\Installation) {
             Log::warning('Installation not found for push webhook', $webhookContext);
 
             return;
@@ -52,7 +52,7 @@ final readonly class HandlePushWebhook
 
         $repository = $resolution->repository;
 
-        if ($repository === null) {
+        if (! $repository instanceof \App\Models\Repository) {
             Log::warning('Repository not found for push webhook', array_merge($webhookContext, [
                 'github_repository_id' => $context->repositoryId,
             ]));

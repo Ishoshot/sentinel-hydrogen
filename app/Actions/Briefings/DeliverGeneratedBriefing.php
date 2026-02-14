@@ -12,14 +12,14 @@ use App\Models\BriefingSubscription;
 use App\Services\Slack\Contracts\SlackServiceContract;
 use Illuminate\Support\Facades\Log;
 
-final class DeliverGeneratedBriefing
+final readonly class DeliverGeneratedBriefing
 {
     /**
      * Create a new action instance.
      */
     public function __construct(
-        private readonly EmailBriefingDeliverer $emailDeliverer = new EmailBriefingDeliverer,
-        private readonly SlackBriefingDeliverer $slackDeliverer = new SlackBriefingDeliverer,
+        private EmailBriefingDeliverer $emailDeliverer = new EmailBriefingDeliverer,
+        private SlackBriefingDeliverer $slackDeliverer = new SlackBriefingDeliverer,
     ) {}
 
     /**

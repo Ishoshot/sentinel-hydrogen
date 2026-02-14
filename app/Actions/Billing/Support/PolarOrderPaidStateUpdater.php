@@ -34,7 +34,7 @@ final readonly class PolarOrderPaidStateUpdater
                     'polar_customer_id' => $payload->customerId,
                 ];
 
-                if ($payload->billingInterval !== null) {
+                if ($payload->billingInterval instanceof \App\Enums\Billing\BillingInterval) {
                     $subscriptionAttributes['billing_interval'] = $payload->billingInterval;
                 }
 

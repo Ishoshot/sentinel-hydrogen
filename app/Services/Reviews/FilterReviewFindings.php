@@ -9,7 +9,7 @@ use App\Services\Reviews\Support\FindingSorter;
 use App\Services\Reviews\ValueObjects\ReviewFinding;
 use App\Services\Reviews\ValueObjects\ReviewPolicy;
 
-final class FilterReviewFindings
+final readonly class FilterReviewFindings
 {
     private const float DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
 
@@ -17,8 +17,8 @@ final class FilterReviewFindings
      * Create a new FilterReviewFindings instance.
      */
     public function __construct(
-        private readonly FindingPathMatcher $pathMatcher = new FindingPathMatcher,
-        private readonly FindingSorter $sorter = new FindingSorter,
+        private FindingPathMatcher $pathMatcher = new FindingPathMatcher,
+        private FindingSorter $sorter = new FindingSorter,
     ) {}
 
     /**

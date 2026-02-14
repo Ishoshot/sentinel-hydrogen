@@ -30,7 +30,7 @@ final readonly class HandlePolarOrderPaid
     {
         $payload = $this->payloadResolver->resolve($webhook);
 
-        if ($payload === null) {
+        if (! $payload instanceof Support\PolarOrderPaidPayload) {
             Log::warning('order.paid webhook missing data payload');
 
             return;
@@ -55,7 +55,7 @@ final readonly class HandlePolarOrderPaid
         $workspace = $workspaceResolution->workspace;
         $plan = $this->planResolver->resolve($workspace, $payload, $workspaceResolution->planTier);
 
-        if ($plan === null) {
+        if (! $plan instanceof \App\Models\Plan) {
             Log::warning('Could not resolve plan for paid order', [
                 'workspace_id' => $workspace->id,
                 'order_id' => $payload->order['id'] ?? null,

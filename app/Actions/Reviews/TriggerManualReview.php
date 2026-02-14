@@ -61,7 +61,7 @@ final readonly class TriggerManualReview
         }
 
         $installation = $eligibility->installation;
-        if ($installation === null) {
+        if (! $installation instanceof \App\Models\Installation) {
             return [
                 'success' => false,
                 'run' => null,

@@ -14,7 +14,7 @@ use App\Services\Context\Filters\Support\RelevanceScorer;
  * Sorts files to ensure the most important changes are reviewed first,
  * which helps when token limits require truncation.
  */
-final class RelevanceFilter implements ContextFilter
+final readonly class RelevanceFilter implements ContextFilter
 {
     /**
      * Maximum number of files to keep after filtering.
@@ -25,7 +25,7 @@ final class RelevanceFilter implements ContextFilter
      * Create a new relevance filter instance.
      */
     public function __construct(
-        private readonly RelevanceScorer $scorer = new RelevanceScorer,
+        private RelevanceScorer $scorer = new RelevanceScorer,
     ) {}
 
     /**
