@@ -14,11 +14,11 @@ use App\Services\Billing\Support\CustomerPortalPayloadBuilder;
 use App\Services\Billing\Support\PolarApiClient;
 use App\Services\Billing\Support\PolarProductIdGuard;
 use App\Services\Billing\Support\PolarProductResolver;
+use App\Services\Billing\Support\PolarSessionUrlResolver;
 use App\Services\Billing\Support\PolarWebhookVerifier;
 use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
 use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 
 /**
  * Service for integrating with Polar billing.
@@ -35,6 +35,7 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
         private PolarProductIdGuard $productIdGuard,
         private CheckoutPayloadBuilder $checkoutPayloadBuilder,
         private CustomerPortalPayloadBuilder $customerPortalPayloadBuilder,
+        private PolarSessionUrlResolver $sessionUrlResolver,
     ) {}
 
     /**
@@ -74,13 +75,7 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
 
         /** @var array{url?: string} $data */
         $data = $this->apiClient->createCheckoutSession($workspace, $payload);
-        $checkoutUrl = $data['url'] ?? null;
-
-        if (! is_string($checkoutUrl) || $checkoutUrl === '') {
-            Log::error('Polar API returned no checkout URL', LogContext::fromWorkspace($workspace));
-
-            throw new RuntimeException('Polar API did not return a checkout URL.');
-        }
+        $checkoutUrl = $this->sessionUrlResolver->checkout($workspace, $data);
 
         Log::info('Polar checkout session created', LogContext::merge(
             LogContext::fromWorkspace($workspace),
@@ -142,13 +137,7 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
 
         /** @var array{customer_portal_url?: string} $data */
         $data = $this->apiClient->createCustomerPortalSession($workspace, $payload);
-        $portalUrl = $data['customer_portal_url'] ?? null;
-
-        if (! is_string($portalUrl) || $portalUrl === '') {
-            Log::error('Polar API returned no portal URL', LogContext::fromWorkspace($workspace));
-
-            throw new RuntimeException('Polar API did not return a customer portal URL.');
-        }
+        $portalUrl = $this->sessionUrlResolver->customerPortal($workspace, $data);
 
         Log::info('Polar customer portal session created', LogContext::fromWorkspace($workspace));
 

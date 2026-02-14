@@ -8,7 +8,8 @@ use App\Actions\Subscriptions\Support\ChangeResponseFactory;
 use App\Actions\Subscriptions\Support\CheckoutInitiator;
 use App\Actions\Subscriptions\Support\DirectPlanApplicator;
 use App\Actions\Subscriptions\Support\PromotionHandler;
-use App\Actions\Subscriptions\Support\ResolvedBillingContext;
+use App\Actions\Subscriptions\Support\SubscriptionBillingCoordinator;
+use App\Actions\Subscriptions\Support\SubscriptionTargetPlanResolver;
 use App\Actions\Subscriptions\Support\TransitionDirection;
 use App\Enums\Billing\BillingInterval;
 use App\Enums\Billing\PlanTier;
@@ -35,6 +36,8 @@ final readonly class ChangeSubscription
         private PromotionHandler $promotionHandler,
         private CheckoutInitiator $checkoutInitiator,
         private DirectPlanApplicator $directPlanApplicator,
+        private SubscriptionTargetPlanResolver $targetPlanResolver,
+        private SubscriptionBillingCoordinator $billingCoordinator,
     ) {}
 
     /**
@@ -52,10 +55,7 @@ final readonly class ChangeSubscription
         $currentTier = PlanTier::from($workspace->getCurrentTier());
         $direction = TransitionDirection::resolve($currentTier, $targetTier);
 
-        $targetPlan = Plan::query()->firstOrCreate(
-            ['tier' => $targetTier->value],
-            PlanDefaults::forTier($targetTier)
-        );
+        $targetPlan = $this->targetPlanResolver->resolve($targetTier);
 
         $promotion = $this->promotionHandler->validateIfApplicable($direction, $promoCode);
 
@@ -95,11 +95,14 @@ final readonly class ChangeSubscription
         ?User $actor,
     ): array {
         if ($this->billingService->isConfigured()) {
-            $billing = ResolvedBillingContext::forWorkspace($workspace);
+            $billing = $this->billingCoordinator->resolveContext($workspace);
 
-            if ($billing->polarSubscriptionId !== null) {
-                $this->billingService->updateSubscription($workspace, $billing->polarSubscriptionId, $plan, $interval);
-
+            if ($this->billingCoordinator->updateWhenAvailable(
+                $workspace,
+                $billing->polarSubscriptionId,
+                $plan,
+                $interval,
+            )) {
                 return $this->directPlanApplicator->apply('upgrade', $workspace, $plan, ActivityType::SubscriptionUpgraded, $interval, $promotion, $actor);
             }
 
@@ -118,13 +121,8 @@ final readonly class ChangeSubscription
         BillingInterval $interval,
         ?User $actor,
     ): array {
-        if ($this->billingService->isConfigured()) {
-            $billing = ResolvedBillingContext::forWorkspace($workspace);
-
-            if ($billing->polarSubscriptionId !== null) {
-                $this->billingService->updateSubscription($workspace, $billing->polarSubscriptionId, $plan, $interval);
-            }
-        }
+        $billing = $this->billingCoordinator->resolveContext($workspace);
+        $this->billingCoordinator->updateWhenAvailable($workspace, $billing->polarSubscriptionId, $plan, $interval);
 
         $subscription = $this->applyWorkspacePlanChange->applyActivePlan(
             $workspace,
@@ -141,11 +139,8 @@ final readonly class ChangeSubscription
      */
     private function handleCancel(Workspace $workspace, ?User $actor): array
     {
-        $billing = ResolvedBillingContext::forWorkspace($workspace);
-
-        if ($this->billingService->isConfigured() && $billing->polarSubscriptionId !== null) {
-            $this->billingService->revokeSubscription($workspace, $billing->polarSubscriptionId);
-        }
+        $billing = $this->billingCoordinator->resolveContext($workspace);
+        $this->billingCoordinator->revokeWhenAvailable($workspace, $billing->polarSubscriptionId);
 
         $foundationPlan = Plan::query()->firstOrCreate(
             ['tier' => PlanTier::Foundation->value],

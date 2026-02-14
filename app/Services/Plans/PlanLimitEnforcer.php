@@ -8,10 +8,10 @@ use App\Enums\Billing\PlanFeature;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Plans\Support\PlanLimitEventLogger;
-use App\Services\Plans\Support\PlanPeriodUsageCounter;
+use App\Services\Plans\Support\PlanMeteredUsageEnforcer;
 use App\Services\Plans\Support\PlanResolver;
 use App\Services\Plans\Support\PlanSubscriptionEligibilityChecker;
-use App\Services\Plans\Support\PlanUsageLimitChecker;
+use App\Services\Plans\Support\PlanTeamInviteEligibilityChecker;
 use App\Services\Plans\Support\WorkspaceCreationEligibilityChecker;
 use App\Services\Plans\ValueObjects\BillingPeriod;
 use App\Services\Plans\ValueObjects\PlanLimitResult;
@@ -24,10 +24,10 @@ final readonly class PlanLimitEnforcer
     public function __construct(
         private PlanResolver $planResolver,
         private PlanSubscriptionEligibilityChecker $subscriptionEligibilityChecker,
-        private PlanPeriodUsageCounter $periodUsageCounter,
         private WorkspaceCreationEligibilityChecker $workspaceCreationEligibilityChecker,
         private PlanLimitEventLogger $eventLogger,
-        private PlanUsageLimitChecker $usageLimitChecker,
+        private PlanMeteredUsageEnforcer $meteredUsageEnforcer,
+        private PlanTeamInviteEligibilityChecker $teamInviteEligibilityChecker,
     ) {}
 
     /**
@@ -53,18 +53,7 @@ final readonly class PlanLimitEnforcer
             return $activeCheck;
         }
 
-        $plan = $this->planResolver->resolve($workspace);
-        $period = $this->currentPeriod($workspace);
-        $runsCount = $this->periodUsageCounter->countRuns($workspace, $period);
-
-        return $this->usageLimitChecker->check(
-            $workspace,
-            $plan->monthly_runs_limit,
-            $runsCount,
-            'runs_limit',
-            'Run limit reached (%d/%d). Upgrade your plan to run more reviews.',
-            ['runs_count' => $runsCount],
-        );
+        return $this->meteredUsageEnforcer->ensureRunAllowed($workspace);
     }
 
     /**
@@ -78,18 +67,7 @@ final readonly class PlanLimitEnforcer
             return $activeCheck;
         }
 
-        $plan = $this->planResolver->resolve($workspace);
-        $period = $this->currentPeriod($workspace);
-        $commandsCount = $this->periodUsageCounter->countCommands($workspace, $period);
-
-        return $this->usageLimitChecker->check(
-            $workspace,
-            $plan->monthly_commands_limit,
-            $commandsCount,
-            'commands_limit',
-            'Command limit reached (%d/%d). Upgrade your plan to run more commands.',
-            ['commands_count' => $commandsCount],
-        );
+        return $this->meteredUsageEnforcer->ensureCommandAllowed($workspace);
     }
 
     /**
@@ -97,31 +75,7 @@ final readonly class PlanLimitEnforcer
      */
     public function ensureCanInviteMember(Workspace $workspace): PlanLimitResult
     {
-        $plan = $this->planResolver->resolve($workspace);
-        $limit = $plan->team_size_limit;
-
-        if ($limit === null) {
-            return PlanLimitResult::allow();
-        }
-
-        $teamSize = $workspace->teamMembers()->count();
-
-        if ($teamSize < (int) $limit) {
-            return PlanLimitResult::allow();
-        }
-
-        $message = sprintf(
-            'Team size limit reached (%d/%d). Upgrade your plan to add more members.',
-            $teamSize,
-            $limit
-        );
-
-        $this->eventLogger->log($workspace, 'team_size_limit', $message, [
-            'team_size' => $teamSize,
-            'limit' => $limit,
-        ]);
-
-        return PlanLimitResult::deny($message, 'team_size_limit');
+        return $this->teamInviteEligibilityChecker->ensureCanInviteMember($workspace);
     }
 
     /**

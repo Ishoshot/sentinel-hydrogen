@@ -4,70 +4,36 @@ declare(strict_types=1);
 
 namespace App\Actions\Billing;
 
+use App\Actions\Billing\Support\PolarBillingIntervalExtractor;
+use App\Actions\Billing\Support\PolarPromotionUsageConfirmer;
+use App\Actions\Billing\Support\PolarWebhookPlanResolver;
+use App\Actions\Billing\Support\PolarWebhookTimestampParser;
 use App\Enums\Billing\BillingInterval;
-use App\Enums\Billing\PlanTier;
 use App\Enums\Billing\SubscriptionStatus;
-use App\Enums\Promotions\PromotionUsageStatus;
 use App\Models\Plan;
-use App\Models\PromotionUsage;
 use App\Models\Subscription;
 use App\Models\Workspace;
-use App\Support\PlanDefaults;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Log;
-use Throwable;
 
 final class PolarWebhookSupport
 {
+    /**
+     * Create a new helper instance.
+     */
+    public function __construct(
+        private ?PolarBillingIntervalExtractor $billingIntervalExtractor = null,
+        private ?PolarPromotionUsageConfirmer $promotionUsageConfirmer = null,
+        private ?PolarWebhookPlanResolver $planResolver = null,
+        private ?PolarWebhookTimestampParser $timestampParser = null,
+    ) {}
+
     /**
      * @param  array<string, mixed>|null  $subscriptionData
      * @param  array<string, mixed>|null  $orderData
      */
     public function extractBillingInterval(?array $subscriptionData, ?array $orderData): ?BillingInterval
     {
-        if (is_array($subscriptionData)) {
-            $interval = $subscriptionData['recurring_interval'] ?? $subscriptionData['billing_interval'] ?? null;
-            if (is_string($interval)) {
-                return BillingInterval::tryFrom($interval);
-            }
-
-            $product = $subscriptionData['product'] ?? null;
-            if (is_array($product)) {
-                $prices = $product['prices'] ?? [];
-                if (is_array($prices) && $prices !== []) {
-                    $price = $prices[0];
-                    if (is_array($price)) {
-                        $interval = $price['recurring_interval'] ?? null;
-                        if (is_string($interval)) {
-                            return BillingInterval::tryFrom($interval);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (is_array($orderData)) {
-            $interval = $orderData['billing_interval'] ?? null;
-            if (is_string($interval)) {
-                return BillingInterval::tryFrom($interval);
-            }
-
-            $product = $orderData['product'] ?? null;
-            if (is_array($product)) {
-                $prices = $product['prices'] ?? [];
-                if (is_array($prices) && $prices !== []) {
-                    $price = $prices[0];
-                    if (is_array($price)) {
-                        $interval = $price['recurring_interval'] ?? null;
-                        if (is_string($interval)) {
-                            return BillingInterval::tryFrom($interval);
-                        }
-                    }
-                }
-            }
-        }
-
-        return null;
+        return $this->billingIntervalExtractor()->extract($subscriptionData, $orderData);
     }
 
     /**
@@ -75,34 +41,7 @@ final class PolarWebhookSupport
      */
     public function confirmPromotionUsage(Workspace $workspace, Subscription $subscription, mixed $promotionId): void
     {
-        if (! is_string($promotionId) || $promotionId === '') {
-            return;
-        }
-
-        if (! ctype_digit($promotionId)) {
-            Log::warning('Invalid promotion_id format in webhook metadata', [
-                'promotion_id' => $promotionId,
-                'workspace_id' => $workspace->id,
-            ]);
-
-            return;
-        }
-
-        $usage = PromotionUsage::query()
-            ->where('workspace_id', $workspace->id)
-            ->where('promotion_id', (int) $promotionId)
-            ->where('status', PromotionUsageStatus::Pending)
-            ->first();
-
-        if ($usage instanceof PromotionUsage) {
-            $usage->confirm($subscription);
-
-            Log::info('Promotion usage confirmed', [
-                'promotion_id' => $promotionId,
-                'workspace_id' => $workspace->id,
-                'subscription_id' => $subscription->id,
-            ]);
-        }
+        $this->promotionUsageConfirmer()->confirm($workspace, $subscription, $promotionId);
     }
 
     /**
@@ -110,20 +49,7 @@ final class PolarWebhookSupport
      */
     public function resolvePlan(?string $tier): ?Plan
     {
-        if (! is_string($tier)) {
-            return null;
-        }
-
-        $planTier = PlanTier::tryFrom($tier);
-
-        if ($planTier === null) {
-            return null;
-        }
-
-        return Plan::query()->firstOrCreate(
-            ['tier' => $planTier->value],
-            PlanDefaults::forTier($planTier)
-        );
+        return $this->planResolver()->resolve($tier);
     }
 
     /**
@@ -145,18 +71,38 @@ final class PolarWebhookSupport
      */
     public function timestampToDateTime(mixed $timestamp): ?CarbonImmutable
     {
-        if (is_int($timestamp)) {
-            return CarbonImmutable::createFromTimestampUTC($timestamp);
-        }
+        return $this->timestampParser()->parse($timestamp);
+    }
 
-        if (! is_string($timestamp) || $timestamp === '') {
-            return null;
-        }
+    /**
+     * BillingIntervalExtractor.
+     */
+    private function billingIntervalExtractor(): PolarBillingIntervalExtractor
+    {
+        return $this->billingIntervalExtractor ?? new PolarBillingIntervalExtractor;
+    }
 
-        try {
-            return CarbonImmutable::parse($timestamp);
-        } catch (Throwable) {
-            return null;
-        }
+    /**
+     * PromotionUsageConfirmer.
+     */
+    private function promotionUsageConfirmer(): PolarPromotionUsageConfirmer
+    {
+        return $this->promotionUsageConfirmer ?? new PolarPromotionUsageConfirmer;
+    }
+
+    /**
+     * PlanResolver.
+     */
+    private function planResolver(): PolarWebhookPlanResolver
+    {
+        return $this->planResolver ?? new PolarWebhookPlanResolver;
+    }
+
+    /**
+     * TimestampParser.
+     */
+    private function timestampParser(): PolarWebhookTimestampParser
+    {
+        return $this->timestampParser ?? new PolarWebhookTimestampParser;
     }
 }
