@@ -12,6 +12,7 @@ use App\Services\Commands\CommandPathRules;
 use App\Services\Commands\CommandPathRulesResolver;
 use App\Services\Commands\Contracts\CommandToolBuilder;
 use App\Services\Commands\Contracts\PullRequestContextServiceContract;
+use App\Services\Commands\Resolvers\CommandAgentProviderResolver;
 use Prism\Prism\Tool as PrismTool;
 use RuntimeException;
 

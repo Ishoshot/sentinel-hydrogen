@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\SentinelConfig\Support;
+namespace App\Actions\SentinelConfig\Resolvers;
 
+use App\Actions\SentinelConfig\Factories\SentinelConfigFetchResultFactory;
+use App\Actions\SentinelConfig\Support\SentinelConfigFetchTarget;
+use App\Actions\SentinelConfig\Support\SentinelConfigFetchTargetResolution;
 use App\Models\Repository;
 use App\Support\RepositoryNameParser;
 

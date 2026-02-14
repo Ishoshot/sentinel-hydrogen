@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\GitHub\Support;
 
+use App\Services\GitHub\Factories\GitHubApiPayloadFactory;
 use GrahamCampbell\GitHub\GitHubManager;
 
 final readonly class GitHubPullRequestCommitOperations

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\SentinelConfig;
 
+use App\Actions\SentinelConfig\Checkers\RepositorySentinelConfigGuidelineChecker;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
-use App\Actions\SentinelConfig\Support\RepositorySentinelConfigGuidelineGate;
 use App\Actions\SentinelConfig\Support\RepositorySentinelConfigSettingsUpdater;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
@@ -27,7 +27,7 @@ final readonly class SyncRepositorySentinelConfig
         private FetchesSentinelConfig $fetchConfig,
         private SentinelConfigParser $parser,
         private RepositorySentinelConfigSettingsUpdater $settingsUpdater,
-        private RepositorySentinelConfigGuidelineGate $guidelineGate,
+        private RepositorySentinelConfigGuidelineChecker $guidelineChecker,
     ) {}
 
     /**
@@ -104,7 +104,7 @@ final readonly class SyncRepositorySentinelConfig
         /** @var SentinelConfig $config */
         $config = $parseResult['config'];
 
-        $guidelineResult = $this->guidelineGate->apply($repository, $config);
+        $guidelineResult = $this->guidelineChecker->apply($repository, $config);
         $config = $guidelineResult['config'];
         $configError = $guidelineResult['error'];
 
