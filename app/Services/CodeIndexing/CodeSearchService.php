@@ -4,18 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\CodeIndexing;
 
-use App\Models\CodeEmbedding;
-use App\Models\CodeIndex;
 use App\Models\Repository;
 use App\Services\CodeIndexing\Contracts\CodeSearchServiceContract;
-use App\Services\CodeIndexing\Contracts\EmbeddingServiceContract;
 use App\Services\CodeIndexing\Support\CodeSearchCacheKeyFactory;
 use App\Services\CodeIndexing\Support\HybridSearchResultMerger;
-use App\Services\CodeIndexing\Support\KeywordSearchScorer;
+use App\Services\CodeIndexing\Support\KeywordCodeSearchExecutor;
+use App\Services\CodeIndexing\Support\SemanticCodeSearchExecutor;
+use App\Services\CodeIndexing\Support\SymbolCodeSearchExecutor;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use stdClass;
 
 /**
  * Service for searching indexed code using hybrid search.
@@ -28,8 +25,9 @@ final readonly class CodeSearchService implements CodeSearchServiceContract
      * Create a new CodeSearchService instance.
      */
     public function __construct(
-        private EmbeddingServiceContract $embeddingService,
-        private KeywordSearchScorer $keywordScorer,
+        private KeywordCodeSearchExecutor $keywordSearchExecutor,
+        private SemanticCodeSearchExecutor $semanticSearchExecutor,
+        private SymbolCodeSearchExecutor $symbolSearchExecutor,
         private HybridSearchResultMerger $resultMerger,
         private CodeSearchCacheKeyFactory $cacheKeyFactory,
     ) {}
@@ -52,8 +50,8 @@ final readonly class CodeSearchService implements CodeSearchServiceContract
                 'limit' => $limit,
             ]);
 
-            $keywordResults = $this->keywordSearch($repository, $query, $limit * 2, $fileTypes);
-            $semanticResults = $this->semanticSearch($repository, $query, $limit * 2, $fileTypes);
+            $keywordResults = $this->keywordSearchExecutor->execute($repository, $query, $limit * 2, $fileTypes);
+            $semanticResults = $this->semanticSearchExecutor->execute($repository, $query, $limit * 2, $fileTypes);
 
             $merged = $this->resultMerger->merge($keywordResults, $semanticResults, $limit);
 
@@ -79,42 +77,7 @@ final readonly class CodeSearchService implements CodeSearchServiceContract
         $cacheKey = $this->cacheKeyFactory->build('keyword', $repository->id, $query, $limit, $fileTypes);
 
         /** @var array<int, array{file_path: string, content: string, score: float, metadata: array<string, mixed>}> */
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($repository, $query, $limit, $fileTypes): array {
-            $queryBuilder = CodeIndex::where('repository_id', $repository->id);
-
-            if ($fileTypes !== null && $fileTypes !== []) {
-                $queryBuilder->whereIn('file_type', $fileTypes);
-            }
-
-            $searchTerms = $this->keywordScorer->extractTerms($query);
-
-            if ($searchTerms === []) {
-                return [];
-            }
-
-            $queryBuilder->where(function (\Illuminate\Database\Eloquent\Builder $q) use ($searchTerms): void {
-                foreach ($searchTerms as $term) {
-                    $q->orWhere('file_path', 'LIKE', '%'.$term.'%')
-                        ->orWhere('content', 'LIKE', '%'.$term.'%');
-                }
-            });
-
-            $results = $queryBuilder
-                ->select(['id', 'file_path', 'file_type', 'content', 'structure', 'metadata'])
-                ->limit($limit)
-                ->get();
-
-            return $results->map(fn (CodeIndex $index): array => [
-                'file_path' => $index->file_path,
-                'content' => $this->keywordScorer->extractSnippet($index->content, $searchTerms),
-                'score' => $this->keywordScorer->calculateScore($index, $searchTerms),
-                'metadata' => [
-                    'file_type' => $index->file_type,
-                    'structure' => $index->structure,
-                    'match_type' => 'keyword',
-                ],
-            ])->sortByDesc('score')->values()->all();
-        });
+        return Cache::remember($cacheKey, self::CACHE_TTL, fn (): array => $this->keywordSearchExecutor->execute($repository, $query, $limit, $fileTypes));
     }
 
     /**
@@ -128,64 +91,7 @@ final readonly class CodeSearchService implements CodeSearchServiceContract
         $cacheKey = $this->cacheKeyFactory->build('semantic', $repository->id, $query, $limit, $fileTypes);
 
         /** @var array<int, array{file_path: string, content: string, score: float, metadata: array<string, mixed>}> */
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($repository, $query, $limit, $fileTypes): array {
-            $queryEmbedding = $this->embeddingService->generateEmbedding($query);
-
-            if ($queryEmbedding === []) {
-                Log::warning('Failed to generate query embedding', ['query' => $query]);
-
-                return [];
-            }
-
-            $vectorString = '['.implode(',', $queryEmbedding).']';
-
-            $queryBuilder = DB::table('code_embeddings')
-                ->select([
-                    'code_embeddings.id',
-                    'code_embeddings.code_index_id',
-                    'code_embeddings.chunk_type',
-                    'code_embeddings.symbol_name',
-                    'code_embeddings.content',
-                    'code_embeddings.metadata',
-                    'code_indexes.file_path',
-                    'code_indexes.file_type',
-                ])
-                ->join('code_indexes', 'code_embeddings.code_index_id', '=', 'code_indexes.id')
-                ->where('code_embeddings.repository_id', $repository->id)
-                ->whereNotNull('code_embeddings.embedding');
-
-            if ($fileTypes !== null && $fileTypes !== []) {
-                $queryBuilder->whereIn('code_indexes.file_type', $fileTypes);
-            }
-
-            if (DB::connection()->getDriverName() === 'pgsql') {
-                $queryBuilder
-                    ->selectRaw('(embedding <=> ?::vector) as distance', [$vectorString])
-                    ->orderByRaw('embedding <=> ?::vector', [$vectorString]);
-            } else {
-                $queryBuilder->selectRaw('0.5 as distance');
-            }
-
-            $results = $queryBuilder->limit($limit)->get();
-
-            return $results->map(function (stdClass $row): array {
-                $metadata = is_string($row->metadata) ? json_decode($row->metadata, true) : $row->metadata;
-                $distance = is_numeric($row->distance) ? (float) $row->distance : 0.5;
-
-                return [
-                    'file_path' => (string) $row->file_path,
-                    'content' => (string) $row->content,
-                    'score' => 1 - $distance,
-                    'metadata' => [
-                        'file_type' => $row->file_type,
-                        'chunk_type' => $row->chunk_type,
-                        'symbol_name' => $row->symbol_name,
-                        'match_type' => 'semantic',
-                        ...(is_array($metadata) ? $metadata : []),
-                    ],
-                ];
-            })->all();
-        });
+        return Cache::remember($cacheKey, self::CACHE_TTL, fn (): array => $this->semanticSearchExecutor->execute($repository, $query, $limit, $fileTypes));
     }
 
     /**
@@ -198,27 +104,6 @@ final readonly class CodeSearchService implements CodeSearchServiceContract
         $cacheKey = $this->cacheKeyFactory->build('symbol', $repository->id, $symbolName, $limit, null);
 
         /** @var array<int, array{file_path: string, symbol_name: string, chunk_type: string, content: string, metadata: array<string, mixed>}> */
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($repository, $symbolName, $limit): array {
-            $results = CodeEmbedding::where('repository_id', $repository->id)
-                ->where(function (\Illuminate\Database\Eloquent\Builder $q) use ($symbolName): void {
-                    $q->where('symbol_name', 'LIKE', '%'.$symbolName.'%')
-                        ->orWhere('symbol_name', $symbolName);
-                })
-                ->whereIn('chunk_type', ['class', 'method', 'function'])
-                ->with('codeIndex:id,file_path,file_type')
-                ->limit($limit)
-                ->get();
-
-            return $results->map(fn (CodeEmbedding $embedding): array => [
-                'file_path' => $embedding->codeIndex?->file_path ?? '',
-                'symbol_name' => $embedding->symbol_name ?? '',
-                'chunk_type' => $embedding->chunk_type,
-                'content' => $embedding->content,
-                'metadata' => [
-                    'file_type' => $embedding->codeIndex?->file_type,
-                    ...(is_array($embedding->metadata) ? $embedding->metadata : []),
-                ],
-            ])->all();
-        });
+        return Cache::remember($cacheKey, self::CACHE_TTL, fn (): array => $this->symbolSearchExecutor->execute($repository, $symbolName, $limit));
     }
 }
