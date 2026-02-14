@@ -12,6 +12,7 @@ use App\Models\Installation;
 use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Reviews\FormatRunAnnotations;
 
 beforeEach(function (): void {
     Provider::query()->firstOrCreate(
@@ -117,13 +118,7 @@ it('filters findings below severity threshold', function (): void {
         'line_start' => 10,
     ]);
 
-    $action = app(PostRunAnnotations::class);
-
-    // Use reflection to test the private filterEligibleFindings method
-    $reflection = new ReflectionClass($action);
-    $method = $reflection->getMethod('filterEligibleFindings');
-    $method->setAccessible(true);
-
+    $formatter = app(FormatRunAnnotations::class);
     $run->loadMissing('findings');
     $config = [
         'style' => 'review',
@@ -131,7 +126,7 @@ it('filters findings below severity threshold', function (): void {
         'grouped' => true,
         'include_suggestions' => true,
     ];
-    $eligibleFindings = $method->invoke($action, $run, $config);
+    $eligibleFindings = $formatter->filterEligibleFindings($run, $config);
 
     // Only critical findings should be eligible (none in this case)
     expect($eligibleFindings)->toHaveCount(0);
@@ -167,12 +162,7 @@ it('respects max inline comments limit in filtering', function (): void {
         ['severity' => 'info', 'file_path' => 'src/E.php', 'line_start' => 5],
     )->create();
 
-    $action = app(PostRunAnnotations::class);
-
-    $reflection = new ReflectionClass($action);
-    $method = $reflection->getMethod('filterEligibleFindings');
-    $method->setAccessible(true);
-
+    $formatter = app(FormatRunAnnotations::class);
     $run->loadMissing('findings');
     $config = [
         'style' => 'review',
@@ -180,7 +170,7 @@ it('respects max inline comments limit in filtering', function (): void {
         'grouped' => true,
         'include_suggestions' => true,
     ];
-    $eligibleFindings = $method->invoke($action, $run, $config);
+    $eligibleFindings = $formatter->filterEligibleFindings($run, $config);
 
     // Should be limited to 2 findings (highest severity first)
     expect($eligibleFindings)->toHaveCount(2);
@@ -224,12 +214,7 @@ it('excludes findings without file path from filtering', function (): void {
         'line_start' => 15,
     ]);
 
-    $action = app(PostRunAnnotations::class);
-
-    $reflection = new ReflectionClass($action);
-    $method = $reflection->getMethod('filterEligibleFindings');
-    $method->setAccessible(true);
-
+    $formatter = app(FormatRunAnnotations::class);
     $run->loadMissing('findings');
     $config = [
         'style' => 'review',
@@ -237,7 +222,7 @@ it('excludes findings without file path from filtering', function (): void {
         'grouped' => true,
         'include_suggestions' => true,
     ];
-    $eligibleFindings = $method->invoke($action, $run, $config);
+    $eligibleFindings = $formatter->filterEligibleFindings($run, $config);
 
     // Only the finding with file_path should be eligible
     expect($eligibleFindings)->toHaveCount(1)
@@ -278,12 +263,7 @@ it('excludes findings without line start from filtering', function (): void {
         'line_start' => 20,
     ]);
 
-    $action = app(PostRunAnnotations::class);
-
-    $reflection = new ReflectionClass($action);
-    $method = $reflection->getMethod('filterEligibleFindings');
-    $method->setAccessible(true);
-
+    $formatter = app(FormatRunAnnotations::class);
     $run->loadMissing('findings');
     $config = [
         'style' => 'review',
@@ -291,7 +271,7 @@ it('excludes findings without line start from filtering', function (): void {
         'grouped' => true,
         'include_suggestions' => true,
     ];
-    $eligibleFindings = $method->invoke($action, $run, $config);
+    $eligibleFindings = $formatter->filterEligibleFindings($run, $config);
 
     expect($eligibleFindings)->toHaveCount(1)
         ->and($eligibleFindings->first()->file_path)->toBe('src/WithLine.php');

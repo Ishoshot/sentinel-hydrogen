@@ -316,3 +316,50 @@ it('allows foundation workspace without subscription record', function (): void 
 
     expect($result->allowed)->toBeTrue();
 });
+
+it('allows canceled subscription with future ends_at', function (): void {
+    $plan = Plan::factory()->illuminate()->create();
+
+    $workspace = Workspace::factory()->create([
+        'plan_id' => $plan->id,
+        'subscription_status' => App\Enums\Billing\SubscriptionStatus::Canceled,
+    ]);
+
+    Subscription::factory()->create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'status' => App\Enums\Billing\SubscriptionStatus::Canceled,
+        'ends_at' => CarbonImmutable::now()->addDays(10),
+        'current_period_start' => CarbonImmutable::now()->subDays(20),
+        'current_period_end' => CarbonImmutable::now()->addDays(10),
+    ]);
+
+    $enforcer = app(PlanLimitEnforcer::class);
+    $result = $enforcer->ensureActiveSubscription($workspace);
+
+    expect($result->allowed)->toBeTrue();
+});
+
+it('denies canceled subscription with past ends_at', function (): void {
+    $plan = Plan::factory()->illuminate()->create();
+
+    $workspace = Workspace::factory()->create([
+        'plan_id' => $plan->id,
+        'subscription_status' => App\Enums\Billing\SubscriptionStatus::Canceled,
+    ]);
+
+    Subscription::factory()->create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $plan->id,
+        'status' => App\Enums\Billing\SubscriptionStatus::Canceled,
+        'ends_at' => CarbonImmutable::now()->subDays(1),
+        'current_period_start' => CarbonImmutable::now()->subDays(31),
+        'current_period_end' => CarbonImmutable::now()->subDays(1),
+    ]);
+
+    $enforcer = app(PlanLimitEnforcer::class);
+    $result = $enforcer->ensureActiveSubscription($workspace);
+
+    expect($result->allowed)->toBeFalse()
+        ->and($result->code)->toBe('subscription_inactive');
+});

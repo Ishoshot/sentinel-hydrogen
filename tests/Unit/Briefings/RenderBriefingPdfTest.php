@@ -31,7 +31,7 @@ test('it fails when output formats are not configured', function () {
 
     $job = new RenderBriefingPdf($generation);
 
-    expect(fn () => $job->handle())
+    expect(fn () => app()->call([$job, 'handle']))
         ->toThrow(RuntimeException::class, 'Briefing output formats are not configured.');
 });
 
@@ -52,6 +52,6 @@ test('it fails when slides payload is missing', function () {
 
     $job = new RenderBriefingPdf($generation);
 
-    expect(fn () => $job->handle())
+    expect(fn () => app()->call([$job, 'handle']))
         ->toThrow(RuntimeException::class, 'Briefing slides payload is missing or invalid.');
 });

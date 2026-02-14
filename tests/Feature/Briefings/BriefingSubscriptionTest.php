@@ -235,3 +235,211 @@ it('validates schedule_preset is valid enum', function (): void {
     $response->assertUnprocessable()
         ->assertJsonValidationErrors(['schedule_preset']);
 });
+
+it('rejects duplicate subscription for same user and briefing in workspace', function (): void {
+    BriefingSubscription::factory()
+        ->forWorkspace($this->workspace)
+        ->forUser($this->user)
+        ->create(['briefing_id' => $this->briefing->id]);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefing-subscriptions.store', $this->workspace), [
+            'briefing_id' => $this->briefing->id,
+            'schedule_preset' => BriefingSchedulePreset::Daily->value,
+            'schedule_hour' => 9,
+            'delivery_channels' => [BriefingDeliveryChannel::Push->value],
+            'parameters' => [],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['briefing_id']);
+});
+
+it('rejects schedule_day above 7 for weekly preset', function (): void {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefing-subscriptions.store', $this->workspace), [
+            'briefing_id' => $this->briefing->id,
+            'schedule_preset' => BriefingSchedulePreset::Weekly->value,
+            'schedule_day' => 8,
+            'schedule_hour' => 9,
+            'delivery_channels' => [BriefingDeliveryChannel::Push->value],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['schedule_day']);
+});
+
+it('rejects schedule_day above 28 for monthly preset', function (): void {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefing-subscriptions.store', $this->workspace), [
+            'briefing_id' => $this->briefing->id,
+            'schedule_preset' => BriefingSchedulePreset::Monthly->value,
+            'schedule_day' => 29,
+            'schedule_hour' => 9,
+            'delivery_channels' => [BriefingDeliveryChannel::Push->value],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['schedule_day']);
+});
+
+it('accepts null schedule_day for daily preset', function (): void {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefing-subscriptions.store', $this->workspace), [
+            'briefing_id' => $this->briefing->id,
+            'schedule_preset' => BriefingSchedulePreset::Daily->value,
+            'schedule_day' => null,
+            'schedule_hour' => 9,
+            'delivery_channels' => [BriefingDeliveryChannel::Push->value],
+            'parameters' => [],
+        ]);
+
+    $response->assertCreated();
+});
+
+it('requires schedule_day for weekly preset', function (): void {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefing-subscriptions.store', $this->workspace), [
+            'briefing_id' => $this->briefing->id,
+            'schedule_preset' => BriefingSchedulePreset::Weekly->value,
+            'schedule_hour' => 9,
+            'delivery_channels' => [BriefingDeliveryChannel::Push->value],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['schedule_day']);
+});
+
+it('requires schedule_day for monthly preset', function (): void {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefing-subscriptions.store', $this->workspace), [
+            'briefing_id' => $this->briefing->id,
+            'schedule_preset' => BriefingSchedulePreset::Monthly->value,
+            'schedule_hour' => 9,
+            'delivery_channels' => [BriefingDeliveryChannel::Push->value],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['schedule_day']);
+});
+
+it('rejects schedule_hour above 23', function (): void {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefing-subscriptions.store', $this->workspace), [
+            'briefing_id' => $this->briefing->id,
+            'schedule_preset' => BriefingSchedulePreset::Daily->value,
+            'schedule_hour' => 24,
+            'delivery_channels' => [BriefingDeliveryChannel::Push->value],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['schedule_hour']);
+});
+
+it('rejects schedule_day above 7 for weekly preset on update', function (): void {
+    $subscription = BriefingSubscription::factory()
+        ->forWorkspace($this->workspace)
+        ->forUser($this->user)
+        ->weekly()
+        ->create(['briefing_id' => $this->briefing->id]);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->patchJson(route('briefing-subscriptions.update', [$this->workspace, $subscription]), [
+            'schedule_preset' => BriefingSchedulePreset::Weekly->value,
+            'schedule_day' => 8,
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['schedule_day']);
+});
+
+it('rejects schedule_day above 28 for monthly preset on update', function (): void {
+    $subscription = BriefingSubscription::factory()
+        ->forWorkspace($this->workspace)
+        ->forUser($this->user)
+        ->monthly()
+        ->create(['briefing_id' => $this->briefing->id]);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->patchJson(route('briefing-subscriptions.update', [$this->workspace, $subscription]), [
+            'schedule_preset' => BriefingSchedulePreset::Monthly->value,
+            'schedule_day' => 29,
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['schedule_day']);
+});
+
+it('calculates next scheduled at for daily preset', function (): void {
+    $subscription = BriefingSubscription::factory()
+        ->daily()
+        ->make(['schedule_hour' => 14]);
+
+    $next = $subscription->calculateNextScheduledAt();
+
+    expect($next->hour)->toBe(14)
+        ->and($next->minute)->toBe(0)
+        ->and($next->isAfter(now()))->toBeTrue();
+});
+
+it('calculates next scheduled at for weekly preset with correct day', function (): void {
+    $subscription = BriefingSubscription::factory()
+        ->weekly(3) // Wednesday (ISO)
+        ->make(['schedule_hour' => 10]);
+
+    $next = $subscription->calculateNextScheduledAt();
+
+    // ISO day 3 = Wednesday
+    expect($next->dayOfWeekIso)->toBe(3)
+        ->and($next->hour)->toBe(10)
+        ->and($next->minute)->toBe(0)
+        ->and($next->isAfter(now()))->toBeTrue();
+});
+
+it('calculates next scheduled at for weekly preset with Sunday (ISO day 7)', function (): void {
+    $subscription = BriefingSubscription::factory()
+        ->weekly(7) // Sunday (ISO)
+        ->make(['schedule_hour' => 8]);
+
+    $next = $subscription->calculateNextScheduledAt();
+
+    // ISO day 7 = Sunday
+    expect($next->dayOfWeekIso)->toBe(7)
+        ->and($next->hour)->toBe(8)
+        ->and($next->minute)->toBe(0)
+        ->and($next->isAfter(now()))->toBeTrue();
+});
+
+it('calculates next scheduled at for monthly preset', function (): void {
+    $subscription = BriefingSubscription::factory()
+        ->monthly(15)
+        ->make(['schedule_hour' => 12]);
+
+    $next = $subscription->calculateNextScheduledAt();
+
+    expect($next->day)->toBe(15)
+        ->and($next->hour)->toBe(12)
+        ->and($next->minute)->toBe(0)
+        ->and($next->isAfter(now()))->toBeTrue();
+});
+
+it('applies jitter within 0-5 minute range', function (): void {
+    $subscription = BriefingSubscription::factory()
+        ->daily()
+        ->make(['schedule_hour' => 9]);
+
+    $results = collect(range(1, 50))->map(fn () => $subscription->calculateNextScheduledAt(withJitter: true)->minute);
+
+    expect($results->min())->toBeGreaterThanOrEqual(0)
+        ->and($results->max())->toBeLessThanOrEqual(5);
+});
+
+it('does not apply jitter without flag', function (): void {
+    $subscription = BriefingSubscription::factory()
+        ->daily()
+        ->make(['schedule_hour' => 9]);
+
+    $next = $subscription->calculateNextScheduledAt();
+
+    expect($next->minute)->toBe(0);
+});

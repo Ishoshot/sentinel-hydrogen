@@ -6,8 +6,7 @@ use App\Actions\GitHub\Contracts\PostsAutoReviewDisabledComment;
 use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
-use App\Actions\Reviews\CreatePullRequestRun;
-use App\Actions\Reviews\SyncPullRequestRunMetadata;
+use App\Actions\Reviews\HandlePullRequestWebhook;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Enums\Auth\ProviderType;
 use App\Enums\Reviews\RunStatus;
@@ -19,10 +18,6 @@ use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\RepositorySettings;
 use App\Models\Run;
-use App\Services\GitHub\GitHubWebhookService;
-use App\Services\Queue\QueueResolver;
-use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
-use App\Services\SentinelConfig\TriggerRuleEvaluator;
 use Illuminate\Support\Facades\Queue;
 use Symfony\Component\Yaml\Yaml;
 
@@ -92,6 +87,24 @@ function fakeConfigErrorPoster(): PostsConfigErrorComment
     };
 }
 
+/**
+ * Run the pull request webhook handler with injectable collaborators for testing.
+ */
+function processPullRequestWebhook(
+    array $payload,
+    PostsGreetingComment $postGreeting,
+    ?PostsConfigErrorComment $postConfigError = null,
+    ?FetchesSentinelConfig $fetchConfig = null,
+): void {
+    app()->instance(PostsGreetingComment::class, $postGreeting);
+    app()->instance(PostsConfigErrorComment::class, $postConfigError ?? fakeConfigErrorPoster());
+    app()->instance(PostsAutoReviewDisabledComment::class, fakeAutoReviewDisabledPoster());
+    app()->instance(FetchesSentinelConfig::class, $fetchConfig ?? mockFetchConfigFromSettings());
+
+    $job = new ProcessPullRequestWebhook($payload);
+    $job->handle(app(HandlePullRequestWebhook::class));
+}
+
 it('creates a run for pull request webhook when auto review is enabled', function (): void {
     $provider = Provider::query()->firstOrCreate(
         ['type' => ProviderType::GitHub],
@@ -145,19 +158,7 @@ it('creates a run for pull request webhook when auto review is enabled', functio
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        mockFetchConfigFromSettings(),
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting);
 
     $run = Run::query()->first();
 
@@ -219,19 +220,7 @@ it('skips run creation when auto review is disabled', function (): void {
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        mockFetchConfigFromSettings(),
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting);
 
     expect(Run::query()->count())->toBe(0);
     Queue::assertNotPushed(ExecuteReviewRun::class);
@@ -300,19 +289,7 @@ it('syncs metadata when labels are added to an existing run', function (): void 
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        mockFetchConfigFromSettings(),
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting);
 
     $existingRun->refresh();
 
@@ -385,19 +362,7 @@ it('syncs metadata when reviewers are requested on an existing run', function ()
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        mockFetchConfigFromSettings(),
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting);
 
     $existingRun->refresh();
 
@@ -459,19 +424,7 @@ it('does not sync metadata when no existing run is found', function (): void {
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        mockFetchConfigFromSettings(),
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting);
 
     // No runs should exist and no review should be triggered
     expect(Run::query()->count())->toBe(0);
@@ -547,19 +500,7 @@ it('creates skipped run and posts error comment when repository has config error
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        $fakeConfigErrorPoster,
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        mockFetchConfigFromSettings(),
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting, $fakeConfigErrorPoster);
 
     $run = Run::query()->first();
 
@@ -635,19 +576,7 @@ it('creates normal run when repository has no config error', function (): void {
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        mockFetchConfigFromSettings(),
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting);
 
     $run = Run::query()->first();
 
@@ -717,19 +646,7 @@ it('creates skipped run when PR target branch does not match trigger rules', fun
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        mockFetchConfigFromSettings(),
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting);
 
     $run = Run::query()->first();
 
@@ -799,19 +716,7 @@ it('creates skipped run when PR author is in skip list', function (): void {
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        mockFetchConfigFromSettings(),
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting);
 
     $run = Run::query()->first();
 
@@ -883,19 +788,7 @@ it('creates skipped run when PR has skip label', function (): void {
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        mockFetchConfigFromSettings(),
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting);
 
     $run = Run::query()->first();
 
@@ -991,19 +884,7 @@ it('uses config from head branch when available (branch-aware trigger rules)', f
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        $mockFetchConfig,
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting, fetchConfig: $mockFetchConfig);
 
     $run = Run::query()->first();
 
@@ -1097,19 +978,7 @@ it('falls back to default branch config when head and base have no config', func
         }
     };
 
-    $job = new ProcessPullRequestWebhook($payload);
-    $job->handle(
-        app(GitHubWebhookService::class),
-        app(CreatePullRequestRun::class),
-        app(SyncPullRequestRunMetadata::class),
-        $fakeGreeting,
-        fakeConfigErrorPoster(),
-        fakeAutoReviewDisabledPoster(),
-        app(TriggerRuleEvaluator::class),
-        app(QueueResolver::class),
-        $mockFetchConfig,
-        app(SentinelConfigParser::class)
-    );
+    processPullRequestWebhook($payload, $fakeGreeting, fetchConfig: $mockFetchConfig);
 
     $run = Run::query()->first();
 

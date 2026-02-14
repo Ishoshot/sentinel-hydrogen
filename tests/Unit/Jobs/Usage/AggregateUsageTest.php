@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Subscriptions\AggregateWorkspaceUsage;
 use App\Enums\Auth\ProviderType;
 use App\Jobs\Usage\AggregateUsage;
 use App\Models\Annotation;
@@ -31,7 +32,7 @@ it('aggregates usage for workspaces', function (): void {
     Annotation::factory()->count(2)->forFinding($findings->first())->forProvider($provider)->create();
 
     $job = new AggregateUsage;
-    $job->handle();
+    $job->handle(app(AggregateWorkspaceUsage::class));
 
     $usageRecord = UsageRecord::where('workspace_id', $workspace->id)->first();
 
@@ -45,7 +46,7 @@ it('creates usage record with period dates', function (): void {
     $workspace = Workspace::factory()->create();
 
     $job = new AggregateUsage;
-    $job->handle();
+    $job->handle(app(AggregateWorkspaceUsage::class));
 
     $usageRecord = UsageRecord::where('workspace_id', $workspace->id)->first();
     $periodStart = CarbonImmutable::now()->startOfMonth();
@@ -74,7 +75,7 @@ it('handles multiple workspaces', function (): void {
     Run::factory()->count(5)->forRepository($repo2)->create();
 
     $job = new AggregateUsage;
-    $job->handle();
+    $job->handle(app(AggregateWorkspaceUsage::class));
 
     $record1 = UsageRecord::where('workspace_id', $workspace1->id)->first();
     $record2 = UsageRecord::where('workspace_id', $workspace2->id)->first();
@@ -87,7 +88,7 @@ it('creates zero counts for empty workspaces', function (): void {
     $workspace = Workspace::factory()->create();
 
     $job = new AggregateUsage;
-    $job->handle();
+    $job->handle(app(AggregateWorkspaceUsage::class));
 
     $usageRecord = UsageRecord::where('workspace_id', $workspace->id)->first();
 
@@ -125,7 +126,7 @@ it('uses subscription billing period instead of calendar month', function (): vo
     ]);
 
     $job = new AggregateUsage;
-    $job->handle();
+    $job->handle(app(AggregateWorkspaceUsage::class));
 
     $usageRecord = UsageRecord::where('workspace_id', $workspace->id)->first();
 

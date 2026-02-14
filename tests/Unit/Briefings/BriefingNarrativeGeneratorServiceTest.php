@@ -41,5 +41,5 @@ test('it fails fast when ai narrative generation throws', function () {
     $achievements = BriefingAchievements::fromArray([]);
 
     expect(fn () => $service->generate('briefings.prompts.default', $structuredData, $achievements, $aiConfig))
-        ->toThrow(RuntimeException::class, 'Briefing narrative generation failed.');
+        ->toThrow(RuntimeException::class, 'Briefing narrative generation failed [anthropic/claude-test]: boom');
 });

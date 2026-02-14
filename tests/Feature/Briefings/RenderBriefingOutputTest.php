@@ -52,7 +52,7 @@ it('renders only requested output formats and stores slides payload', function (
     ]);
 
     $job = new RenderBriefingPdf($generation);
-    $job->handle();
+    app()->call([$job, 'handle']);
 
     $generation->refresh();
 

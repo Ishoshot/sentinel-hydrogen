@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Actions\GitHub\HandleInstallationRepositoriesWebhook;
+use App\Actions\GitHub\HandleInstallationWebhook;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Enums\Auth\ProviderType;
 use App\Enums\GitHub\InstallationStatus;
@@ -297,12 +299,10 @@ it('processes installation deleted webhook', function (): void {
     // Process the job manually with mocked service
     $appServiceMock = Mockery::mock(GitHubAppServiceContract::class);
     $appServiceMock->shouldReceive('clearInstallationToken')->once()->andReturnNull();
+    $this->app->instance(GitHubAppServiceContract::class, $appServiceMock);
 
     $job = new ProcessInstallationWebhook(json_decode($payload, true));
-    $job->handle(
-        app(App\Services\GitHub\GitHubWebhookService::class),
-        $appServiceMock
-    );
+    $job->handle(app(HandleInstallationWebhook::class));
 
     $installation->refresh();
     expect($installation->status)->toBe(InstallationStatus::Uninstalled);
@@ -329,14 +329,8 @@ it('processes installation suspended webhook', function (): void {
         ],
     ]);
 
-    // Mock the contract since GitHubAppService is final
-    $appServiceMock = Mockery::mock(GitHubAppServiceContract::class);
-
     $job = new ProcessInstallationWebhook(json_decode($payload, true));
-    $job->handle(
-        app(App\Services\GitHub\GitHubWebhookService::class),
-        $appServiceMock
-    );
+    $job->handle(app(HandleInstallationWebhook::class));
 
     $installation->refresh();
     expect($installation->status)->toBe(InstallationStatus::Suspended);
@@ -360,10 +354,7 @@ it('processes repositories added webhook', function (): void {
     ]);
 
     $job = new ProcessInstallationRepositoriesWebhook(json_decode($payload, true));
-    $job->handle(
-        app(App\Services\GitHub\GitHubWebhookService::class),
-        app(App\Actions\GitHub\SyncInstallationRepositories::class)
-    );
+    $job->handle(app(HandleInstallationRepositoriesWebhook::class));
 
     expect(Repository::where('github_id', 111)->exists())->toBeTrue();
 });
@@ -390,10 +381,7 @@ it('processes repositories removed webhook', function (): void {
     ]);
 
     $job = new ProcessInstallationRepositoriesWebhook(json_decode($payload, true));
-    $job->handle(
-        app(App\Services\GitHub\GitHubWebhookService::class),
-        app(App\Actions\GitHub\SyncInstallationRepositories::class)
-    );
+    $job->handle(app(HandleInstallationRepositoriesWebhook::class));
 
     expect(Repository::where('github_id', 222)->exists())->toBeFalse();
 });

@@ -458,3 +458,104 @@ it('prevents non-owners from changing subscriptions', function (): void {
 
     $response->assertForbidden();
 });
+
+it('updates existing subscription on cancel instead of creating a new one', function (): void {
+    config()->set('services.polar.access_token', null);
+
+    $user = User::factory()->create();
+    $illuminatePlan = Plan::factory()->illuminate()->create();
+
+    $workspace = Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $illuminatePlan->id,
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
+
+    $existingSubscription = Subscription::factory()->create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $illuminatePlan->id,
+        'status' => SubscriptionStatus::Active,
+    ]);
+
+    $workspace->teamMembers()->create([
+        'user_id' => $user->id,
+        'team_id' => $workspace->team->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'owner',
+        'joined_at' => now(),
+    ]);
+
+    $subscriptionCountBefore = Subscription::where('workspace_id', $workspace->id)->count();
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->postJson(route('subscriptions.change', $workspace), [
+            'plan_tier' => PlanTier::Foundation->value,
+        ]);
+
+    $response->assertOk()
+        ->assertJsonPath('data.plan.tier', PlanTier::Foundation->value);
+
+    $subscriptionCountAfter = Subscription::where('workspace_id', $workspace->id)->count();
+
+    expect($subscriptionCountAfter)->toBe($subscriptionCountBefore)
+        ->and($existingSubscription->refresh()->status)->toBe(SubscriptionStatus::Canceled)
+        ->and($existingSubscription->ends_at)->not->toBeNull();
+});
+
+it('does not create duplicate records when canceling twice', function (): void {
+    config()->set('services.polar.access_token', null);
+
+    $user = User::factory()->create();
+    $illuminatePlan = Plan::factory()->illuminate()->create();
+
+    $workspace = Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $illuminatePlan->id,
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
+
+    $existingSubscription = Subscription::factory()->create([
+        'workspace_id' => $workspace->id,
+        'plan_id' => $illuminatePlan->id,
+        'status' => SubscriptionStatus::Active,
+    ]);
+
+    $workspace->teamMembers()->create([
+        'user_id' => $user->id,
+        'team_id' => $workspace->team->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'owner',
+        'joined_at' => now(),
+    ]);
+
+    // First cancel
+    $this->actingAs($user, 'sanctum')
+        ->postJson(route('subscriptions.change', $workspace), [
+            'plan_tier' => PlanTier::Foundation->value,
+        ])
+        ->assertOk();
+
+    $countAfterFirstCancel = Subscription::where('workspace_id', $workspace->id)->count();
+
+    // Re-subscribe the workspace to a paid plan so we can cancel again
+    Workspace::query()->where('id', $workspace->id)->update([
+        'plan_id' => $illuminatePlan->id,
+        'subscription_status' => SubscriptionStatus::Active->value,
+    ]);
+
+    Subscription::query()->where('id', $existingSubscription->id)->update([
+        'status' => SubscriptionStatus::Active->value,
+        'ends_at' => null,
+    ]);
+
+    // Second cancel
+    $this->actingAs($user, 'sanctum')
+        ->postJson(route('subscriptions.change', $workspace), [
+            'plan_tier' => PlanTier::Foundation->value,
+        ])
+        ->assertOk();
+
+    $countAfterSecondCancel = Subscription::where('workspace_id', $workspace->id)->count();
+
+    expect($countAfterSecondCancel)->toBe($countAfterFirstCancel);
+});

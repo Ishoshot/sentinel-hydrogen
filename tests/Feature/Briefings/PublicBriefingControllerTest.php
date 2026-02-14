@@ -147,3 +147,13 @@ it('does not require authentication', function (): void {
 
     $response->assertSuccessful();
 });
+
+it('rate limits requests to prevent token-guessing attacks', function (): void {
+    $url = route('briefings.share.show', 'nonexistent-token');
+
+    for ($i = 0; $i < 10; $i++) {
+        $this->getJson($url);
+    }
+
+    $this->getJson($url)->assertStatus(429);
+});
