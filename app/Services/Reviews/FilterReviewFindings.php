@@ -4,12 +4,22 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews;
 
+use App\Services\Reviews\Support\FindingPathMatcher;
+use App\Services\Reviews\Support\FindingSorter;
 use App\Services\Reviews\ValueObjects\ReviewFinding;
 use App\Services\Reviews\ValueObjects\ReviewPolicy;
 
 final class FilterReviewFindings
 {
     private const float DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
+
+    /**
+     * Create a new FilterReviewFindings instance.
+     */
+    public function __construct(
+        private readonly FindingPathMatcher $pathMatcher = new FindingPathMatcher,
+        private readonly FindingSorter $sorter = new FindingSorter,
+    ) {}
 
     /**
      * @param  array<int, ReviewFinding>  $findings
@@ -32,7 +42,7 @@ final class FilterReviewFindings
                 return false;
             }
 
-            if ($finding->filePath !== null && $this->matchesAnyPattern($finding->filePath, $ignoredPaths)) {
+            if ($finding->filePath !== null && $this->pathMatcher->matchesAny($finding->filePath, $ignoredPaths)) {
                 return false;
             }
 
@@ -43,14 +53,7 @@ final class FilterReviewFindings
             return $finding->confidence >= $confidenceThreshold;
         });
 
-        $filtered = array_values($filtered);
-
-        usort($filtered, fn (ReviewFinding $a, ReviewFinding $b): int => ($b->severity->priority() <=> $a->severity->priority())
-            ?: ($b->confidence <=> $a->confidence)
-            ?: $this->compareNullableStrings($a->filePath, $b->filePath)
-            ?: $this->compareNullableInts($a->lineStart, $b->lineStart)
-            ?: strcmp($a->title, $b->title)
-        );
+        $filtered = $this->sorter->sort(array_values($filtered));
 
         if ($maxFindings < 1) {
             return [];
@@ -75,82 +78,5 @@ final class FilterReviewFindings
         $defaultValue = config('reviews.default_policy.confidence_thresholds.finding', self::DEFAULT_CONFIDENCE_THRESHOLD);
 
         return is_numeric($defaultValue) ? (float) $defaultValue : self::DEFAULT_CONFIDENCE_THRESHOLD;
-    }
-
-    /**
-     * Compare nullable strings while sorting null values last.
-     */
-    private function compareNullableStrings(?string $left, ?string $right): int
-    {
-        if ($left === null && $right === null) {
-            return 0;
-        }
-
-        if ($left === null) {
-            return 1;
-        }
-
-        if ($right === null) {
-            return -1;
-        }
-
-        return strcmp($left, $right);
-    }
-
-    /**
-     * Compare nullable integers while sorting null values last.
-     */
-    private function compareNullableInts(?int $left, ?int $right): int
-    {
-        if ($left === null && $right === null) {
-            return 0;
-        }
-
-        if ($left === null) {
-            return 1;
-        }
-
-        if ($right === null) {
-            return -1;
-        }
-
-        return $left <=> $right;
-    }
-
-    /**
-     * @param  array<string>  $patterns
-     */
-    private function matchesAnyPattern(string $path, array $patterns): bool
-    {
-        if ($patterns === []) {
-            return false;
-        }
-
-        return array_any($patterns, fn (string $pattern): bool => $this->matchesGlob($path, $pattern));
-    }
-
-    /**
-     * Evaluate whether a path matches a single glob expression.
-     */
-    private function matchesGlob(string $path, string $pattern): bool
-    {
-        if ($path === $pattern) {
-            return true;
-        }
-
-        return preg_match($this->globToRegex($pattern), $path) === 1;
-    }
-
-    /**
-     * Convert a glob expression into a regular expression.
-     */
-    private function globToRegex(string $pattern): string
-    {
-        $escaped = preg_quote($pattern, '/');
-        $escaped = str_replace('\\*\\*', '.*', $escaped);
-        $escaped = str_replace('\\*', '[^\/]*', $escaped);
-        $escaped = str_replace('\\?', '[^\/]', $escaped);
-
-        return '/^'.$escaped.'$/';
     }
 }
