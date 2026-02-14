@@ -5,22 +5,18 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Services\Contracts\SentinelMessageServiceContract;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 
 /**
  * Service for generating Sentinel's fun and friendly PR messages.
  */
 final class SentinelMessageService implements SentinelMessageServiceContract
 {
-    private const string CACHE_KEY = 'sentinel:messages';
-
-    private const int CACHE_TTL = 3600; // 1 hour
-
     /**
-     * @var array{greetings: array<int, array{emoji: string, message: string}>, branding: array<int, string>}|null
+     * Create a new service instance.
      */
-    private ?array $messages = null;
+    public function __construct(
+        private readonly SentinelMessageCatalogLoader $catalogLoader = new SentinelMessageCatalogLoader,
+    ) {}
 
     /**
      * Get a random greeting message for a new PR.
@@ -29,7 +25,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function getRandomGreeting(): array
     {
-        $messages = $this->loadMessages();
+        $messages = $this->catalogLoader->load();
 
         /** @var non-empty-array<int, array{emoji: string, message: string}> $greetings */
         $greetings = $messages['greetings'];
@@ -44,7 +40,7 @@ final class SentinelMessageService implements SentinelMessageServiceContract
      */
     public function getRandomBranding(): string
     {
-        $messages = $this->loadMessages();
+        $messages = $this->catalogLoader->load();
 
         /** @var non-empty-array<int, string> $branding */
         $branding = $messages['branding'];
@@ -244,52 +240,5 @@ final class SentinelMessageService implements SentinelMessageServiceContract
         ---
         <sub>{$branding}</sub>
         MARKDOWN;
-    }
-
-    /**
-     * Load messages from JSON file with caching.
-     *
-     * @return array{greetings: array<int, array{emoji: string, message: string}>, branding: array<int, string>}
-     */
-    private function loadMessages(): array
-    {
-        if ($this->messages !== null) {
-            return $this->messages;
-        }
-
-        /** @var array<string, mixed>|null $cached */
-        $cached = Cache::get(self::CACHE_KEY);
-
-        // Validate cache has required keys, otherwise reload from file
-        if ($cached !== null && $this->isValidMessageStructure($cached)) {
-            /** @var array{greetings: array<int, array{emoji: string, message: string}>, branding: array<int, string>} $cached */
-            $this->messages = $cached;
-
-            return $cached;
-        }
-
-        $path = resource_path('messages/greetings.json');
-        $content = File::get($path);
-
-        /** @var array{greetings: array<int, array{emoji: string, message: string}>, branding: array<int, string>} $messages */
-        $messages = json_decode($content, true);
-
-        Cache::put(self::CACHE_KEY, $messages, self::CACHE_TTL);
-
-        $this->messages = $messages;
-
-        return $messages;
-    }
-
-    /**
-     * Check if the cached message structure has all required keys.
-     *
-     * @param  array<string, mixed>  $data
-     */
-    private function isValidMessageStructure(array $data): bool
-    {
-        return isset($data['greetings'], $data['branding'])
-            && is_array($data['greetings'])
-            && is_array($data['branding']);
     }
 }
