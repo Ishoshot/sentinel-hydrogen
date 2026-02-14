@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Briefings\Support;
+namespace App\Actions\Briefings\Handlers;
 
 use App\Models\BriefingSubscription;
 use App\Services\Briefings\ValueObjects\BriefingLimitResult;

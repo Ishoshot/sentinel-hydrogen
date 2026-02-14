@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Briefings;
 
-use App\Actions\Briefings\Support\ScheduledBriefingDenialHandler;
+use App\Actions\Briefings\Handlers\ScheduledBriefingDenialHandler;
 use App\Jobs\Briefings\DeliverBriefing;
 use App\Models\BriefingSubscription;
 use App\Services\Briefings\BriefingLimitEnforcer;
