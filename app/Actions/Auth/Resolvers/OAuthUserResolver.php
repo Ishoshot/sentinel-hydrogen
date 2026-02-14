@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Auth\Support;
+namespace App\Actions\Auth\Resolvers;
 
 use App\Actions\Workspaces\CreateWorkspaceForNewUser;
 use App\Enums\Auth\OAuthProvider;

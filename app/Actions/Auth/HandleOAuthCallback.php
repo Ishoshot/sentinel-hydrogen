@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Auth;
 
+use App\Actions\Auth\Resolvers\OAuthUserResolver;
 use App\Actions\Auth\Support\OAuthProviderIdentitySync;
-use App\Actions\Auth\Support\OAuthUserResolver;
 use App\Enums\Auth\OAuthProvider;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
