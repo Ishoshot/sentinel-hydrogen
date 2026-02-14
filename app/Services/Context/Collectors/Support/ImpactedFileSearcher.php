@@ -23,6 +23,10 @@ final readonly class ImpactedFileSearcher
     public function __construct(
         private CodeSearchServiceContract $codeSearchService,
         private GitHubApiServiceContract $gitHubApiService,
+        private ?ImpactSearchPatternFactory $searchPatternFactory = null,
+        private ?ImpactedFileCandidateCollector $candidateCollector = null,
+        private ?ImpactedFileRepositoryCoordinatesResolver $coordinatesResolver = null,
+        private ?ImpactedFileContentFetcher $contentFetcher = null,
     ) {}
 
     /**
@@ -33,9 +37,10 @@ final readonly class ImpactedFileSearcher
     public function findImpactedFiles(Repository $repository, array $symbols, array $excludeFiles, Run $run): array
     {
         $candidateFiles = [];
+        $minRelevanceScore = $this->minRelevanceScore();
 
         foreach ($symbols as $symbol) {
-            $searchPatterns = $this->buildSearchPatterns($symbol);
+            $searchPatterns = $this->searchPatternFactory()->build($symbol);
 
             foreach ($searchPatterns as $pattern => $matchType) {
                 $results = $this->codeSearchService->keywordSearch(
@@ -44,76 +49,20 @@ final readonly class ImpactedFileSearcher
                     $this->searchLimitPerSymbol()
                 );
 
-                foreach ($results as $result) {
-                    $filePath = $result['file_path'];
-
-                    if (in_array($filePath, $excludeFiles, true)) {
-                        continue;
-                    }
-
-                    $score = (float) $result['score'];
-                    if ($score < $this->minRelevanceScore()) {
-                        continue;
-                    }
-
-                    $key = $filePath.':'.$symbol['name'];
-
-                    if (! isset($candidateFiles[$key])) {
-                        $candidateFiles[$key] = [
-                            'file_path' => $filePath,
-                            'symbol' => $symbol['name'],
-                            'match_type' => $matchType,
-                            'score' => $score,
-                            'match_count' => 1,
-                            'content' => $result['content'],
-                        ];
-                    } else {
-                        $candidateFiles[$key]['match_count']++;
-                        $candidateFiles[$key]['score'] = max($candidateFiles[$key]['score'], $score);
-                    }
-                }
+                $candidateFiles = $this->candidateCollector()->collect(
+                    candidates: $candidateFiles,
+                    results: $results,
+                    symbol: $symbol,
+                    excludeFiles: $excludeFiles,
+                    matchType: $matchType,
+                    minRelevanceScore: $minRelevanceScore,
+                );
             }
         }
 
-        usort($candidateFiles, function (array $a, array $b): int {
-            if ($a['match_count'] !== $b['match_count']) {
-                return $b['match_count'] <=> $a['match_count'];
-            }
-
-            return $b['score'] <=> $a['score'];
-        });
-
-        $candidateFiles = array_slice($candidateFiles, 0, $this->maxFiles());
+        $candidateFiles = $this->candidateCollector()->rank($candidateFiles, $this->maxFiles());
 
         return $this->fetchFileContents($repository, $candidateFiles, $run);
-    }
-
-    /**
-     * @param  array{name: string, type: string, file: string}  $symbol
-     * @return array<string, string>
-     */
-    private function buildSearchPatterns(array $symbol): array
-    {
-        $name = $symbol['name'];
-        $type = $symbol['type'];
-
-        return match ($type) {
-            'function' => [
-                $name.'(' => 'function_call',
-            ],
-            'class' => [
-                'new '.$name => 'class_instantiation',
-                'extends '.$name => 'extends',
-                'implements '.$name => 'implements',
-            ],
-            'method' => [
-                sprintf('->%s(', $name) => 'method_call',
-                sprintf('::%s(', $name) => 'method_call',
-            ],
-            default => [
-                $name => 'reference',
-            ],
-        };
     }
 
     /**
@@ -122,34 +71,23 @@ final readonly class ImpactedFileSearcher
      */
     private function fetchFileContents(Repository $repository, array $candidates, Run $run): array
     {
-        $repository->loadMissing('installation');
-        $installation = $repository->installation;
+        $coordinates = $this->coordinatesResolver()->resolve($repository, $run);
 
-        if ($installation === null) {
+        if ($coordinates === null) {
             return [];
         }
-
-        $fullName = $repository->full_name ?? '';
-        if ($fullName === '' || ! str_contains((string) $fullName, '/')) {
-            return [];
-        }
-
-        [$owner, $repo] = explode('/', (string) $fullName, 2);
-        $installationId = $installation->installation_id;
-
-        $metadata = $run->metadata ?? [];
-        $headSha = is_string($metadata['head_sha'] ?? null) ? $metadata['head_sha'] : null;
 
         $impactedFiles = [];
 
         foreach ($candidates as $candidate) {
             try {
-                $content = $this->fetchFileContent(
-                    $installationId,
-                    $owner,
-                    $repo,
-                    $candidate['file_path'],
-                    $headSha
+                $content = $this->contentFetcher()->fetch(
+                    installationId: $coordinates['installation_id'],
+                    owner: $coordinates['owner'],
+                    repo: $coordinates['repo'],
+                    path: $candidate['file_path'],
+                    ref: $coordinates['head_sha'],
+                    maxFileSize: $this->maxFileSize(),
                 );
 
                 if ($content === null) {
@@ -173,49 +111,6 @@ final readonly class ImpactedFileSearcher
         }
 
         return $impactedFiles;
-    }
-
-    /**
-     * Fetch and decode a file from GitHub for a specific reference.
-     */
-    private function fetchFileContent(
-        int $installationId,
-        string $owner,
-        string $repo,
-        string $path,
-        ?string $ref
-    ): ?string {
-        $response = $this->gitHubApiService->getFileContents(
-            $installationId,
-            $owner,
-            $repo,
-            $path,
-            $ref
-        );
-
-        if (is_string($response)) {
-            return mb_strlen($response) <= $this->maxFileSize() ? $response : null;
-        }
-
-        $size = $response['size'] ?? 0;
-        if (! is_int($size) || $size > $this->maxFileSize()) {
-            return null;
-        }
-
-        $content = $response['content'] ?? null;
-        $encoding = $response['encoding'] ?? 'base64';
-
-        if (! is_string($content)) {
-            return null;
-        }
-
-        if ($encoding === 'base64') {
-            $decoded = base64_decode($content, true);
-
-            return $decoded !== false ? $decoded : null;
-        }
-
-        return $content;
     }
 
     /**
@@ -254,5 +149,25 @@ final readonly class ImpactedFileSearcher
         }
 
         return 0.3;
+    }
+
+    private function searchPatternFactory(): ImpactSearchPatternFactory
+    {
+        return $this->searchPatternFactory ?? new ImpactSearchPatternFactory;
+    }
+
+    private function candidateCollector(): ImpactedFileCandidateCollector
+    {
+        return $this->candidateCollector ?? new ImpactedFileCandidateCollector;
+    }
+
+    private function coordinatesResolver(): ImpactedFileRepositoryCoordinatesResolver
+    {
+        return $this->coordinatesResolver ?? new ImpactedFileRepositoryCoordinatesResolver;
+    }
+
+    private function contentFetcher(): ImpactedFileContentFetcher
+    {
+        return $this->contentFetcher ?? new ImpactedFileContentFetcher($this->gitHubApiService);
     }
 }

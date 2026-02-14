@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Context\Collectors;
 
 use App\Enums\Reviews\RunStatus;
-use App\Models\Finding;
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Context\Collectors\Support\ReviewHistoryEntryBuilder;
+use App\Services\Context\Collectors\Support\ReviewHistoryRunFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +30,14 @@ final readonly class ReviewHistoryCollector implements ContextCollector
      * Maximum number of findings to include per review.
      */
     private const int MAX_FINDINGS_PER_REVIEW = 5;
+
+    /**
+     * Create a new instance.
+     */
+    public function __construct(
+        private ?ReviewHistoryRunFetcher $runFetcher = null,
+        private ?ReviewHistoryEntryBuilder $entryBuilder = null,
+    ) {}
 
     /**
      * {@inheritdoc}
@@ -88,18 +97,14 @@ final readonly class ReviewHistoryCollector implements ContextCollector
         // Find previous completed runs for the same PR
         $maxFindingsPerReview = self::MAX_FINDINGS_PER_REVIEW;
 
-        /** @var \Illuminate\Database\Eloquent\Collection<int, Run> $previousRuns */
-        $previousRuns = Run::query()
-            ->where('repository_id', $repository->id)
-            ->where('id', '!=', $currentRun->id)
-            ->where('status', RunStatus::Completed)
-            ->whereJsonContains('metadata->pull_request_number', $prNumber)
-            ->with(['findings' => static function (\Illuminate\Database\Eloquent\Relations\Relation $query) use ($maxFindingsPerReview): void {
-                $query->orderBy('severity')->limit($maxFindingsPerReview);
-            }])
-            ->orderBy('created_at', 'desc')
-            ->limit(self::MAX_REVIEWS)
-            ->get();
+        $previousRuns = $this->runFetcher()->fetch(
+            repository: $repository,
+            currentRun: $currentRun,
+            prNumber: $prNumber,
+            maxReviews: self::MAX_REVIEWS,
+            maxFindingsPerReview: $maxFindingsPerReview,
+            completedStatus: RunStatus::Completed,
+        );
 
         if ($previousRuns->isEmpty()) {
             Log::debug('ReviewHistoryCollector: No previous reviews found for PR', [
@@ -113,39 +118,7 @@ final readonly class ReviewHistoryCollector implements ContextCollector
         $reviewHistory = [];
 
         foreach ($previousRuns as $run) {
-            /** @var Run $run */
-            $findings = $run->findings;
-            $findingsCount = $findings->count();
-
-            // Build summary of findings by severity
-            /** @var array<string, int> $severityCounts */
-            $severityCounts = $findings->groupBy('severity')
-                ->map(fn (\Illuminate\Support\Collection $group): int => $group->count())
-                ->toArray();
-
-            $summary = $this->buildSummary($severityCounts, $findingsCount);
-
-            // Extract key findings with fingerprints for resolution tracking
-            $keyFindings = $findings->take(self::MAX_FINDINGS_PER_REVIEW)
-                ->map(fn (Finding $finding): array => [
-                    'severity' => $finding->severity?->value ?? '',
-                    'category' => $finding->category?->value ?? '',
-                    'title' => (string) ($finding->title ?? ''),
-                    'file_path' => $finding->file_path,
-                    'line_start' => $finding->line_start,
-                    'fingerprint' => $this->generateFingerprint($finding),
-                ])
-                ->values()
-                ->all();
-
-            $reviewHistory[] = [
-                'run_id' => $run->id,
-                'summary' => $summary,
-                'findings_count' => $findingsCount,
-                'severity_breakdown' => $severityCounts,
-                'key_findings' => $keyFindings,
-                'created_at' => $run->created_at->toIso8601String(),
-            ];
+            $reviewHistory[] = $this->entryBuilder()->build($run, self::MAX_FINDINGS_PER_REVIEW);
         }
 
         $bag->reviewHistory = $reviewHistory;
@@ -157,51 +130,13 @@ final readonly class ReviewHistoryCollector implements ContextCollector
         ]);
     }
 
-    /**
-     * Build a human-readable summary of findings.
-     *
-     * @param  array<string, int>  $severityCounts
-     */
-    private function buildSummary(array $severityCounts, int $totalFindings): string
+    private function runFetcher(): ReviewHistoryRunFetcher
     {
-        if ($totalFindings === 0) {
-            return 'No findings in previous review.';
-        }
-
-        $parts = [];
-
-        // Order by severity
-        $severityOrder = ['critical', 'high', 'medium', 'low', 'info'];
-
-        foreach ($severityOrder as $severity) {
-            if (isset($severityCounts[$severity]) && $severityCounts[$severity] > 0) {
-                $count = $severityCounts[$severity];
-                $label = $count === 1 ? $severity : $severity;
-                $parts[] = sprintf('%d %s', $count, $label);
-            }
-        }
-
-        if ($parts === []) {
-            return sprintf('Previous review found %s finding(s).', $totalFindings);
-        }
-
-        return 'Previous review found: '.implode(', ', $parts).'.';
+        return $this->runFetcher ?? new ReviewHistoryRunFetcher;
     }
 
-    /**
-     * Generate a fingerprint for a finding to track resolution across reviews.
-     *
-     * The fingerprint is based on the finding's essential characteristics
-     * so we can identify if the same issue appears in subsequent reviews.
-     */
-    private function generateFingerprint(Finding $finding): string
+    private function entryBuilder(): ReviewHistoryEntryBuilder
     {
-        $components = [
-            $finding->category?->value ?? '',
-            $finding->file_path ?? '',
-            $finding->title ?? '',
-        ];
-
-        return hash('xxh3', implode('|', $components));
+        return $this->entryBuilder ?? new ReviewHistoryEntryBuilder;
     }
 }
