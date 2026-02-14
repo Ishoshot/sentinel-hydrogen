@@ -7,6 +7,7 @@ namespace App\Services\Context\Collectors;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Context\Collectors\Support\GuidelineBatchFetcher;
 use App\Services\Context\Collectors\Support\GuidelineContentFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
@@ -32,6 +33,7 @@ final readonly class GuidelinesCollector implements ContextCollector
     public function __construct(
         private GuidelineContentFetcher $contentFetcher,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
+        private ?GuidelineBatchFetcher $batchFetcher = null,
     ) {}
 
     /**
@@ -84,50 +86,12 @@ final readonly class GuidelinesCollector implements ContextCollector
             return;
         }
 
-        $guidelines = [];
-        $fetchedCount = 0;
-
-        foreach ($guidelineConfigs as $config) {
-            if ($fetchedCount >= self::MAX_GUIDELINES) {
-                Log::info('GuidelinesCollector: Maximum guidelines limit reached', [
-                    'limit' => self::MAX_GUIDELINES,
-                    'total_configured' => count($guidelineConfigs),
-                ]);
-
-                break;
-            }
-
-            if (! $this->contentFetcher->isAllowedFileType($config->path)) {
-                Log::debug('GuidelinesCollector: Skipping unsupported file type', [
-                    'path' => $config->path,
-                ]);
-
-                continue;
-            }
-
-            $content = $this->contentFetcher->fetch(
-                $coordinates->installationId,
-                $coordinates->owner,
-                $coordinates->repo,
-                $config->path
-            );
-
-            if ($content !== null) {
-                $guidelines[] = [
-                    'path' => $config->path,
-                    'description' => $config->description,
-                    'content' => $content,
-                ];
-                $fetchedCount++;
-            }
-        }
-
-        $bag->guidelines = $guidelines;
+        $bag->guidelines = $this->batchFetcher()->fetch($coordinates, $guidelineConfigs, self::MAX_GUIDELINES);
 
         Log::info('GuidelinesCollector: Collected guidelines', [
             'repository' => $coordinates->fullName,
             'configured' => count($guidelineConfigs),
-            'fetched' => count($guidelines),
+            'fetched' => count($bag->guidelines),
         ]);
     }
 
@@ -148,5 +112,13 @@ final readonly class GuidelinesCollector implements ContextCollector
         $sentinelConfig = SentinelConfig::fromArray($sentinelConfigData);
 
         return $sentinelConfig->guidelines;
+    }
+
+    /**
+     * Resolve the batch fetcher dependency.
+     */
+    private function batchFetcher(): GuidelineBatchFetcher
+    {
+        return $this->batchFetcher ?? new GuidelineBatchFetcher($this->contentFetcher);
     }
 }

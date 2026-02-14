@@ -7,6 +7,7 @@ namespace App\Services\Context\Collectors;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Collectors\Support\DiffFileNormalizer;
+use App\Services\Context\Collectors\Support\DiffPullRequestDataExtractor;
 use App\Services\Context\Collectors\Support\SentinelConfigBranchFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
@@ -30,6 +31,7 @@ final readonly class DiffCollector implements ContextCollector
         private SentinelConfigBranchFetcher $configFetcher,
         private DiffFileNormalizer $fileNormalizer = new DiffFileNormalizer,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
+        private DiffPullRequestDataExtractor $prDataExtractor = new DiffPullRequestDataExtractor,
     ) {}
 
     /**
@@ -88,7 +90,7 @@ final readonly class DiffCollector implements ContextCollector
             return;
         }
 
-        $bag->pullRequest = $this->extractPullRequestData($metadata, $coordinates->fullName);
+        $bag->pullRequest = $this->prDataExtractor->extract($metadata, $coordinates->fullName);
 
         $files = $this->gitHubApiService->getPullRequestFiles(
             $coordinates->installationId,
@@ -129,29 +131,5 @@ final readonly class DiffCollector implements ContextCollector
             'files_with_patches' => $bag->getFilesWithPatchCount(),
             'config_from_branch' => $configResult['branch'],
         ]);
-    }
-
-    /**
-     * Extract PR metadata from run metadata.
-     *
-     * @return array{number: int, title: string, body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, repository_full_name: string, author: array{login: string, avatar_url: string|null}, is_draft: bool, assignees: array<int, array{login: string, avatar_url: string|null}>, reviewers: array<int, array{login: string, avatar_url: string|null}>, labels: array<int, array{name: string, color: string}>}
-     */
-    private function extractPullRequestData(MetadataExtractor $metadata, string $fullName): array
-    {
-        return [
-            'number' => $metadata->int('pull_request_number'),
-            'title' => $metadata->string('pull_request_title'),
-            'body' => $metadata->stringOrNull('pull_request_body'),
-            'base_branch' => $metadata->string('base_branch', 'main'),
-            'head_branch' => $metadata->string('head_branch'),
-            'head_sha' => $metadata->string('head_sha'),
-            'sender_login' => $metadata->string('sender_login'),
-            'repository_full_name' => $fullName,
-            'author' => $metadata->author(),
-            'is_draft' => $metadata->bool('is_draft'),
-            'assignees' => $metadata->users('assignees'),
-            'reviewers' => $metadata->users('reviewers'),
-            'labels' => $metadata->labels(),
-        ];
     }
 }

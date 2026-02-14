@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Context;
 
 use App\Services\Context\Contracts\TokenCounter;
+use App\Services\Context\Support\ContextBagTokenEstimator;
 use App\Services\Context\TokenCounting\HeuristicTokenCounter;
 use App\Services\Context\TokenCounting\TokenCounterContext;
 
@@ -51,69 +52,11 @@ final class ContextBag
      */
     public function estimateTokens(?TokenCounter $tokenCounter = null, ?TokenCounterContext $context = null): int
     {
-        $tokenCounter ??= new HeuristicTokenCounter();
-        $context ??= new TokenCounterContext();
-        $totalTokens = 0;
-
-        // Pull request metadata
-        $totalTokens += $tokenCounter->countTextTokens(json_encode($this->pullRequest) ?: '', $context);
-
-        // Files with patches (most significant)
-        foreach ($this->files as $file) {
-            $totalTokens += $tokenCounter->countTextTokens($file['filename'], $context);
-            $totalTokens += $tokenCounter->countTextTokens($file['patch'] ?? '', $context);
-        }
-
-        // Metrics
-        $totalTokens += $tokenCounter->countTextTokens(json_encode($this->metrics) ?: '', $context);
-
-        // Linked issues
-        foreach ($this->linkedIssues as $issue) {
-            $totalTokens += $tokenCounter->countTextTokens($issue['title'], $context);
-            $totalTokens += $tokenCounter->countTextTokens($issue['body'] ?? '', $context);
-            foreach ($issue['comments'] as $comment) {
-                $totalTokens += $tokenCounter->countTextTokens($comment['body'], $context);
-            }
-        }
-
-        // PR comments
-        foreach ($this->prComments as $comment) {
-            $totalTokens += $tokenCounter->countTextTokens($comment['body'], $context);
-        }
-
-        // Repository context
-        $totalTokens += $tokenCounter->countTextTokens($this->repositoryContext['readme'] ?? '', $context);
-        $totalTokens += $tokenCounter->countTextTokens($this->repositoryContext['contributing'] ?? '', $context);
-
-        // Review history
-        foreach ($this->reviewHistory as $review) {
-            $totalTokens += $tokenCounter->countTextTokens($review['summary'], $context);
-        }
-
-        // Guidelines
-        foreach ($this->guidelines as $guideline) {
-            $totalTokens += $tokenCounter->countTextTokens($guideline['content'], $context);
-        }
-
-        // File contents
-        foreach ($this->fileContents as $content) {
-            $totalTokens += $tokenCounter->countTextTokens($content, $context);
-        }
-
-        // Semantic analysis data
-        foreach ($this->semantics as $data) {
-            $totalTokens += $tokenCounter->countTextTokens(json_encode($data) ?: '', $context);
-        }
-
-        // Project context
-        $totalTokens += $tokenCounter->countTextTokens(json_encode($this->projectContext) ?: '', $context);
-
-        // Impacted files
-        foreach ($this->impactedFiles as $impactedFile) {
-            $totalTokens += $tokenCounter->countTextTokens($impactedFile['content'], $context);
-        }
-
-        return $totalTokens;
+        return (new ContextBagTokenEstimator)->estimate(
+            $this,
+            $tokenCounter ?? new HeuristicTokenCounter(),
+            $context ?? new TokenCounterContext(),
+        );
     }
 
     /**
