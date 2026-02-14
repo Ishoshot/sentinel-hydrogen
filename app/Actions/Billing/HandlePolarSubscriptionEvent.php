@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\Billing;
 
-use App\Actions\Billing\Support\PolarSubscriptionLookup;
-use App\Actions\Billing\Support\PolarSubscriptionStateUpdater;
-use App\Actions\Billing\Support\PolarSubscriptionSyncPayloadResolver;
-use App\Enums\Billing\PlanTier;
+use App\Actions\Billing\Support\PolarSubscriptionLifecycleOrchestrator;
+use App\Actions\Billing\Support\PolarSubscriptionSyncContext;
+use App\Actions\Billing\Support\PolarSubscriptionSyncOrchestrator;
 use App\Enums\Billing\SubscriptionStatus;
+use App\Models\Subscription;
 use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
 use Illuminate\Support\Facades\Log;
 
@@ -18,10 +18,8 @@ final readonly class HandlePolarSubscriptionEvent
      * Create a new action instance.
      */
     public function __construct(
-        private PolarWebhookSupport $polarWebhookSupport,
-        private PolarSubscriptionLookup $subscriptionLookup,
-        private PolarSubscriptionStateUpdater $subscriptionStateUpdater,
-        private PolarSubscriptionSyncPayloadResolver $syncPayloadResolver,
+        private PolarSubscriptionLifecycleOrchestrator $lifecycleOrchestrator,
+        private PolarSubscriptionSyncOrchestrator $syncOrchestrator,
     ) {}
 
     /**
@@ -37,20 +35,18 @@ final readonly class HandlePolarSubscriptionEvent
      */
     public function canceled(VerifiedPolarWebhook $webhook): void
     {
-        $existingSubscription = $this->subscriptionLookup->fromLifecyclePayload($webhook->data, 'canceled');
-        if (! $existingSubscription instanceof \App\Models\Subscription) {
+        $lifecycle = $this->lifecycleOrchestrator->canceled($webhook);
+
+        if (! is_array($lifecycle)) {
             return;
         }
 
-        $endsAt = $this->polarWebhookSupport->timestampToDateTime(
-            $webhook->data['current_period_end'] ?? $webhook->data['ends_at'] ?? null
-        );
-
-        $this->subscriptionStateUpdater->markCanceled($existingSubscription, $endsAt);
+        $subscription = $lifecycle['subscription'];
+        $endsAt = $lifecycle['ends_at'];
 
         Log::info('Subscription canceled (access retained until period end)', [
-            'subscription_id' => $existingSubscription->id,
-            'workspace_id' => $existingSubscription->workspace_id,
+            'subscription_id' => $subscription->id,
+            'workspace_id' => $subscription->workspace_id,
             'ends_at' => $endsAt?->toIso8601String(),
         ]);
     }
@@ -60,16 +56,15 @@ final readonly class HandlePolarSubscriptionEvent
      */
     public function uncanceled(VerifiedPolarWebhook $webhook): void
     {
-        $existingSubscription = $this->subscriptionLookup->fromLifecyclePayload($webhook->data, 'uncanceled');
-        if (! $existingSubscription instanceof \App\Models\Subscription) {
+        $subscription = $this->lifecycleOrchestrator->uncanceled($webhook);
+
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
-        $this->subscriptionStateUpdater->markUncanceled($existingSubscription);
-
         Log::info('Subscription uncanceled', [
-            'subscription_id' => $existingSubscription->id,
-            'workspace_id' => $existingSubscription->workspace_id,
+            'subscription_id' => $subscription->id,
+            'workspace_id' => $subscription->workspace_id,
         ]);
     }
 
@@ -78,17 +73,15 @@ final readonly class HandlePolarSubscriptionEvent
      */
     public function revoked(VerifiedPolarWebhook $webhook): void
     {
-        $existingSubscription = $this->subscriptionLookup->fromLifecyclePayload($webhook->data, 'revoked');
-        if (! $existingSubscription instanceof \App\Models\Subscription) {
+        $subscription = $this->lifecycleOrchestrator->revoked($webhook);
+
+        if (! $subscription instanceof Subscription) {
             return;
         }
 
-        $foundationPlan = $this->polarWebhookSupport->resolvePlan(PlanTier::Foundation->value);
-        $this->subscriptionStateUpdater->markRevoked($existingSubscription, $foundationPlan);
-
         Log::info('Subscription revoked - access removed', [
-            'subscription_id' => $existingSubscription->id,
-            'workspace_id' => $existingSubscription->workspace_id,
+            'subscription_id' => $subscription->id,
+            'workspace_id' => $subscription->workspace_id,
         ]);
     }
 
@@ -115,17 +108,18 @@ final readonly class HandlePolarSubscriptionEvent
      */
     private function updateSubscriptionFromWebhook(VerifiedPolarWebhook $webhook, ?SubscriptionStatus $overrideStatus): void
     {
-        $existingSubscription = $this->subscriptionLookup->fromWebhook($webhook);
-        if (! $existingSubscription instanceof \App\Models\Subscription) {
+        $syncContext = $this->syncOrchestrator->sync($webhook, $overrideStatus);
+
+        if (! $syncContext instanceof PolarSubscriptionSyncContext) {
             return;
         }
 
-        $syncPayload = $this->syncPayloadResolver->resolve($webhook->data, $overrideStatus);
-        $this->subscriptionStateUpdater->syncSubscription($existingSubscription, $syncPayload);
+        $subscription = $syncContext->subscription;
+        $syncPayload = $syncContext->syncPayload;
 
         Log::info('Subscription updated', [
-            'subscription_id' => $existingSubscription->id,
-            'workspace_id' => $existingSubscription->workspace_id,
+            'subscription_id' => $subscription->id,
+            'workspace_id' => $subscription->workspace_id,
             'status' => $syncPayload->status->value,
             'plan_tier' => $syncPayload->plan?->tier,
             'billing_interval' => $syncPayload->billingInterval?->value,
