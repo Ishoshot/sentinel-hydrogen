@@ -64,3 +64,27 @@ it('throws when schema properties are missing', function (): void {
     expect(fn () => $validator->rules([]))
         ->toThrow(RuntimeException::class, 'must define properties');
 });
+
+it('maps string formats and length constraints into laravel rules', function (): void {
+    $validator = app(BriefingParameterSchemaValidator::class);
+
+    $schema = [
+        'properties' => [
+            'contact_email' => [
+                'type' => 'string',
+                'format' => 'email',
+                'minLength' => 5,
+                'maxLength' => 255,
+            ],
+            'profile_url' => [
+                'type' => 'string',
+                'format' => 'uri',
+            ],
+        ],
+    ];
+
+    expect($validator->rules($schema))->toBe([
+        'contact_email' => ['nullable', 'string', 'email', 'min:5', 'max:255'],
+        'profile_url' => ['nullable', 'string', 'url'],
+    ]);
+});

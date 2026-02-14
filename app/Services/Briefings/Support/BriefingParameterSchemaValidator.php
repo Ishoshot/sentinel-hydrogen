@@ -6,8 +6,17 @@ namespace App\Services\Briefings\Support;
 
 use RuntimeException;
 
-final class BriefingParameterSchemaValidator
+final readonly class BriefingParameterSchemaValidator
 {
+    /**
+     * Create a new schema validator instance.
+     */
+    public function __construct(
+        private BriefingParameterSchemaPropertyResolver $propertyResolver = new BriefingParameterSchemaPropertyResolver,
+        private BriefingParameterSchemaRuleBuilder $ruleBuilder = new BriefingParameterSchemaRuleBuilder,
+        private BriefingParameterSchemaMessageBuilder $messageBuilder = new BriefingParameterSchemaMessageBuilder,
+    ) {}
+
     /**
      * Build Laravel validation rules from a briefing parameter schema.
      *
@@ -18,10 +27,8 @@ final class BriefingParameterSchemaValidator
     {
         /** @var array<string, array<int, string>> $rules */
         $rules = [];
-        $properties = $this->normalizedProperties($schema);
-
-        /** @var array<int, string> $required */
-        $required = is_array($schema['required'] ?? null) ? $schema['required'] : [];
+        $properties = $this->propertyResolver->resolve($schema);
+        $required = $this->propertyResolver->required($schema);
 
         foreach ($properties as $field => $definition) {
             if (! is_string($field)) {
@@ -35,7 +42,7 @@ final class BriefingParameterSchemaValidator
             /** @var array<string, mixed> $typedDefinition */
             $typedDefinition = $definition;
 
-            $rules[$field] = $this->rulesForField($field, $typedDefinition, $required);
+            $rules[$field] = $this->ruleBuilder->build($field, $typedDefinition, $required);
         }
 
         return $rules;
@@ -50,7 +57,7 @@ final class BriefingParameterSchemaValidator
     public function messages(array $schema): array
     {
         $messages = [];
-        $properties = $this->normalizedProperties($schema);
+        $properties = $this->propertyResolver->resolve($schema);
 
         foreach ($properties as $field => $definition) {
             if (! is_string($field)) {
@@ -61,115 +68,12 @@ final class BriefingParameterSchemaValidator
                 continue;
             }
 
-            if (isset($definition['description'])) {
-                $messages[$field.'.required'] = (string) $definition['description'];
-            }
+            /** @var array<string, mixed> $typedDefinition */
+            $typedDefinition = $definition;
+
+            $messages = array_merge($messages, $this->messageBuilder->build($field, $typedDefinition));
         }
 
         return $messages;
-    }
-
-    /**
-     * @param  array<string, mixed>  $schema
-     * @return array<mixed, mixed>
-     */
-    private function normalizedProperties(array $schema): array
-    {
-        $properties = $schema['properties'] ?? null;
-
-        if (! is_array($properties) || $properties === []) {
-            throw new RuntimeException('Briefing parameter schema must define properties.');
-        }
-
-        return $properties;
-    }
-
-    /**
-     * @param  array<string, mixed>  $definition
-     * @param  array<int, string>  $required
-     * @return array<int, string>
-     */
-    private function rulesForField(string $field, array $definition, array $required): array
-    {
-        $fieldRules = [];
-        $fieldRules[] = in_array($field, $required, true) ? 'required' : 'nullable';
-
-        $fieldType = $definition['type'] ?? null;
-        $fieldRules[] = $this->resolveTypeRule($field, $fieldType);
-
-        if (isset($definition['format'])) {
-            $formatRule = $this->resolveFormatRule($definition['format']);
-
-            if ($formatRule !== null) {
-                $fieldRules[] = $formatRule;
-            }
-        }
-
-        if (isset($definition['minimum'])) {
-            $fieldRules[] = 'min:'.(int) $definition['minimum'];
-        }
-
-        if (isset($definition['maximum'])) {
-            $fieldRules[] = 'max:'.(int) $definition['maximum'];
-        }
-
-        if (isset($definition['minLength'])) {
-            $fieldRules[] = 'min:'.(int) $definition['minLength'];
-        }
-
-        if (isset($definition['maxLength'])) {
-            $fieldRules[] = 'max:'.(int) $definition['maxLength'];
-        }
-
-        if (isset($definition['enum']) && is_array($definition['enum'])) {
-            /** @var array<int, string> $enumValues */
-            $enumValues = $definition['enum'];
-            $fieldRules[] = 'in:'.implode(',', $enumValues);
-        }
-
-        if ($fieldType === 'array' && isset($definition['items'])) {
-            if (isset($definition['minItems'])) {
-                $fieldRules[] = 'min:'.(int) $definition['minItems'];
-            }
-
-            if (isset($definition['maxItems'])) {
-                $fieldRules[] = 'max:'.(int) $definition['maxItems'];
-            }
-        }
-
-        return $fieldRules;
-    }
-
-    /**
-     * ResolveTypeRule.
-     */
-    private function resolveTypeRule(string $field, mixed $fieldType): string
-    {
-        if (! is_string($fieldType)) {
-            throw new RuntimeException(sprintf('Missing or invalid type for "%s".', $field));
-        }
-
-        return match ($fieldType) {
-            'string' => 'string',
-            'integer' => 'integer',
-            'number' => 'numeric',
-            'boolean' => 'boolean',
-            'array' => 'array',
-            'object' => 'array',
-            default => throw new RuntimeException(sprintf('Unsupported type "%s" for "%s".', $fieldType, $field)),
-        };
-    }
-
-    /**
-     * ResolveFormatRule.
-     */
-    private function resolveFormatRule(mixed $format): ?string
-    {
-        return match ((string) $format) {
-            'date', 'date-time' => 'date',
-            'email' => 'email',
-            'uri', 'url' => 'url',
-            default => null,
-        };
     }
 }
