@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Reviews\Support;
+namespace App\Services\Reviews\Builders;
 
 use App\Models\Run;
 use App\Services\SentinelMessageService;

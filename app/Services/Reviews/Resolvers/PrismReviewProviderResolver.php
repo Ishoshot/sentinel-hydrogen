@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Reviews\Support;
+namespace App\Services\Reviews\Resolvers;
 
 use App\DataTransferObjects\SentinelConfig\ProviderConfig;
 use App\Enums\AI\AiProvider;
