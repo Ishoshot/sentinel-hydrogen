@@ -6,7 +6,7 @@ namespace App\Services\GitHub;
 
 use App\Models\Installation;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
-use App\Services\GitHub\Support\GitHubApiRequestExecutor;
+use App\Services\GitHub\Executors\GitHubApiRequestExecutor;
 use App\Services\GitHub\Support\GitHubAppOperationInvoker;
 use App\Services\GitHub\Support\GitHubInstallationRepositoriesPaginator;
 use App\Services\GitHub\Support\GitHubIssueCommentOperations;

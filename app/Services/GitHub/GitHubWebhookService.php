@@ -6,9 +6,9 @@ namespace App\Services\GitHub;
 
 use App\Enums\GitHub\GitHubWebhookEvent;
 use App\Services\GitHub\Contracts\GitHubWebhookServiceContract;
+use App\Services\GitHub\Parsers\GitHubWebhookPayloadParser;
 use App\Services\GitHub\Support\GitHubPullRequestActionPolicy;
 use App\Services\GitHub\Support\GitHubWebhookPayloadFieldExtractor;
-use App\Services\GitHub\Support\GitHubWebhookPayloadParser;
 use App\Services\GitHub\Support\GitHubWebhookSignatureVerifier;
 
 final readonly class GitHubWebhookService implements GitHubWebhookServiceContract

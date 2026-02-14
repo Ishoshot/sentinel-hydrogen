@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Services\GitHub\Support;
+namespace App\Services\GitHub\Handlers;
 
+use App\Services\GitHub\Support\GitHubRateLimitBackoffCalculator;
+use App\Services\GitHub\Support\GitHubRateLimitErrorInspector;
+use App\Services\GitHub\Support\GitHubRateLimitStateStore;
 use Github\Exception\RuntimeException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;

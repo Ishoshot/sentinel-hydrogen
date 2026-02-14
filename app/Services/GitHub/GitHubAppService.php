@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\GitHub;
 
+use App\Services\GitHub\Builders\GitHubInstallationUrlBuilder;
 use App\Services\GitHub\Contracts\GitHubAppServiceContract;
-use App\Services\GitHub\Support\GitHubInstallationUrlBuilder;
 use App\Services\GitHub\Support\GitHubJwtGenerator;
 use GrahamCampbell\GitHub\GitHubManager;
 use Illuminate\Support\Facades\Cache;

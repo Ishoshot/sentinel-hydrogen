@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Services\GitHub;
 
 use App\Services\GitHub\Contracts\GitHubRateLimiterContract;
+use App\Services\GitHub\Handlers\GitHubRateLimitRetryHandler;
 use App\Services\GitHub\Support\GitHubRateLimitBackoffCalculator;
 use App\Services\GitHub\Support\GitHubRateLimitCooldownEnforcer;
 use App\Services\GitHub\Support\GitHubRateLimitErrorInspector;
-use App\Services\GitHub\Support\GitHubRateLimitRetryHandler;
 use App\Services\GitHub\Support\GitHubRateLimitStateStore;
 use Closure;
 use Github\Exception\RuntimeException;
