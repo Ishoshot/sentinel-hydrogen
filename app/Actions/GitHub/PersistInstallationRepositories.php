@@ -4,13 +4,21 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
+use App\Actions\GitHub\Support\InstallationRepositoryRecordPersister;
+use App\Actions\GitHub\Support\InstallationRepositoryRemover;
 use App\Models\Installation;
-use App\Models\Repository;
-use App\Models\RepositorySettings;
 use Illuminate\Support\Facades\DB;
 
-final class PersistInstallationRepositories
+final readonly class PersistInstallationRepositories
 {
+    /**
+     * Create a new action instance.
+     */
+    public function __construct(
+        private InstallationRepositoryRecordPersister $recordPersister,
+        private InstallationRepositoryRemover $repositoryRemover,
+    ) {}
+
     /**
      * @param  array<int, array{id: int, name: string, full_name: string, private: bool, default_branch?: string, language?: string|null, description?: string|null}>  $githubRepos
      * @return array{added: int, updated: int, removed: int, synced_repository_ids: array<int>, newly_created_repository_ids: array<int>}
@@ -24,39 +32,26 @@ final class PersistInstallationRepositories
         $newlyCreatedRepositoryIds = [];
 
         $result = DB::transaction(function () use ($installation, $githubRepos, &$syncedRepositoryIds, &$newlyCreatedRepositoryIds): array {
-            $existingRepoIds = $installation->repositories()->pluck('github_id')->toArray();
-            $githubRepoIds = array_column($githubRepos, 'id');
+            /** @var array<int, int> $existingRepoIds */
+            $existingRepoIds = array_map(
+                static fn (mixed $githubId): int => (int) $githubId,
+                $installation->repositories()->pluck('github_id')->toArray(),
+            );
+            /** @var array<int, int> $githubRepoIds */
+            $githubRepoIds = array_map(
+                static fn (mixed $githubId): int => (int) $githubId,
+                array_column($githubRepos, 'id'),
+            );
 
             $added = 0;
             $updated = 0;
 
             foreach ($githubRepos as $repoData) {
-                $repository = Repository::query()->updateOrCreate(
-                    [
-                        'installation_id' => $installation->id,
-                        'github_id' => $repoData['id'],
-                    ],
-                    [
-                        'workspace_id' => $installation->workspace_id,
-                        'name' => $repoData['name'],
-                        'full_name' => $repoData['full_name'],
-                        'private' => $repoData['private'],
-                        'default_branch' => $repoData['default_branch'] ?? 'main',
-                        'language' => $repoData['language'] ?? null,
-                        'description' => $repoData['description'] ?? null,
-                    ]
-                );
+                $repository = $this->recordPersister->persistForSync($installation, $repoData);
 
                 if ($repository->wasRecentlyCreated) {
                     $added++;
                     $newlyCreatedRepositoryIds[] = $repository->id;
-
-                    RepositorySettings::query()->create([
-                        'repository_id' => $repository->id,
-                        'workspace_id' => $installation->workspace_id,
-                        'auto_review_enabled' => true,
-                        'review_rules' => null,
-                    ]);
                 } else {
                     $updated++;
                 }
@@ -64,12 +59,7 @@ final class PersistInstallationRepositories
                 $syncedRepositoryIds[] = $repository->id;
             }
 
-            $reposToRemove = array_diff($existingRepoIds, $githubRepoIds);
-            /** @var int $removed */
-            $removed = Repository::query()
-                ->where('installation_id', $installation->id)
-                ->whereIn('github_id', $reposToRemove)
-                ->delete();
+            $removed = $this->repositoryRemover->removeMissingFromSync($installation, $existingRepoIds, $githubRepoIds);
 
             return [
                 'added' => $added,
@@ -100,30 +90,10 @@ final class PersistInstallationRepositories
             $count = 0;
 
             foreach ($repositories as $repoData) {
-                $repository = Repository::query()->firstOrCreate(
-                    [
-                        'installation_id' => $installation->id,
-                        'github_id' => $repoData['id'],
-                    ],
-                    [
-                        'workspace_id' => $installation->workspace_id,
-                        'name' => $repoData['name'],
-                        'full_name' => $repoData['full_name'],
-                        'private' => $repoData['private'],
-                        'default_branch' => 'main',
-                    ]
-                );
+                $repository = $this->recordPersister->persistFromWebhook($installation, $repoData);
 
                 if ($repository->wasRecentlyCreated) {
                     $count++;
-
-                    RepositorySettings::query()->create([
-                        'repository_id' => $repository->id,
-                        'workspace_id' => $installation->workspace_id,
-                        'auto_review_enabled' => true,
-                        'review_rules' => null,
-                    ]);
-
                     $addedRepositoryIds[] = $repository->id;
                 }
             }
@@ -142,14 +112,6 @@ final class PersistInstallationRepositories
      */
     public function removeFromWebhook(Installation $installation, array $repositories): int
     {
-        $githubIds = array_column($repositories, 'id');
-
-        /** @var int $deleted */
-        $deleted = Repository::query()
-            ->where('installation_id', $installation->id)
-            ->whereIn('github_id', $githubIds)
-            ->delete();
-
-        return $deleted;
+        return $this->repositoryRemover->removeFromWebhook($installation, $repositories);
     }
 }

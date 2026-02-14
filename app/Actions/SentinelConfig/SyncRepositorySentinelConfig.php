@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\SentinelConfig;
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
+use App\Actions\SentinelConfig\Support\RepositorySentinelConfigGuidelineGate;
+use App\Actions\SentinelConfig\Support\RepositorySentinelConfigSettingsUpdater;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
-use App\Enums\Billing\PlanFeature;
 use App\Models\Repository;
-use App\Services\Plans\PlanLimitEnforcer;
 use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use Illuminate\Support\Facades\Log;
 
@@ -26,7 +26,8 @@ final readonly class SyncRepositorySentinelConfig
     public function __construct(
         private FetchesSentinelConfig $fetchConfig,
         private SentinelConfigParser $parser,
-        private PlanLimitEnforcer $planLimitEnforcer,
+        private RepositorySentinelConfigSettingsUpdater $settingsUpdater,
+        private RepositorySentinelConfigGuidelineGate $guidelineGate,
     ) {}
 
     /**
@@ -56,10 +57,7 @@ final readonly class SyncRepositorySentinelConfig
 
         // If there was a fetch error (not just "not found"), record it
         if ($fetchResult['error'] !== null && $fetchResult['found'] === false) {
-            $settings->update([
-                'config_synced_at' => now(),
-                'config_error' => $fetchResult['error'],
-            ]);
+            $this->settingsUpdater->markFetchError($settings, $fetchResult['error']);
 
             return [
                 'synced' => false,
@@ -70,11 +68,7 @@ final readonly class SyncRepositorySentinelConfig
 
         // If config file doesn't exist, clear any existing config
         if (! $fetchResult['found']) {
-            $settings->update([
-                'sentinel_config' => null,
-                'config_synced_at' => now(),
-                'config_error' => null,
-            ]);
+            $this->settingsUpdater->clearConfig($settings);
 
             Log::debug('No sentinel config found, cleared existing config', [
                 'repository' => $repository->full_name,
@@ -92,10 +86,7 @@ final readonly class SyncRepositorySentinelConfig
 
         if (! $parseResult['success']) {
             // Store the error but keep any existing valid config
-            $settings->update([
-                'config_synced_at' => now(),
-                'config_error' => $parseResult['error'],
-            ]);
+            $this->settingsUpdater->markParseError($settings, (string) $parseResult['error']);
 
             Log::warning('Sentinel config parse error', [
                 'repository' => $repository->full_name,
@@ -113,35 +104,11 @@ final readonly class SyncRepositorySentinelConfig
         /** @var SentinelConfig $config */
         $config = $parseResult['config'];
 
-        $configError = null;
-        $workspace = $repository->workspace;
+        $guidelineResult = $this->guidelineGate->apply($repository, $config);
+        $config = $guidelineResult['config'];
+        $configError = $guidelineResult['error'];
 
-        if ($workspace !== null && $config->guidelines !== []) {
-            $featureCheck = $this->planLimitEnforcer->ensureFeatureEnabled(
-                $workspace,
-                PlanFeature::CustomGuidelines,
-                'Custom guidelines are not available on your current plan.'
-            );
-
-            if (! $featureCheck->allowed) {
-                $configError = $featureCheck->message;
-                $config = new SentinelConfig(
-                    version: $config->version,
-                    triggers: $config->triggers,
-                    paths: $config->paths,
-                    review: $config->review,
-                    guidelines: [],
-                    annotations: $config->annotations,
-                    provider: $config->provider,
-                );
-            }
-        }
-
-        $settings->update([
-            'sentinel_config' => $config->toArray(),
-            'config_synced_at' => now(),
-            'config_error' => $configError,
-        ]);
+        $this->settingsUpdater->saveConfig($settings, $config, $configError);
 
         Log::info('Sentinel config synced successfully', [
             'repository' => $repository->full_name,
