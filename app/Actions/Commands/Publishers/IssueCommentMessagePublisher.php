@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Commands\Support;
+namespace App\Actions\Commands\Publishers;
 
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 

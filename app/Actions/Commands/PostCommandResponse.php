@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Commands;
 
-use App\Actions\Commands\Support\PostingContextResolver;
+use App\Actions\Commands\Resolvers\PostingContextResolver;
 use App\Actions\Commands\Support\ResponseMarkdownFormatter;
 use App\Models\CommandRun;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;

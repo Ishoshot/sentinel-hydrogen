@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Commands;
 
+use App\Actions\Commands\Publishers\IssueCommentMessagePublisher;
+use App\Actions\Commands\Resolvers\IssueCommentRepositoryContextResolver;
 use App\Actions\Commands\Support\IssueCommentBodyFormatter;
-use App\Actions\Commands\Support\IssueCommentMessagePublisher;
-use App\Actions\Commands\Support\IssueCommentRepositoryContextResolver;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
