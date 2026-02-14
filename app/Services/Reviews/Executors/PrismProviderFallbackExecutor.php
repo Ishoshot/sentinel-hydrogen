@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Reviews\Support;
+namespace App\Services\Reviews\Executors;
 
 use App\DataTransferObjects\SentinelConfig\ProviderConfig;
 use App\Enums\AI\AiProvider;
@@ -15,7 +15,7 @@ use Throwable;
 /**
  * Executes a review across providers with fallback retry support.
  */
-final readonly class PrismReviewFallbackLoop
+final readonly class PrismProviderFallbackExecutor
 {
     private const int MAX_FALLBACK_ATTEMPTS = 3;
 

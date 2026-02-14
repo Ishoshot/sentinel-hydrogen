@@ -9,9 +9,9 @@ use App\Exceptions\NoProviderKeyException;
 use App\Models\Repository;
 use App\Services\Context\ContextBag;
 use App\Services\Reviews\Contracts\ReviewEngine;
-use App\Services\Reviews\Support\PrismProviderReviewExecutor;
-use App\Services\Reviews\Support\PrismReviewFallbackLoop;
-use App\Services\Reviews\Support\PrismReviewProviderResolver;
+use App\Services\Reviews\Executors\PrismProviderFallbackExecutor;
+use App\Services\Reviews\Executors\PrismProviderReviewExecutor;
+use App\Services\Reviews\Resolvers\PrismReviewProviderResolver;
 use App\Services\Reviews\ValueObjects\ReviewResult;
 
 /**
@@ -28,7 +28,7 @@ final readonly class PrismReviewEngine implements ReviewEngine
     public function __construct(
         private PrismReviewProviderResolver $providerResolver,
         private PrismProviderReviewExecutor $providerReviewExecutor,
-        private PrismReviewFallbackLoop $fallbackLoop,
+        private PrismProviderFallbackExecutor $fallbackLoop,
     ) {}
 
     /**

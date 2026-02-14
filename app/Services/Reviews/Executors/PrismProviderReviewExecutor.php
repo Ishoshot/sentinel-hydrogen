@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Reviews\Support;
+namespace App\Services\Reviews\Executors;
 
 use App\DataTransferObjects\SentinelConfig\ProviderConfig;
 use App\Enums\AI\AiProvider;
@@ -10,7 +10,13 @@ use App\Exceptions\NoProviderKeyException;
 use App\Models\ProviderKey;
 use App\Models\Repository;
 use App\Services\Context\ContextBag;
+use App\Services\Reviews\Builders\PrismReviewSchemaBuilder;
+use App\Services\Reviews\Factories\PrismReviewPromptSnapshotFactory;
 use App\Services\Reviews\ModelLimitsResolver;
+use App\Services\Reviews\Parsers\PrismReviewResponseParser;
+use App\Services\Reviews\Resolvers\PrismReviewProviderResolver;
+use App\Services\Reviews\Support\PrismReviewPromptPreparer;
+use App\Services\Reviews\Support\PrismStructuredReviewClient;
 use App\Services\Reviews\ValueObjects\PullRequestMetrics;
 use App\Services\Reviews\ValueObjects\ReviewResult;
 
@@ -21,7 +27,8 @@ final readonly class PrismProviderReviewExecutor
      */
     public function __construct(
         private PrismReviewProviderResolver $providerResolver,
-        private PrismReviewResponseFactory $responseFactory,
+        private PrismReviewResponseParser $responseParser,
+        private PrismReviewSchemaBuilder $schemaBuilder,
         private ModelLimitsResolver $modelLimitsResolver,
         private PrismReviewPromptPreparer $promptPreparer,
         private PrismStructuredReviewClient $structuredReviewClient,
@@ -73,7 +80,7 @@ final readonly class PrismProviderReviewExecutor
             $provider->value,
             $model,
             $apiKey,
-            $this->responseFactory->buildReviewSchema(),
+            $this->schemaBuilder->build(),
             $systemPrompt,
             $userPrompt,
             $outputBudget,
@@ -88,7 +95,7 @@ final readonly class PrismProviderReviewExecutor
             linesDeleted: $inputMetrics['lines_deleted'] ?? 0,
         );
 
-        return $this->responseFactory->parseStructuredResponse(
+        return $this->responseParser->parseStructuredResponse(
             $response,
             $inputMetricsVO,
             $model,

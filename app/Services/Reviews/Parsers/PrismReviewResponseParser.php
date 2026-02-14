@@ -2,32 +2,23 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Reviews\Support;
+namespace App\Services\Reviews\Parsers;
 
+use App\Services\Reviews\Mappers\PrismReviewResultMapper;
 use App\Services\Reviews\ValueObjects\PromptSnapshot;
 use App\Services\Reviews\ValueObjects\PullRequestMetrics;
 use App\Services\Reviews\ValueObjects\ReviewMetrics;
 use App\Services\Reviews\ValueObjects\ReviewResult;
-use Prism\Prism\Schema\ObjectSchema;
 use Prism\Prism\Structured\Response as StructuredResponse;
 
-final readonly class PrismReviewResponseFactory
+final readonly class PrismReviewResponseParser
 {
     /**
      * Create a new instance.
      */
     public function __construct(
-        private PrismReviewSchemaBuilder $schemaBuilder,
         private PrismReviewResultMapper $resultMapper,
     ) {}
-
-    /**
-     * Build the structured output schema for review generation.
-     */
-    public function buildReviewSchema(): ObjectSchema
-    {
-        return $this->schemaBuilder->build();
-    }
 
     /**
      * Parse a structured provider response into a domain review result.
