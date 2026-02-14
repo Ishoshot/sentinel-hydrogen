@@ -6,10 +6,10 @@ namespace App\Services\Reviews;
 
 use App\Models\Finding;
 use App\Models\Run;
-use App\Services\Reviews\Support\RunAnnotationsConfigResolver;
+use App\Services\Reviews\Builders\RunInlineCommentBuilder;
+use App\Services\Reviews\Builders\RunReviewSummaryBuilder;
+use App\Services\Reviews\Resolvers\RunAnnotationsConfigResolver;
 use App\Services\Reviews\Support\RunEligibleFindingSelector;
-use App\Services\Reviews\Support\RunInlineCommentBuilder;
-use App\Services\Reviews\Support\RunReviewSummaryBuilder;
 use Illuminate\Support\Collection;
 
 final readonly class FormatRunAnnotations

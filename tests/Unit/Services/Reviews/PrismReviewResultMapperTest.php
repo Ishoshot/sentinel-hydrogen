@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Services\Reviews\Support\PrismReviewResultMapper;
+use App\Services\Reviews\Mappers\PrismReviewResultMapper;
 
 it('maps summary with defaults for invalid enum values', function (): void {
     $mapper = new PrismReviewResultMapper;

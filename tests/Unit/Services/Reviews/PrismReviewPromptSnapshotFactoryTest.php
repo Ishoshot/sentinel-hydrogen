@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Services\Reviews\Factories\PrismReviewPromptSnapshotFactory;
 use App\Services\Reviews\ReviewPromptBuilder;
-use App\Services\Reviews\Support\PrismReviewPromptSnapshotFactory;
 
 it('builds prompt snapshots with stable versions and hashes', function (): void {
     $factory = new PrismReviewPromptSnapshotFactory;

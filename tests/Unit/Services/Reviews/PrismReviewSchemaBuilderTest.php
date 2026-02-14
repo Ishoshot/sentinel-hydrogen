@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Services\Reviews\Support\PrismReviewSchemaBuilder;
+use App\Services\Reviews\Builders\PrismReviewSchemaBuilder;
 use Prism\Prism\Schema\ArraySchema;
 use Prism\Prism\Schema\ObjectSchema;
 
