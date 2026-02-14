@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Services\CodeIndexing\Support;
+namespace App\Services\CodeIndexing\Executors;
 
 use App\Models\CodeEmbedding;
 use App\Models\Repository;
+use App\Services\CodeIndexing\Mappers\SymbolSearchResultMapper;
 use Illuminate\Database\Eloquent\Builder;
 
 final readonly class SymbolCodeSearchExecutor

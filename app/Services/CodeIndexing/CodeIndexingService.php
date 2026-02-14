@@ -7,12 +7,12 @@ namespace App\Services\CodeIndexing;
 use App\Models\CodeIndex;
 use App\Models\Repository;
 use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;
+use App\Services\CodeIndexing\Dispatchers\IndexBatchDispatcher;
+use App\Services\CodeIndexing\Factories\CodeIndexingPayloadFactory;
+use App\Services\CodeIndexing\Loggers\CodeIndexingTelemetryLogger;
 use App\Services\CodeIndexing\Support\CodeIndexingChangeSetPlanner;
-use App\Services\CodeIndexing\Support\CodeIndexingPayloadFactory;
-use App\Services\CodeIndexing\Support\CodeIndexingTelemetryLogger;
 use App\Services\CodeIndexing\Support\IncrementalChangeSetPreparer;
 use App\Services\CodeIndexing\Support\IndexableFilePolicy;
-use App\Services\CodeIndexing\Support\IndexBatchDispatcher;
 use App\Services\CodeIndexing\Support\RepositoryTreeFetcher;
 use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
 

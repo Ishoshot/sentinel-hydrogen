@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\CodeIndexing\Support;
+namespace App\Services\CodeIndexing\Dispatchers;
 
 use App\Enums\Queue\Queue;
 use App\Jobs\CodeIndexing\IndexCodeBatchJob;
