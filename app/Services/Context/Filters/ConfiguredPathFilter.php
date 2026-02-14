@@ -81,10 +81,6 @@ final readonly class ConfiguredPathFilter implements ContextFilter
             || $removedGuidelines > 0
             || $removedRepositoryContext > 0
         ) {
-            if (Log::getFacadeRoot() === null) {
-                return;
-            }
-
             Log::debug('ConfiguredPathFilter: Applied path rules', [
                 'original_files' => $originalCount,
                 'removed_files' => $removedCount,

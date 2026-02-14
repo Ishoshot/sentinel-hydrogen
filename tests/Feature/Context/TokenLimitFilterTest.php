@@ -3,24 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\Context\ContextBag;
-use App\Services\Context\Contracts\TokenCounter;
 use App\Services\Context\Filters\TokenLimitFilter;
-use App\Services\Context\TokenCounting\AnthropicTokenCounter;
-use App\Services\Context\TokenCounting\CompositeTokenCounter;
-use App\Services\Context\TokenCounting\HeuristicTokenCounter;
-use App\Services\Context\TokenCounting\OpenAiTokenCounter;
-
-beforeEach(function (): void {
-    if ($this->app->bound(TokenCounter::class)) {
-        return;
-    }
-
-    $this->app->singleton(TokenCounter::class, fn (): TokenCounter => new CompositeTokenCounter(
-        app(OpenAiTokenCounter::class),
-        app(AnthropicTokenCounter::class),
-        app(HeuristicTokenCounter::class),
-    ));
-});
 
 it('truncates large individual file patches', function (): void {
     // Create a patch that exceeds the per-file limit (~8000 tokens = ~32000 chars)
