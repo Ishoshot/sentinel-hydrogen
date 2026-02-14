@@ -12,9 +12,8 @@ final readonly class GitHubPullRequestCommitOperations
      * Create a new operations instance.
      */
     public function __construct(
-        private GitHubApiRequestExecutor $requestExecutor,
+        private GitHubInstallationOperationInvoker $operationInvoker,
         private GitHubApiPayloadFactory $payloadFactory,
-        private GitHubApiResponseGuard $responseGuard,
     ) {}
 
     /**
@@ -22,11 +21,11 @@ final readonly class GitHubPullRequestCommitOperations
      */
     public function getPullRequest(int $installationId, string $owner, string $repo, int $number): array
     {
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             sprintf('getPullRequest(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): mixed => $github->connection()->pullRequest()->show($owner, $repo, $number),
-        ));
+        );
     }
 
     /**
@@ -34,11 +33,11 @@ final readonly class GitHubPullRequestCommitOperations
      */
     public function getPullRequestFiles(int $installationId, string $owner, string $repo, int $number): array
     {
-        return $this->responseGuard->listOfMaps($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->listOfMaps(
             $installationId,
             sprintf('getPullRequestFiles(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): mixed => $github->connection()->pullRequest()->files($owner, $repo, $number),
-        ));
+        );
     }
 
     /**
@@ -57,11 +56,11 @@ final readonly class GitHubPullRequestCommitOperations
     ): array {
         $params = $this->payloadFactory->pullRequestReview($body, $event, $comments, $commitId);
 
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             sprintf('createPullRequestReview(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): array => $github->connection()->pullRequest()->reviews()->create($owner, $repo, $number, $params),
-        ));
+        );
     }
 
     /**
@@ -81,7 +80,7 @@ final readonly class GitHubPullRequestCommitOperations
     ): array {
         $params = $this->payloadFactory->checkRun($name, $headSha, $status, $conclusion, $summary, $annotations);
 
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             sprintf('createCheckRun(%s/%s@%s)', $owner, $repo, mb_substr($headSha, 0, 7)),
             function (GitHubManager $github) use ($owner, $repo, $params): mixed {
@@ -90,7 +89,7 @@ final readonly class GitHubPullRequestCommitOperations
 
                 return $repoApi->checkRuns()->create($owner, $repo, $params);
             }
-        ));
+        );
     }
 
     /**
@@ -105,7 +104,7 @@ final readonly class GitHubPullRequestCommitOperations
         string $head,
         string $base
     ): array {
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             sprintf('createPullRequest(%s/%s %s->%s)', $owner, $repo, $head, $base),
             fn (GitHubManager $github): array => $github->connection()->pullRequest()->create($owner, $repo, [
@@ -114,6 +113,6 @@ final readonly class GitHubPullRequestCommitOperations
                 'head' => $head,
                 'base' => $base,
             ]),
-        ));
+        );
     }
 }

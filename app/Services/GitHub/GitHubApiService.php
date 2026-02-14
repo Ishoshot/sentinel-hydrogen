@@ -7,7 +7,7 @@ namespace App\Services\GitHub;
 use App\Models\Installation;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\GitHub\Support\GitHubApiRequestExecutor;
-use App\Services\GitHub\Support\GitHubApiResponseGuard;
+use App\Services\GitHub\Support\GitHubAppOperationInvoker;
 use App\Services\GitHub\Support\GitHubInstallationRepositoriesPaginator;
 use App\Services\GitHub\Support\GitHubIssueCommentOperations;
 use App\Services\GitHub\Support\GitHubPullRequestCommitOperations;
@@ -20,12 +20,12 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      * Create a new service instance.
      */
     public function __construct(
+        private GitHubAppOperationInvoker $appOperationInvoker,
         private GitHubApiRequestExecutor $requestExecutor,
         private GitHubInstallationRepositoriesPaginator $repositoriesPaginator,
         private GitHubRepositoryContentOperations $repositoryContentOperations,
         private GitHubPullRequestCommitOperations $pullRequestCommitOperations,
         private GitHubIssueCommentOperations $issueCommentOperations,
-        private GitHubApiResponseGuard $responseGuard,
     ) {}
 
     /**
@@ -36,10 +36,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getInstallation(int $installationId): array
     {
-        return $this->responseGuard->map($this->requestExecutor->runApp(
+        return $this->appOperationInvoker->map(
             sprintf('getInstallation(%d)', $installationId),
             fn (GitHubManager $github): array => $github->connection()->apps()->getInstallation($installationId),
-        ));
+        );
     }
 
     /**

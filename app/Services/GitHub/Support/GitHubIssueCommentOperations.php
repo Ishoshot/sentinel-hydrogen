@@ -12,8 +12,7 @@ final readonly class GitHubIssueCommentOperations
      * Create a new operations instance.
      */
     public function __construct(
-        private GitHubApiRequestExecutor $requestExecutor,
-        private GitHubApiResponseGuard $responseGuard,
+        private GitHubInstallationOperationInvoker $operationInvoker,
     ) {}
 
     /**
@@ -61,11 +60,11 @@ final readonly class GitHubIssueCommentOperations
      */
     public function getIssue(int $installationId, string $owner, string $repo, int $number): array
     {
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             sprintf('getIssue(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): array => $github->connection()->issue()->show($owner, $repo, $number),
-        ));
+        );
     }
 
     /**
@@ -73,11 +72,11 @@ final readonly class GitHubIssueCommentOperations
      */
     public function getIssueComments(int $installationId, string $owner, string $repo, int $number): array
     {
-        return $this->responseGuard->listOfMaps($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->listOfMaps(
             $installationId,
             sprintf('getIssueComments(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): array => $github->connection()->issue()->comments()->all($owner, $repo, $number),
-        ));
+        );
     }
 
     /**
@@ -139,11 +138,11 @@ final readonly class GitHubIssueCommentOperations
         int $number,
         string $body
     ): array {
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             $operationName,
             fn (GitHubManager $github): array => $github->connection()->issue()->comments()->create($owner, $repo, $number, ['body' => $body]),
-        ));
+        );
     }
 
     /**
@@ -157,10 +156,10 @@ final readonly class GitHubIssueCommentOperations
         int $commentId,
         string $body
     ): array {
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             $operationName,
             fn (GitHubManager $github): array => $github->connection()->issue()->comments()->update($owner, $repo, $commentId, ['body' => $body]),
-        ));
+        );
     }
 }

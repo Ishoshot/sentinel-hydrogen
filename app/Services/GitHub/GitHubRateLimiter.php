@@ -6,12 +6,13 @@ namespace App\Services\GitHub;
 
 use App\Services\GitHub\Contracts\GitHubRateLimiterContract;
 use App\Services\GitHub\Support\GitHubRateLimitBackoffCalculator;
+use App\Services\GitHub\Support\GitHubRateLimitCooldownEnforcer;
 use App\Services\GitHub\Support\GitHubRateLimitErrorInspector;
+use App\Services\GitHub\Support\GitHubRateLimitRetryHandler;
 use App\Services\GitHub\Support\GitHubRateLimitStateStore;
 use Closure;
 use Github\Exception\RuntimeException;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Sleep;
 use Throwable;
 
 /**
@@ -35,6 +36,8 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
         private ?GitHubRateLimitStateStore $stateStore = null,
         private ?GitHubRateLimitErrorInspector $errorInspector = null,
         private ?GitHubRateLimitBackoffCalculator $backoffCalculator = null,
+        private ?GitHubRateLimitCooldownEnforcer $cooldownEnforcer = null,
+        private ?GitHubRateLimitRetryHandler $retryHandler = null,
     ) {}
 
     /**
@@ -56,19 +59,7 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
         while ($attempt < self::MAX_RETRIES) {
             $attempt++;
 
-            $cooldownUntil = $this->stateStore()->getCooldownUntil();
-
-            if (is_int($cooldownUntil) && $cooldownUntil > time()) {
-                $waitTime = $cooldownUntil - time();
-                Log::debug('GitHub rate limit cooldown active', [
-                    'operation' => $operation,
-                    'wait_seconds' => $waitTime,
-                ]);
-
-                if ($waitTime > 0 && $waitTime <= $this->backoffCalculator()->maxDelaySeconds()) {
-                    Sleep::for($waitTime)->seconds();
-                }
-            }
+            $this->cooldownEnforcer()->enforce($operation);
 
             try {
                 $result = $callback();
@@ -77,23 +68,22 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
 
                 return $result;
             } catch (RuntimeException $e) {
-                if ($this->errorInspector()->isRateLimitError($e)) {
-                    $this->handleRateLimitError($e, $attempt, $operation);
-
-                    if ($attempt >= self::MAX_RETRIES) {
-                        Log::error('GitHub rate limit exceeded, max retries reached', [
-                            'operation' => $operation,
-                            'attempts' => $attempt,
-                        ]);
-
-                        throw $e;
-                    }
-
-                    continue;
+                if (! $this->retryHandler()->isRateLimitError($e)) {
+                    throw $e;
                 }
 
-                // Not a rate limit error, rethrow
-                throw $e;
+                $this->retryHandler()->handle($e, $attempt, $operation);
+
+                if ($attempt >= self::MAX_RETRIES) {
+                    Log::error('GitHub rate limit exceeded, max retries reached', [
+                        'operation' => $operation,
+                        'attempts' => $attempt,
+                    ]);
+
+                    throw $e;
+                }
+
+                continue;
             }
         }
 
@@ -126,42 +116,9 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
     }
 
     /**
-     * Handle a rate limit error with exponential backoff.
-     */
-    private function handleRateLimitError(RuntimeException $e, int $attempt, string $operation): void
-    {
-        $delay = $this->backoffCalculator()->calculate($attempt);
-        $resetTime = $this->errorInspector()->extractResetTime($e->getMessage());
-
-        if ($resetTime !== null && $resetTime > time()) {
-            $delay = min($resetTime - time(), $this->backoffCalculator()->maxDelaySeconds());
-            $this->stateStore()->setCooldownUntil($resetTime);
-        }
-
-        Log::warning('GitHub rate limit hit, backing off', [
-            'operation' => $operation,
-            'attempt' => $attempt,
-            'delay_seconds' => $delay,
-            'error' => $e->getMessage(),
-        ]);
-
-        $this->incrementRateLimitCounter();
-
-        Sleep::for((int) ceil($delay))->seconds();
-    }
-
-    /**
      * Reset the backoff state after a successful request.
      */
     private function resetBackoff(): void {}
-
-    /**
-     * Increment the rate limit counter for monitoring.
-     */
-    private function incrementRateLimitCounter(): void
-    {
-        $this->stateStore()->incrementRateLimitHitsThisHour();
-    }
 
     /**
      * StateStore.
@@ -185,5 +142,28 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
     private function backoffCalculator(): GitHubRateLimitBackoffCalculator
     {
         return $this->backoffCalculator ?? new GitHubRateLimitBackoffCalculator;
+    }
+
+    /**
+     * CooldownEnforcer.
+     */
+    private function cooldownEnforcer(): GitHubRateLimitCooldownEnforcer
+    {
+        return $this->cooldownEnforcer ?? new GitHubRateLimitCooldownEnforcer(
+            $this->stateStore(),
+            $this->backoffCalculator(),
+        );
+    }
+
+    /**
+     * RetryHandler.
+     */
+    private function retryHandler(): GitHubRateLimitRetryHandler
+    {
+        return $this->retryHandler ?? new GitHubRateLimitRetryHandler(
+            $this->stateStore(),
+            $this->errorInspector(),
+            $this->backoffCalculator(),
+        );
     }
 }

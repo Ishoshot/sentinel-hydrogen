@@ -13,8 +13,7 @@ final readonly class GitHubRepositoryContentOperations
      * Create a new operations instance.
      */
     public function __construct(
-        private GitHubApiRequestExecutor $requestExecutor,
-        private GitHubApiResponseGuard $responseGuard,
+        private GitHubInstallationOperationInvoker $operationInvoker,
     ) {}
 
     /**
@@ -22,11 +21,11 @@ final readonly class GitHubRepositoryContentOperations
      */
     public function getRepository(int $installationId, string $owner, string $repo): array
     {
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             sprintf('getRepository(%s/%s)', $owner, $repo),
             fn (GitHubManager $github): array => $github->connection()->repo()->show($owner, $repo),
-        ));
+        );
     }
 
     /**
@@ -34,11 +33,11 @@ final readonly class GitHubRepositoryContentOperations
      */
     public function getFileContents(int $installationId, string $owner, string $repo, string $path, ?string $ref): array|string
     {
-        return $this->responseGuard->mapOrString($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->mapOrString(
             $installationId,
             sprintf('getFileContents(%s/%s/%s)', $owner, $repo, $path),
             fn (GitHubManager $github): array|string => $github->connection()->repo()->contents()->show($owner, $repo, $path, $ref),
-        ));
+        );
     }
 
     /**
@@ -51,7 +50,7 @@ final readonly class GitHubRepositoryContentOperations
         string $sha,
         bool $recursive = false
     ): array {
-        return $this->responseGuard->repositoryTree($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->repositoryTree(
             $installationId,
             sprintf('getRepositoryTree(%s/%s@%s)', $owner, $repo, mb_substr($sha, 0, 7)),
             fn (GitHubManager $github): array => $github->connection()->git()->trees()->show(
@@ -60,7 +59,7 @@ final readonly class GitHubRepositoryContentOperations
                 $sha,
                 $recursive
             ),
-        ));
+        );
     }
 
     /**
@@ -68,11 +67,11 @@ final readonly class GitHubRepositoryContentOperations
      */
     public function getReference(int $installationId, string $owner, string $repo, string $ref): array
     {
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             sprintf('getReference(%s/%s@%s)', $owner, $repo, $ref),
             fn (GitHubManager $github): array => $github->connection()->git()->references()->show($owner, $repo, $ref),
-        ));
+        );
     }
 
     /**
@@ -80,14 +79,14 @@ final readonly class GitHubRepositoryContentOperations
      */
     public function createReference(int $installationId, string $owner, string $repo, string $ref, string $sha): array
     {
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             sprintf('createReference(%s/%s@%s)', $owner, $repo, $ref),
             fn (GitHubManager $github): array => $github->connection()->git()->references()->create($owner, $repo, [
                 'ref' => $ref,
                 'sha' => $sha,
             ]),
-        ));
+        );
     }
 
     /**
@@ -102,7 +101,7 @@ final readonly class GitHubRepositoryContentOperations
         string $message,
         string $branch
     ): array {
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->operationInvoker->map(
             $installationId,
             sprintf('createFile(%s/%s/%s)', $owner, $repo, $path),
             fn (GitHubManager $github): array => $github->connection()->repo()->contents()->create(
@@ -113,7 +112,7 @@ final readonly class GitHubRepositoryContentOperations
                 $message,
                 $branch
             ),
-        ));
+        );
     }
 
     /**
