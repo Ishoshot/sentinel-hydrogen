@@ -9,70 +9,46 @@ use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Collectors\LinkedIssueCollector;
+use App\Services\Context\Collectors\Support\LinkedIssueReferenceExtractor;
 use App\Services\Context\ContextBag;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
 it('extracts issue numbers from PR body with Fixes keyword', function (): void {
-    $collector = app(LinkedIssueCollector::class);
+    $extractor = new LinkedIssueReferenceExtractor;
 
-    $reflection = new ReflectionClass($collector);
-    $method = $reflection->getMethod('extractIssueNumbers');
-    $method->setAccessible(true);
-
-    $body = 'This PR fixes #123 and also Fixes #456';
-    $numbers = $method->invoke($collector, $body);
+    $numbers = $extractor->extractIssueNumbers('This PR fixes #123 and also Fixes #456');
 
     expect($numbers)->toContain(123, 456);
 });
 
 it('extracts issue numbers from PR body with Closes keyword', function (): void {
-    $collector = app(LinkedIssueCollector::class);
+    $extractor = new LinkedIssueReferenceExtractor;
 
-    $reflection = new ReflectionClass($collector);
-    $method = $reflection->getMethod('extractIssueNumbers');
-    $method->setAccessible(true);
-
-    $body = 'Closes #789 and closed #101';
-    $numbers = $method->invoke($collector, $body);
+    $numbers = $extractor->extractIssueNumbers('Closes #789 and closed #101');
 
     expect($numbers)->toContain(789, 101);
 });
 
 it('extracts issue numbers from PR body with Resolves keyword', function (): void {
-    $collector = app(LinkedIssueCollector::class);
+    $extractor = new LinkedIssueReferenceExtractor;
 
-    $reflection = new ReflectionClass($collector);
-    $method = $reflection->getMethod('extractIssueNumbers');
-    $method->setAccessible(true);
-
-    $body = 'This resolves #200 and Resolved #201';
-    $numbers = $method->invoke($collector, $body);
+    $numbers = $extractor->extractIssueNumbers('This resolves #200 and Resolved #201');
 
     expect($numbers)->toContain(200, 201);
 });
 
 it('extracts plain issue references', function (): void {
-    $collector = app(LinkedIssueCollector::class);
+    $extractor = new LinkedIssueReferenceExtractor;
 
-    $reflection = new ReflectionClass($collector);
-    $method = $reflection->getMethod('extractIssueNumbers');
-    $method->setAccessible(true);
-
-    $body = 'Related to #50 and see #51 for context';
-    $numbers = $method->invoke($collector, $body);
+    $numbers = $extractor->extractIssueNumbers('Related to #50 and see #51 for context');
 
     expect($numbers)->toContain(50, 51);
 });
 
 it('deduplicates issue numbers', function (): void {
-    $collector = app(LinkedIssueCollector::class);
+    $extractor = new LinkedIssueReferenceExtractor;
 
-    $reflection = new ReflectionClass($collector);
-    $method = $reflection->getMethod('extractIssueNumbers');
-    $method->setAccessible(true);
-
-    $body = 'Fixes #123 and also see #123 again, closes #123';
-    $numbers = $method->invoke($collector, $body);
+    $numbers = $extractor->extractIssueNumbers('Fixes #123 and also see #123 again, closes #123');
 
     expect($numbers)->toHaveCount(1)
         ->and($numbers)->toContain(123);
