@@ -70,7 +70,6 @@ final readonly class PolarSubscriptionSyncPayloadResolver
     }
 
     /**
-     * @param  array<string, mixed>  $updateAttributes
      * @return array<string, mixed>
      */
     private function buildUpdateAttributes(

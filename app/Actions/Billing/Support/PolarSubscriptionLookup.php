@@ -15,6 +15,8 @@ final class PolarSubscriptionLookup
 {
     /**
      * Resolve an existing subscription for subscription lifecycle events.
+     *
+     * @param  array<string, mixed>  $subscriptionPayload
      */
     public function fromLifecyclePayload(array $subscriptionPayload, string $event): ?Subscription
     {
