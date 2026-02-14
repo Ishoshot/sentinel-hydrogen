@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews;
 
-use App\Actions\Reviews\Support\ReviewRunActivityLogger;
-use App\Actions\Reviews\Support\ReviewRunAnnotationDispatcher;
+use App\Actions\Reviews\Checkers\ReviewRunPreflightChecker;
+use App\Actions\Reviews\Dispatchers\ReviewRunAnnotationDispatcher;
+use App\Actions\Reviews\Handlers\ReviewRunFailureHandler;
+use App\Actions\Reviews\Loggers\ReviewRunActivityLogger;
+use App\Actions\Reviews\Resolvers\ReviewRunContextPolicyResolver;
 use App\Actions\Reviews\Support\ReviewRunCompletionPersister;
-use App\Actions\Reviews\Support\ReviewRunContextPolicyResolver;
-use App\Actions\Reviews\Support\ReviewRunFailureHandler;
-use App\Actions\Reviews\Support\ReviewRunPreflightChecker;
 use App\Enums\Reviews\RunStatus;
 use App\Enums\Reviews\SkipReason;
 use App\Exceptions\NoProviderKeyException;

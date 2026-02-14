@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews;
 
-use App\Actions\Reviews\Support\ManualReviewAcknowledgmentCommentPoster;
-use App\Actions\Reviews\Support\ManualReviewEligibilityChecker;
+use App\Actions\Reviews\Checkers\ManualReviewEligibilityChecker;
+use App\Actions\Reviews\Posters\ManualReviewAcknowledgmentCommentPoster;
 use App\Actions\Reviews\Support\ManualReviewPullRequestFetcher;
 use App\Enums\Reviews\RunStatus;
 use App\Models\Repository;

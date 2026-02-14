@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews;
 
-use App\Actions\Reviews\Support\RunAnnotationActivityRecorder;
+use App\Actions\Reviews\Loggers\RunAnnotationActivityRecorder;
+use App\Actions\Reviews\Resolvers\RunAnnotationContextResolver;
 use App\Actions\Reviews\Support\RunAnnotationContext;
-use App\Actions\Reviews\Support\RunAnnotationContextResolver;
 use App\Models\Run;
 use App\Services\Reviews\FormatRunAnnotations;
 use App\Services\Reviews\PublishRunAnnotations;

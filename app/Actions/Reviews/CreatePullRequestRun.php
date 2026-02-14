@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\Reviews;
 
 use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
-use App\Actions\Reviews\Support\PullRequestRunActivityLogger;
-use App\Actions\Reviews\Support\PullRequestRunMetadataBuilder;
-use App\Actions\Reviews\Support\PullRequestRunSkipResolver;
-use App\Actions\Reviews\Support\PullRequestRunUserResolver;
+use App\Actions\Reviews\Builders\PullRequestRunMetadataBuilder;
+use App\Actions\Reviews\Loggers\PullRequestRunActivityLogger;
+use App\Actions\Reviews\Resolvers\PullRequestRunSkipResolver;
+use App\Actions\Reviews\Resolvers\PullRequestRunUserResolver;
 use App\Enums\Reviews\RunStatus;
 use App\Enums\Reviews\SkipReason;
 use App\Models\Repository;
