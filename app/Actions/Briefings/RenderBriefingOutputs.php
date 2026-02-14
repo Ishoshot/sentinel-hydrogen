@@ -6,9 +6,9 @@ namespace App\Actions\Briefings;
 
 use App\Enums\Briefings\BriefingOutputFormat;
 use App\Models\BriefingGeneration;
-use App\Services\Briefings\Support\BriefingOutputFormatResolver;
+use App\Services\Briefings\Resolvers\BriefingOutputFormatResolver;
+use App\Services\Briefings\Resolvers\BriefingOutputStoragePathResolver;
 use App\Services\Briefings\Support\BriefingOutputRenderer;
-use App\Services\Briefings\Support\BriefingOutputStoragePathResolver;
 use App\Services\Briefings\ValueObjects\BriefingOutputFormats;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;

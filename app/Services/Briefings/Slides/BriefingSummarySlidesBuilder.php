@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Briefings\Slides;
 
 use App\Models\Briefing;
-use App\Services\Briefings\Slides\Support\SlideMetricsFactory;
-use App\Services\Briefings\Slides\Support\SlideSummaryTextResolver;
+use App\Services\Briefings\Slides\Factories\SlideMetricsFactory;
+use App\Services\Briefings\Slides\Resolvers\SlideSummaryTextResolver;
 use App\Services\Briefings\ValueObjects\BriefingSlide;
 use App\Services\Briefings\ValueObjects\BriefingSlideBlock;
 use App\Services\Briefings\ValueObjects\BriefingStructuredData;

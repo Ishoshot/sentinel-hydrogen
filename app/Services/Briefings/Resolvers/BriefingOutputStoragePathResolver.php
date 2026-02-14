@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings\Support;
+namespace App\Services\Briefings\Resolvers;
 
 use App\Models\BriefingGeneration;
 
