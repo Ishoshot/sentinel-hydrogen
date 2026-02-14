@@ -67,6 +67,8 @@ final readonly class ImpactAnalysisCollector implements ContextCollector
 
         /** @var Run $run */
         $run = $params['run'];
+        $symbolExtractor = $this->symbolExtractor();
+        $fileSearcher = $this->fileSearcher();
 
         if (! $this->hasCodeIndex($repository)) {
             Log::debug('ImpactAnalysisCollector: Repository has no code index', [
@@ -82,7 +84,7 @@ final readonly class ImpactAnalysisCollector implements ContextCollector
             return;
         }
 
-        $modifiedSymbols = $this->symbolExtractor()->extractModifiedSymbols($bag);
+        $modifiedSymbols = $symbolExtractor->extractModifiedSymbols($bag);
 
         if ($modifiedSymbols === []) {
             Log::debug('ImpactAnalysisCollector: No modified symbols found');
@@ -99,7 +101,7 @@ final readonly class ImpactAnalysisCollector implements ContextCollector
 
         $prFiles = array_column($bag->files, 'filename');
 
-        $impactedFiles = $this->fileSearcher()->findImpactedFiles($repository, $symbolsToSearch, $prFiles, $run);
+        $impactedFiles = $fileSearcher->findImpactedFiles($repository, $symbolsToSearch, $prFiles, $run);
 
         if ($impactedFiles === []) {
             Log::debug('ImpactAnalysisCollector: No impacted files found');

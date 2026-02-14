@@ -40,11 +40,12 @@ final readonly class ImpactedFileBatchFetcher
         }
 
         $maxFileSize = $this->maxFileSize();
+        $contentFetcher = $this->contentFetcher();
         $impactedFiles = [];
 
         foreach ($candidates as $candidate) {
             try {
-                $content = $this->contentFetcher()->fetch(
+                $content = $contentFetcher->fetch(
                     installationId: $coordinates['installation_id'],
                     owner: $coordinates['owner'],
                     repo: $coordinates['repo'],

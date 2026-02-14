@@ -33,11 +33,14 @@ final readonly class ImpactedFileSearcher
      */
     public function findImpactedFiles(Repository $repository, array $symbols, array $excludeFiles, Run $run): array
     {
+        $searchPatternFactory = $this->searchPatternFactory();
+        $candidateCollector = $this->candidateCollector();
+        $batchFetcher = $this->batchFetcher();
         $candidateFiles = [];
         $minRelevanceScore = $this->minRelevanceScore();
 
         foreach ($symbols as $symbol) {
-            $searchPatterns = $this->searchPatternFactory()->build($symbol);
+            $searchPatterns = $searchPatternFactory->build($symbol);
 
             foreach ($searchPatterns as $pattern => $matchType) {
                 $results = $this->codeSearchService->keywordSearch(
@@ -46,7 +49,7 @@ final readonly class ImpactedFileSearcher
                     $this->searchLimitPerSymbol()
                 );
 
-                $candidateFiles = $this->candidateCollector()->collect(
+                $candidateFiles = $candidateCollector->collect(
                     candidates: $candidateFiles,
                     results: $results,
                     symbol: $symbol,
@@ -57,9 +60,9 @@ final readonly class ImpactedFileSearcher
             }
         }
 
-        $candidateFiles = $this->candidateCollector()->rank($candidateFiles, $this->maxFiles());
+        $candidateFiles = $candidateCollector->rank($candidateFiles, $this->maxFiles());
 
-        return $this->batchFetcher()->fetch($repository, $candidateFiles, $run);
+        return $batchFetcher->fetch($repository, $candidateFiles, $run);
     }
 
     /**
