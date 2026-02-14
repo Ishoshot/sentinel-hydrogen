@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Collectors;
 
-use App\DataTransferObjects\SentinelConfig\GuidelineConfig;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Context\Collectors\Support\GuidelineContentFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
-use App\Services\GitHub\Contracts\GitHubApiServiceContract;
-use App\Services\GitHub\Support\GitHubContentDecoder;
 use App\Services\GitHub\Support\RepositoryCoordinatesResolver;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
 /**
  * Collects custom guideline files defined in .sentinel/config.yaml.
@@ -30,25 +27,11 @@ final readonly class GuidelinesCollector implements ContextCollector
     private const int MAX_GUIDELINES = 5;
 
     /**
-     * Maximum content length per file (in bytes).
-     * 50KB limit per file.
-     */
-    private const int MAX_FILE_SIZE = 51200;
-
-    /**
-     * Allowed file extensions for guidelines.
-     *
-     * @var array<string>
-     */
-    private const array ALLOWED_EXTENSIONS = ['md', 'mdx', 'blade.php'];
-
-    /**
      * Create a new GuidelinesCollector instance.
      */
     public function __construct(
-        private GitHubApiServiceContract $gitHubApiService,
+        private GuidelineContentFetcher $contentFetcher,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
-        private GitHubContentDecoder $contentDecoder = new GitHubContentDecoder,
     ) {}
 
     /**
@@ -85,7 +68,6 @@ final readonly class GuidelinesCollector implements ContextCollector
         /** @var Repository $repository */
         $repository = $params['repository'];
 
-        // Get guidelines configuration from metadata
         $guidelineConfigs = $this->getGuidelinesConfig($bag);
 
         if ($guidelineConfigs === []) {
@@ -115,16 +97,15 @@ final readonly class GuidelinesCollector implements ContextCollector
                 break;
             }
 
-            if (! $this->isAllowedFileType($config->path)) {
+            if (! $this->contentFetcher->isAllowedFileType($config->path)) {
                 Log::debug('GuidelinesCollector: Skipping unsupported file type', [
                     'path' => $config->path,
-                    'allowed_extensions' => self::ALLOWED_EXTENSIONS,
                 ]);
 
                 continue;
             }
 
-            $content = $this->fetchGuideline(
+            $content = $this->contentFetcher->fetch(
                 $coordinates->installationId,
                 $coordinates->owner,
                 $coordinates->repo,
@@ -153,7 +134,7 @@ final readonly class GuidelinesCollector implements ContextCollector
     /**
      * Get guidelines configuration from the context bag metadata.
      *
-     * @return array<int, GuidelineConfig>
+     * @return array<int, \App\DataTransferObjects\SentinelConfig\GuidelineConfig>
      */
     private function getGuidelinesConfig(ContextBag $bag): array
     {
@@ -167,88 +148,5 @@ final readonly class GuidelinesCollector implements ContextCollector
         $sentinelConfig = SentinelConfig::fromArray($sentinelConfigData);
 
         return $sentinelConfig->guidelines;
-    }
-
-    /**
-     * Check if a file path has an allowed extension.
-     */
-    private function isAllowedFileType(string $path): bool
-    {
-        $lowerPath = mb_strtolower($path);
-
-        return array_any(self::ALLOWED_EXTENSIONS, static fn (string $extension): bool => str_ends_with($lowerPath, '.'.$extension));
-    }
-
-    /**
-     * Fetch a guideline file from GitHub.
-     */
-    private function fetchGuideline(
-        int $installationId,
-        string $owner,
-        string $repo,
-        string $path
-    ): ?string {
-        try {
-            $response = $this->gitHubApiService->getFileContents(
-                $installationId,
-                $owner,
-                $repo,
-                $path
-            );
-
-            $content = $this->contentDecoder->decode($response);
-
-            if ($content === null) {
-                Log::debug('GuidelinesCollector: Unexpected response format', [
-                    'path' => $path,
-                ]);
-
-                return null;
-            }
-
-            // Enforce size limit
-            if (mb_strlen($content, '8bit') > self::MAX_FILE_SIZE) {
-                Log::info('GuidelinesCollector: Truncating oversized guideline', [
-                    'path' => $path,
-                    'original_size' => mb_strlen($content, '8bit'),
-                    'max_size' => self::MAX_FILE_SIZE,
-                ]);
-
-                return $this->truncateContent($content, $path);
-            }
-
-            return $content;
-        } catch (Throwable $throwable) {
-            Log::debug('GuidelinesCollector: Failed to fetch guideline', [
-                'path' => $path,
-                'error' => $throwable->getMessage(),
-            ]);
-
-            return null;
-        }
-    }
-
-    /**
-     * Truncate content if it exceeds the maximum size.
-     */
-    private function truncateContent(string $content, string $path): string
-    {
-        // Convert to character limit (rough approximation)
-        $charLimit = (int) (self::MAX_FILE_SIZE * 0.9);
-        $truncated = mb_substr($content, 0, $charLimit);
-
-        // Try to break at a paragraph or line boundary
-        $lastParagraph = mb_strrpos($truncated, "\n\n");
-        $lastLine = mb_strrpos($truncated, "\n");
-
-        if ($lastParagraph !== false && $lastParagraph > $charLimit * 0.8) {
-            $truncated = mb_substr($truncated, 0, $lastParagraph);
-        } elseif ($lastLine !== false && $lastLine > $charLimit * 0.9) {
-            $truncated = mb_substr($truncated, 0, $lastLine);
-        }
-
-        $filename = basename($path);
-
-        return $truncated."\n\n[{$filename} truncated due to size limit]";
     }
 }

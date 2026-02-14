@@ -6,13 +6,11 @@ namespace App\Services\Context\Collectors;
 
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Context\Collectors\Support\RepositoryDocumentFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
-use App\Services\GitHub\Contracts\GitHubApiServiceContract;
-use App\Services\GitHub\Support\GitHubContentDecoder;
 use App\Services\GitHub\Support\RepositoryCoordinatesResolver;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
 /**
  * Collects repository context files like README and CONTRIBUTING.
@@ -22,12 +20,6 @@ use Throwable;
  */
 final readonly class RepositoryContextCollector implements ContextCollector
 {
-    /**
-     * Maximum content length for each file (in characters).
-     * ~4000 tokens per file max.
-     */
-    private const int MAX_CONTENT_LENGTH = 16000;
-
     /**
      * Files to attempt to fetch in priority order.
      *
@@ -58,9 +50,8 @@ final readonly class RepositoryContextCollector implements ContextCollector
      * Create a new RepositoryContextCollector instance.
      */
     public function __construct(
-        private GitHubApiServiceContract $gitHubApiService,
+        private RepositoryDocumentFetcher $documentFetcher,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
-        private GitHubContentDecoder $contentDecoder = new GitHubContentDecoder,
     ) {}
 
     /**
@@ -106,8 +97,7 @@ final readonly class RepositoryContextCollector implements ContextCollector
         $context = [];
         $contextPaths = [];
 
-        // Fetch README
-        $readme = $this->fetchFirstAvailable(
+        $readme = $this->documentFetcher->fetchFirstAvailable(
             $coordinates->installationId,
             $coordinates->owner,
             $coordinates->repo,
@@ -115,12 +105,11 @@ final readonly class RepositoryContextCollector implements ContextCollector
         );
 
         if ($readme !== null) {
-            $context['readme'] = $this->truncateContent($readme['content'], 'README');
+            $context['readme'] = $this->documentFetcher->truncateContent($readme['content'], 'README');
             $contextPaths['readme'] = $readme['path'];
         }
 
-        // Fetch CONTRIBUTING guide
-        $contributing = $this->fetchFirstAvailable(
+        $contributing = $this->documentFetcher->fetchFirstAvailable(
             $coordinates->installationId,
             $coordinates->owner,
             $coordinates->repo,
@@ -128,7 +117,7 @@ final readonly class RepositoryContextCollector implements ContextCollector
         );
 
         if ($contributing !== null) {
-            $context['contributing'] = $this->truncateContent($contributing['content'], 'CONTRIBUTING');
+            $context['contributing'] = $this->documentFetcher->truncateContent($contributing['content'], 'CONTRIBUTING');
             $contextPaths['contributing'] = $contributing['path'];
         }
 
@@ -142,96 +131,5 @@ final readonly class RepositoryContextCollector implements ContextCollector
             'has_readme' => isset($context['readme']),
             'has_contributing' => isset($context['contributing']),
         ]);
-    }
-
-    /**
-     * Fetch the first available file from a list of candidates.
-     *
-     * @param  array<string>  $files
-     * @return array{path: string, content: string}|null
-     */
-    private function fetchFirstAvailable(
-        int $installationId,
-        string $owner,
-        string $repo,
-        array $files
-    ): ?array {
-        foreach ($files as $file) {
-            try {
-                $content = $this->fetchFileContent($installationId, $owner, $repo, $file);
-                if ($content !== null && $content !== '') {
-                    return [
-                        'path' => $file,
-                        'content' => $content,
-                    ];
-                }
-            } catch (Throwable) {
-                // File doesn't exist, try next
-                continue;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Fetch file content from GitHub.
-     */
-    private function fetchFileContent(
-        int $installationId,
-        string $owner,
-        string $repo,
-        string $path
-    ): ?string {
-        try {
-            $response = $this->gitHubApiService->getFileContents(
-                $installationId,
-                $owner,
-                $repo,
-                $path
-            );
-            $content = $this->contentDecoder->decode($response);
-
-            if ($content !== null) {
-                return $content;
-            }
-
-            Log::debug('RepositoryContextCollector: Unexpected response format', [
-                'path' => $path,
-            ]);
-
-            return null;
-        } catch (Throwable $throwable) {
-            Log::debug('RepositoryContextCollector: Failed to fetch file', [
-                'path' => $path,
-                'error' => $throwable->getMessage(),
-            ]);
-
-            return null;
-        }
-    }
-
-    /**
-     * Truncate content if it exceeds the maximum length.
-     */
-    private function truncateContent(string $content, string $type): string
-    {
-        if (mb_strlen($content) <= self::MAX_CONTENT_LENGTH) {
-            return $content;
-        }
-
-        $truncated = mb_substr($content, 0, self::MAX_CONTENT_LENGTH);
-
-        // Try to break at a paragraph or line boundary
-        $lastParagraph = mb_strrpos($truncated, "\n\n");
-        $lastLine = mb_strrpos($truncated, "\n");
-
-        if ($lastParagraph !== false && $lastParagraph > self::MAX_CONTENT_LENGTH * 0.8) {
-            $truncated = mb_substr($truncated, 0, $lastParagraph);
-        } elseif ($lastLine !== false && $lastLine > self::MAX_CONTENT_LENGTH * 0.9) {
-            $truncated = mb_substr($truncated, 0, $lastLine);
-        }
-
-        return $truncated."\n\n[{$type} truncated due to length]";
     }
 }

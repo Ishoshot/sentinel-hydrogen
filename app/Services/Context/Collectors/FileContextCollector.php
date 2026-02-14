@@ -6,6 +6,7 @@ namespace App\Services\Context\Collectors;
 
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Context\Collectors\Support\FileSelectionPolicy;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
@@ -23,34 +24,16 @@ use Throwable;
 final readonly class FileContextCollector implements ContextCollector
 {
     /**
-     * Maximum number of files to fetch full content for.
-     */
-    private const int MAX_FILES = 10;
-
-    /**
      * Maximum file size in bytes (skip large files).
      */
     private const int MAX_FILE_SIZE = 50000;
-
-    /**
-     * File extensions to fetch (code files only).
-     */
-    private const array ALLOWED_EXTENSIONS = [
-        'php', 'js', 'ts', 'jsx', 'tsx', 'vue', 'svelte',
-        'py', 'rb', 'go', 'rs', 'java', 'kt', 'scala',
-        'cs', 'cpp', 'c', 'h', 'hpp',
-        'swift', 'dart', 'ex', 'exs',
-        'yaml', 'yml', 'json', 'xml', 'toml',
-        'sql', 'graphql', 'gql',
-        'sh', 'bash', 'zsh',
-        'md', 'mdx', 'txt',
-    ];
 
     /**
      * Create a new FileContextCollector instance.
      */
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,
+        private FileSelectionPolicy $selectionPolicy = new FileSelectionPolicy,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
         private GitHubContentDecoder $contentDecoder = new GitHubContentDecoder,
     ) {}
@@ -109,7 +92,7 @@ final readonly class FileContextCollector implements ContextCollector
             return;
         }
 
-        $filesToFetch = $this->selectFilesToFetch($bag->files);
+        $filesToFetch = $this->selectionPolicy->select($bag->files);
 
         if ($filesToFetch === []) {
             Log::debug('FileContextCollector: No suitable files to fetch', [
@@ -154,37 +137,6 @@ final readonly class FileContextCollector implements ContextCollector
             'files_fetched' => $fetchedCount,
             'files_requested' => count($filesToFetch),
         ]);
-    }
-
-    /**
-     * Select which files to fetch full content for.
-     *
-     * Prioritizes modified files with code changes, skips deleted files
-     * and files that are too large or have unsupported extensions.
-     *
-     * @param  array<int, array{filename: string, status: string, additions: int, deletions: int, changes: int, patch: string|null}>  $files
-     * @return array<int, array{filename: string, status: string, additions: int, deletions: int, changes: int, patch: string|null}>
-     */
-    private function selectFilesToFetch(array $files): array
-    {
-        $candidates = [];
-
-        foreach ($files as $file) {
-            if ($file['status'] === 'removed') {
-                continue;
-            }
-
-            $extension = mb_strtolower(pathinfo($file['filename'], PATHINFO_EXTENSION));
-            if (! in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
-                continue;
-            }
-
-            $candidates[] = $file;
-        }
-
-        usort($candidates, static fn (array $a, array $b): int => $b['changes'] <=> $a['changes']);
-
-        return array_slice($candidates, 0, self::MAX_FILES);
     }
 
     /**
