@@ -100,11 +100,14 @@
             "@php artisan config:clear --ansi",
             "pest --parallel"
         ],
-        "test-all": [
+        "test-all-quality": [
             "@lint:test",
             "@refactor:test",
             "@test:type-coverage",
-            "@test:types",
+            "@test:types"
+        ],
+        "test-all": [
+            "@test-all-quality",
             "@test"
         ],
         "test-code-coverage": [

@@ -1,0 +1,44 @@
+name: Backend Test Bootstrap
+description: Set up PHP, Go semantic analyzer, dependencies, and Laravel app key for backend CI tests.
+
+inputs:
+  setup-go:
+    description: Whether to install Go and build the semantic analyzer binary.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 8.4
+        tools: composer:v2
+        coverage: none
+
+    - name: Setup Go
+      if: ${{ inputs.setup-go == 'true' }}
+      uses: actions/setup-go@v5
+      with:
+        go-version: "1.22"
+        cache-dependency-path: tools/semantic-analyzer/go.sum
+
+    - name: Build Semantic Analyzer
+      if: ${{ inputs.setup-go == 'true' }}
+      shell: bash
+      run: |
+        cd tools/semantic-analyzer
+        go build -o ../../bin/semantic-analyzer .
+
+    - name: Install Dependencies
+      shell: bash
+      run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+    - name: Copy Environment File
+      shell: bash
+      run: cp .env.example .env
+
+    - name: Generate Application Key
+      shell: bash
+      run: php artisan key:generate
