@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Commands\Support;
+namespace App\Actions\Commands\Handlers;
 
 use App\Actions\Commands\PostIssueCommentMessage;
 

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Commands\Support;
+namespace App\Actions\Commands\Checkers;
 
 use App\Enums\Commands\CommandType;
 
-final class IssueCommentReviewCommandGate
+final class IssueCommentReviewCommandChecker
 {
     /**
      * Determine whether the command should trigger a PR manual review.

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Commands;
 
-use App\Actions\Commands\Support\IssueCommentManualReviewResultHandler;
+use App\Actions\Commands\Handlers\IssueCommentManualReviewResultHandler;
 use App\Actions\Reviews\TriggerManualReview;
 use App\Models\Repository;
 use Illuminate\Support\Facades\Log;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Commands\Support;
+namespace App\Actions\Commands\Builders;
 
 /**
  * Builds the metrics footer for command response comments.
