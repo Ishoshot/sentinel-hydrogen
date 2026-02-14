@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\CodeIndexing\Support;
+namespace App\Services\CodeIndexing\Factories;
 
 /**
  * Assembles persistence payloads for code-index records.

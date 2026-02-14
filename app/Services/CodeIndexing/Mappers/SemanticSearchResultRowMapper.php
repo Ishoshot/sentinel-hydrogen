@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\CodeIndexing\Support;
+namespace App\Services\CodeIndexing\Mappers;
 
 use stdClass;
 
