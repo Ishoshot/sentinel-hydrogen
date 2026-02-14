@@ -7,6 +7,7 @@ namespace App\Services\Billing\Support;
 use App\Enums\Billing\BillingInterval;
 use App\Models\Plan;
 use App\Models\Workspace;
+use App\Services\Billing\Resolvers\PolarProductResolver;
 use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
