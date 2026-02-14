@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Queue;
 
 use App\Services\Queue\Contracts\QueueRule;
+use App\Services\Queue\Support\QueueRuleEvaluationRunner;
 use App\Services\Queue\ValueObjects\JobContext;
 use App\Services\Queue\ValueObjects\QueueResolution;
 
@@ -23,6 +24,8 @@ final class QueueResolver
      */
     private array $rules = [];
 
+    private QueueRuleEvaluationRunner $ruleEvaluationRunner;
+
     /**
      * @param  iterable<QueueRule>  $rules
      */
@@ -30,7 +33,10 @@ final class QueueResolver
         iterable $rules = [],
         private readonly QueueScorer $scorer = new QueueScorer(),
         private readonly ResolutionLogger $logger = new ResolutionLogger(),
+        ?QueueRuleEvaluationRunner $ruleEvaluationRunner = null,
     ) {
+        $this->ruleEvaluationRunner = $ruleEvaluationRunner ?? new QueueRuleEvaluationRunner($this->scorer);
+
         foreach ($rules as $rule) {
             $this->addRule($rule);
         }
@@ -62,51 +68,28 @@ final class QueueResolver
      */
     public function resolve(JobContext $context): QueueResolution
     {
-        $trace = [];
-        $scores = $this->scorer->initializeScores();
+        $evaluation = $this->ruleEvaluationRunner->evaluate($this->rules, $context);
 
-        foreach ($this->rules as $rule) {
-            if (! $rule->applies($context)) {
-                $trace[] = [
-                    'rule' => $rule->name(),
-                    'applied' => false,
-                    'reason' => 'Rule does not apply to context',
-                ];
-
-                continue;
-            }
-
-            $result = $rule->evaluate($context);
-
-            $trace[] = [
-                'rule' => $rule->name(),
-                'applied' => true,
-                'result' => $result->toArray(),
-            ];
-
-            // If a rule forces a queue, return immediately
-            if ($result->isForced() && $result->forcedQueue !== null) {
-                return $this->logger->buildResolution(
-                    queue: $result->forcedQueue,
-                    trace: $trace,
-                    context: $context,
-                    forcedBy: $rule->name(),
-                    reason: $result->reason,
-                );
-            }
-
-            // Apply score adjustments
-            if ($result->hasEffect() && $result->targetQueue !== null) {
-                $scores[$result->targetQueue->value] += $result->scoreAdjustment;
-            }
+        if ($evaluation->wasForced() && $evaluation->forcedQueue !== null && $evaluation->forcedBy !== null) {
+            return $this->logger->buildResolution(
+                queue: $evaluation->forcedQueue,
+                trace: $evaluation->trace,
+                context: $context,
+                forcedBy: $evaluation->forcedBy,
+                reason: $evaluation->forcedReason ?? 'Selected by queue rule',
+            );
         }
 
-        // No rule forced a queue, select the highest-scoring queue
+        $scores = $evaluation->scores;
+        if ($scores === []) {
+            $scores = $this->scorer->initializeScores();
+        }
+
         $selectedQueue = $this->scorer->selectByScore($scores);
 
         return $this->logger->buildResolution(
             queue: $selectedQueue,
-            trace: $trace,
+            trace: $evaluation->trace,
             context: $context,
             forcedBy: null,
             reason: 'Selected by highest score',
