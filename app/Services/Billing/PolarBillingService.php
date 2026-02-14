@@ -9,13 +9,15 @@ use App\Models\Plan;
 use App\Models\Promotion;
 use App\Models\Workspace;
 use App\Services\Billing\Contracts\PolarBillingServiceContract;
+use App\Services\Billing\Support\CheckoutPayloadBuilder;
+use App\Services\Billing\Support\CustomerPortalPayloadBuilder;
 use App\Services\Billing\Support\PolarApiClient;
+use App\Services\Billing\Support\PolarProductIdGuard;
 use App\Services\Billing\Support\PolarProductResolver;
 use App\Services\Billing\Support\PolarWebhookVerifier;
 use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
 use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Log;
-use InvalidArgumentException;
 use RuntimeException;
 
 /**
@@ -30,6 +32,9 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
         private PolarProductResolver $productResolver,
         private PolarApiClient $apiClient,
         private PolarWebhookVerifier $webhookVerifier,
+        private PolarProductIdGuard $productIdGuard,
+        private CheckoutPayloadBuilder $checkoutPayloadBuilder,
+        private CustomerPortalPayloadBuilder $customerPortalPayloadBuilder,
     ) {}
 
     /**
@@ -55,46 +60,17 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
         ?string $customerEmail = null,
     ): string {
 
-        $productId = $this->productResolver->resolveProductId($plan->tier, $interval);
+        $productId = $this->productIdGuard->resolve($workspace, $plan, $interval);
 
-        if ($productId === null) {
-            Log::error('Polar product ID not configured', LogContext::merge(
-                LogContext::fromWorkspace($workspace),
-                ['plan_tier' => $plan->tier, 'interval' => $interval->value]
-            ));
-
-            throw new InvalidArgumentException(
-                sprintf('Polar product ID is not configured for %s %s plan.', $interval->value, $plan->tier)
-            );
-        }
-
-        $metadata = [
-            'workspace_id' => (string) $workspace->id,
-            'plan_tier' => $plan->tier,
-            'billing_interval' => $interval->value,
-        ];
-
-        if ($promotion?->id !== null) {
-            $metadata['promotion_id'] = (string) $promotion->id;
-        }
-
-        $payload = [
-            'products' => [$productId],
-            'metadata' => $metadata,
-            'allow_discount_codes' => true,
-        ];
-
-        if ($successUrl !== null && $successUrl !== '') {
-            $payload['success_url'] = $successUrl;
-        }
-
-        if ($promotion instanceof Promotion && $promotion->isValid() && $promotion->polar_discount_id !== null) {
-            $payload['discount_id'] = $promotion->polar_discount_id;
-        }
-
-        if ($customerEmail !== null && $customerEmail !== '') {
-            $payload['customer_email'] = $customerEmail;
-        }
+        $payload = $this->checkoutPayloadBuilder->build(
+            $productId,
+            $workspace,
+            $plan,
+            $interval,
+            $promotion,
+            $successUrl,
+            $customerEmail,
+        );
 
         /** @var array{url?: string} $data */
         $data = $this->apiClient->createCheckoutSession($workspace, $payload);
@@ -126,18 +102,7 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
         BillingInterval $interval = BillingInterval::Monthly,
     ): void {
 
-        $productId = $this->productResolver->resolveProductId($plan->tier, $interval);
-
-        if ($productId === null) {
-            Log::error('Polar product ID not configured', LogContext::merge(
-                LogContext::fromWorkspace($workspace),
-                ['plan_tier' => $plan->tier, 'interval' => $interval->value]
-            ));
-
-            throw new InvalidArgumentException(
-                sprintf('Polar product ID is not configured for %s %s plan.', $interval->value, $plan->tier)
-            );
-        }
+        $productId = $this->productIdGuard->resolve($workspace, $plan, $interval);
 
         $this->apiClient->updateSubscription($workspace, $polarSubscriptionId, [
             'product_id' => $productId,
@@ -173,20 +138,7 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
      */
     public function createCustomerPortalSession(Workspace $workspace, ?string $returnUrl = null): string
     {
-        $subscription = $workspace->subscriptions()->latest()->first();
-        $customerId = $subscription?->polar_customer_id;
-
-        if ($customerId === null || $customerId === '') {
-            Log::warning('Workspace missing Polar customer ID', LogContext::fromWorkspace($workspace));
-
-            throw new InvalidArgumentException('Workspace does not have a Polar customer ID.');
-        }
-
-        $payload = ['customer_id' => $customerId];
-
-        if ($returnUrl !== null && $returnUrl !== '') {
-            $payload['return_url'] = $returnUrl;
-        }
+        $payload = $this->customerPortalPayloadBuilder->build($workspace, $returnUrl);
 
         /** @var array{customer_portal_url?: string} $data */
         $data = $this->apiClient->createCustomerPortalSession($workspace, $payload);

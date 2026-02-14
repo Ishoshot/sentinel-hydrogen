@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Subscriptions;
 
 use App\Actions\Subscriptions\Support\ChangeResponseFactory;
+use App\Actions\Subscriptions\Support\CheckoutInitiator;
+use App\Actions\Subscriptions\Support\DirectPlanApplicator;
 use App\Actions\Subscriptions\Support\PromotionHandler;
 use App\Actions\Subscriptions\Support\ResolvedBillingContext;
 use App\Actions\Subscriptions\Support\TransitionDirection;
@@ -28,6 +30,8 @@ final readonly class ChangeSubscription
         private PolarBillingServiceContract $billingService,
         private ApplyWorkspacePlanChange $applyWorkspacePlanChange,
         private PromotionHandler $promotionHandler,
+        private CheckoutInitiator $checkoutInitiator,
+        private DirectPlanApplicator $directPlanApplicator,
     ) {}
 
     /**
@@ -71,10 +75,10 @@ final readonly class ChangeSubscription
         ?User $actor,
     ): array {
         if ($this->billingService->isConfigured()) {
-            return $this->initiateCheckout($workspace, $plan, $interval, $promotion, $actor);
+            return $this->checkoutInitiator->initiate($workspace, $plan, $interval, $promotion, $actor);
         }
 
-        return $this->applyAndRespond('subscribe', $workspace, $plan, ActivityType::SubscriptionUpgraded, $interval, $promotion, $actor);
+        return $this->directPlanApplicator->apply('subscribe', $workspace, $plan, ActivityType::SubscriptionUpgraded, $interval, $promotion, $actor);
     }
 
     /**
@@ -93,13 +97,13 @@ final readonly class ChangeSubscription
             if ($billing->polarSubscriptionId !== null) {
                 $this->billingService->updateSubscription($workspace, $billing->polarSubscriptionId, $plan, $interval);
 
-                return $this->applyAndRespond('upgrade', $workspace, $plan, ActivityType::SubscriptionUpgraded, $interval, $promotion, $actor);
+                return $this->directPlanApplicator->apply('upgrade', $workspace, $plan, ActivityType::SubscriptionUpgraded, $interval, $promotion, $actor);
             }
 
-            return $this->initiateCheckout($workspace, $plan, $interval, $promotion, $actor);
+            return $this->checkoutInitiator->initiate($workspace, $plan, $interval, $promotion, $actor);
         }
 
-        return $this->applyAndRespond('upgrade', $workspace, $plan, ActivityType::SubscriptionUpgraded, $interval, $promotion, $actor);
+        return $this->directPlanApplicator->apply('upgrade', $workspace, $plan, ActivityType::SubscriptionUpgraded, $interval, $promotion, $actor);
     }
 
     /**
@@ -153,68 +157,5 @@ final readonly class ChangeSubscription
         );
 
         return ChangeResponseFactory::cancel($subscription);
-    }
-
-    /**
-     * Initiate a Polar checkout session and record any pending promotion usage.
-     *
-     * @return array{action: string, checkout_url: string, promotion: array{code: string, discount: string}|null, billing_interval: string}
-     */
-    private function initiateCheckout(
-        Workspace $workspace,
-        Plan $plan,
-        BillingInterval $interval,
-        ?Promotion $promotion,
-        ?User $actor,
-    ): array {
-        $checkoutUrl = $this->billingService->createCheckoutSession(
-            $workspace,
-            $plan,
-            $interval,
-            $promotion,
-            $this->buildSuccessUrl(),
-            $actor?->email,
-        );
-
-        $this->promotionHandler->recordPendingCheckout($workspace, $promotion, $checkoutUrl);
-
-        return ChangeResponseFactory::checkout($checkoutUrl, $promotion, $interval);
-    }
-
-    /**
-     * Apply a plan change directly and record any completed promotion usage.
-     *
-     * @return array{action: string, subscription: Subscription, billing_interval: string}
-     */
-    private function applyAndRespond(
-        string $action,
-        Workspace $workspace,
-        Plan $plan,
-        ActivityType $activityType,
-        BillingInterval $interval,
-        ?Promotion $promotion,
-        ?User $actor,
-    ): array {
-        $subscription = $this->applyWorkspacePlanChange->applyActivePlan(
-            $workspace,
-            $plan,
-            $activityType,
-            $actor,
-        );
-
-        $this->promotionHandler->recordCompleted($workspace, $promotion, $subscription);
-
-        return ChangeResponseFactory::subscription($action, $subscription, $interval);
-    }
-
-    /**
-     * Build the checkout success redirect URL template.
-     */
-    private function buildSuccessUrl(): string
-    {
-        /** @var string $frontendUrl */
-        $frontendUrl = config('app.frontend_url');
-
-        return $frontendUrl.'/billing/success?checkout_id={CHECKOUT_ID}';
     }
 }
