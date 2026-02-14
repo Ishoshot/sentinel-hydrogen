@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Plans\Support;
+namespace App\Services\Plans\Loggers;
 
 use App\Actions\Activities\LogActivity;
 use App\Enums\Billing\PlanFeature;

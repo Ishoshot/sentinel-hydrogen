@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Plans\Support;
+namespace App\Services\Plans\Checkers;
 
 use App\Models\Workspace;
+use App\Services\Plans\Loggers\PlanLimitEventLogger;
 use App\Services\Plans\ValueObjects\PlanLimitResult;
 
 /**
