@@ -8,7 +8,7 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
-use App\Services\GitHub\GitHubApiService;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -28,7 +28,7 @@ final readonly class PullRequestCommentCollector implements ContextCollector
     /**
      * Create a new PullRequestCommentCollector instance.
      */
-    public function __construct(private GitHubApiService $gitHubApiService) {}
+    public function __construct(private GitHubApiServiceContract $gitHubApiService) {}
 
     /**
      * {@inheritdoc}

@@ -11,6 +11,8 @@ use App\Models\Run;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Services\GitHub\Support\GitHubContentDecoder;
+use App\Services\GitHub\Support\RepositoryCoordinatesResolver;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -43,7 +45,11 @@ final readonly class GuidelinesCollector implements ContextCollector
     /**
      * Create a new GuidelinesCollector instance.
      */
-    public function __construct(private GitHubApiServiceContract $gitHubApiService) {}
+    public function __construct(
+        private GitHubApiServiceContract $gitHubApiService,
+        private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
+        private GitHubContentDecoder $contentDecoder = new GitHubContentDecoder,
+    ) {}
 
     /**
      * {@inheritdoc}
@@ -86,28 +92,15 @@ final readonly class GuidelinesCollector implements ContextCollector
             return;
         }
 
-        $repository->loadMissing('installation');
-        $installation = $repository->installation;
+        $coordinates = $this->coordinatesResolver->resolve($repository);
 
-        if ($installation === null) {
+        if (! $coordinates instanceof \App\Services\GitHub\ValueObjects\RepositoryCoordinates) {
             Log::warning('GuidelinesCollector: Repository has no installation', [
                 'repository_id' => $repository->id,
             ]);
 
             return;
         }
-
-        $fullName = $repository->full_name ?? '';
-        if ($fullName === '' || ! str_contains((string) $fullName, '/')) {
-            Log::warning('GuidelinesCollector: Invalid repository full name', [
-                'repository_id' => $repository->id,
-            ]);
-
-            return;
-        }
-
-        [$owner, $repo] = explode('/', (string) $fullName, 2);
-        $installationId = $installation->installation_id;
 
         $guidelines = [];
         $fetchedCount = 0;
@@ -131,7 +124,12 @@ final readonly class GuidelinesCollector implements ContextCollector
                 continue;
             }
 
-            $content = $this->fetchGuideline($installationId, $owner, $repo, $config->path);
+            $content = $this->fetchGuideline(
+                $coordinates->installationId,
+                $coordinates->owner,
+                $coordinates->repo,
+                $config->path
+            );
 
             if ($content !== null) {
                 $guidelines[] = [
@@ -146,7 +144,7 @@ final readonly class GuidelinesCollector implements ContextCollector
         $bag->guidelines = $guidelines;
 
         Log::info('GuidelinesCollector: Collected guidelines', [
-            'repository' => $fullName,
+            'repository' => $coordinates->fullName,
             'configured' => count($guidelineConfigs),
             'fetched' => count($guidelines),
         ]);
@@ -198,9 +196,13 @@ final readonly class GuidelinesCollector implements ContextCollector
                 $path
             );
 
-            $content = $this->extractContent($response, $path);
+            $content = $this->contentDecoder->decode($response);
 
             if ($content === null) {
+                Log::debug('GuidelinesCollector: Unexpected response format', [
+                    'path' => $path,
+                ]);
+
                 return null;
             }
 
@@ -224,37 +226,6 @@ final readonly class GuidelinesCollector implements ContextCollector
 
             return null;
         }
-    }
-
-    /**
-     * Extract content from GitHub API response.
-     */
-    private function extractContent(mixed $response, string $path): ?string
-    {
-        // Handle string response (already decoded)
-        if (is_string($response)) {
-            return $response;
-        }
-
-        // Handle array response (base64 encoded)
-        if (is_array($response) && isset($response['content']) && is_string($response['content'])) {
-            $content = $response['content'];
-            $encoding = $response['encoding'] ?? 'base64';
-
-            if ($encoding === 'base64') {
-                $decoded = base64_decode(str_replace("\n", '', $content), true);
-
-                return $decoded !== false ? $decoded : null;
-            }
-
-            return $content;
-        }
-
-        Log::debug('GuidelinesCollector: Unexpected response format', [
-            'path' => $path,
-        ]);
-
-        return null;
     }
 
     /**

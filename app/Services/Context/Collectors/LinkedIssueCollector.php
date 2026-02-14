@@ -6,9 +6,11 @@ namespace App\Services\Context\Collectors;
 
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Context\Collectors\Support\LinkedIssueReferenceExtractor;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
-use App\Services\GitHub\GitHubApiService;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Services\GitHub\Support\RepositoryCoordinatesResolver;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -31,20 +33,13 @@ final readonly class LinkedIssueCollector implements ContextCollector
     private const int MAX_COMMENTS_PER_ISSUE = 10;
 
     /**
-     * Regex patterns for detecting issue references.
-     *
-     * @var array<string>
-     */
-    private const array ISSUE_PATTERNS = [
-        '/(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*#(\d+)/i',
-        '/(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+(\d+)/i',
-        '/#(\d+)/',
-    ];
-
-    /**
      * Create a new LinkedIssueCollector instance.
      */
-    public function __construct(private GitHubApiService $gitHubApiService) {}
+    public function __construct(
+        private GitHubApiServiceContract $gitHubApiService,
+        private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
+        private LinkedIssueReferenceExtractor $issueReferenceExtractor = new LinkedIssueReferenceExtractor,
+    ) {}
 
     /**
      * {@inheritdoc}
@@ -96,20 +91,11 @@ final readonly class LinkedIssueCollector implements ContextCollector
         $metadata = $run->metadata ?? [];
         $body = is_string($metadata['pull_request_body'] ?? null) ? $metadata['pull_request_body'] : '';
 
-        $repository->loadMissing('installation');
-        $installation = $repository->installation;
+        $coordinates = $this->coordinatesResolver->resolve($repository);
 
-        if ($installation === null) {
+        if (! $coordinates instanceof \App\Services\GitHub\ValueObjects\RepositoryCoordinates) {
             return;
         }
-
-        $fullName = $repository->full_name ?? '';
-        if ($fullName === '' || ! str_contains((string) $fullName, '/')) {
-            return;
-        }
-
-        [$owner, $repo] = explode('/', (string) $fullName, 2);
-        $installationId = $installation->installation_id;
 
         // Extract issue numbers from PR body
         $issueNumbers = $this->extractIssueNumbers($body);
@@ -128,9 +114,9 @@ final readonly class LinkedIssueCollector implements ContextCollector
         foreach ($issueNumbers as $issueNumber) {
             try {
                 $issue = $this->fetchIssueWithComments(
-                    $installationId,
-                    $owner,
-                    $repo,
+                    $coordinates->installationId,
+                    $coordinates->owner,
+                    $coordinates->repo,
                     $issueNumber
                 );
 
@@ -140,7 +126,7 @@ final readonly class LinkedIssueCollector implements ContextCollector
             } catch (Throwable $e) {
                 Log::warning('LinkedIssueCollector: Failed to fetch issue', [
                     'issue_number' => $issueNumber,
-                    'repository' => $fullName,
+                    'repository' => $coordinates->fullName,
                     'error' => $e->getMessage(),
                 ]);
             }
@@ -149,7 +135,7 @@ final readonly class LinkedIssueCollector implements ContextCollector
         $bag->linkedIssues = $linkedIssues;
 
         Log::info('LinkedIssueCollector: Collected linked issues', [
-            'repository' => $fullName,
+            'repository' => $coordinates->fullName,
             'issues_found' => count($issueNumbers),
             'issues_fetched' => count($linkedIssues),
         ]);
@@ -162,20 +148,7 @@ final readonly class LinkedIssueCollector implements ContextCollector
      */
     private function extractIssueNumbers(string $body): array
     {
-        $numbers = [];
-
-        foreach (self::ISSUE_PATTERNS as $pattern) {
-            if (preg_match_all($pattern, $body, $matches)) {
-                foreach ($matches[1] as $match) {
-                    $number = (int) $match;
-                    if ($number > 0 && ! in_array($number, $numbers, true)) {
-                        $numbers[] = $number;
-                    }
-                }
-            }
-        }
-
-        return $numbers;
+        return $this->issueReferenceExtractor->extractIssueNumbers($body);
     }
 
     /**

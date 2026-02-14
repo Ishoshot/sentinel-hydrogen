@@ -8,7 +8,9 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
-use App\Services\GitHub\GitHubApiService;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Services\GitHub\Support\GitHubContentDecoder;
+use App\Services\GitHub\Support\RepositoryCoordinatesResolver;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -47,7 +49,11 @@ final readonly class FileContextCollector implements ContextCollector
     /**
      * Create a new FileContextCollector instance.
      */
-    public function __construct(private GitHubApiService $gitHubApiService) {}
+    public function __construct(
+        private GitHubApiServiceContract $gitHubApiService,
+        private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
+        private GitHubContentDecoder $contentDecoder = new GitHubContentDecoder,
+    ) {}
 
     /**
      * {@inheritdoc}
@@ -87,20 +93,12 @@ final readonly class FileContextCollector implements ContextCollector
         $run = $params['run'];
 
         $metadata = $run->metadata ?? [];
-        $repository->loadMissing('installation');
-        $installation = $repository->installation;
+        $coordinates = $this->coordinatesResolver->resolve($repository);
 
-        if ($installation === null) {
+        if (! $coordinates instanceof \App\Services\GitHub\ValueObjects\RepositoryCoordinates) {
             return;
         }
 
-        $fullName = $repository->full_name ?? '';
-        if ($fullName === '' || ! str_contains((string) $fullName, '/')) {
-            return;
-        }
-
-        [$owner, $repo] = explode('/', (string) $fullName, 2);
-        $installationId = $installation->installation_id;
         $headSha = is_string($metadata['head_sha'] ?? null) ? $metadata['head_sha'] : null;
 
         if ($headSha === null) {
@@ -130,9 +128,9 @@ final readonly class FileContextCollector implements ContextCollector
 
             try {
                 $content = $this->fetchFileContent(
-                    $installationId,
-                    $owner,
-                    $repo,
+                    $coordinates->installationId,
+                    $coordinates->owner,
+                    $coordinates->repo,
                     $filename,
                     $headSha
                 );
@@ -152,7 +150,7 @@ final readonly class FileContextCollector implements ContextCollector
         $bag->fileContents = $fileContents;
 
         Log::info('FileContextCollector: Collected file contents', [
-            'repository' => $fullName,
+            'repository' => $coordinates->fullName,
             'files_fetched' => $fetchedCount,
             'files_requested' => count($filesToFetch),
         ]);
@@ -211,29 +209,17 @@ final readonly class FileContextCollector implements ContextCollector
             return mb_strlen($response) <= self::MAX_FILE_SIZE ? $response : null;
         }
 
-        // @phpstan-ignore function.alreadyNarrowedType (defensive check against GitHub API changes)
-        if (! is_array($response)) {
-            return null;
-        }
-
         $size = $response['size'] ?? 0;
         if (! is_int($size) || $size > self::MAX_FILE_SIZE) {
             return null;
         }
 
-        $content = $response['content'] ?? null;
-        $encoding = $response['encoding'] ?? 'base64';
+        $content = $this->contentDecoder->decode($response);
 
-        if (! is_string($content)) {
+        if ($content === null) {
             return null;
         }
 
-        if ($encoding === 'base64') {
-            $decoded = base64_decode($content, true);
-
-            return $decoded !== false ? $decoded : null;
-        }
-
-        return $content;
+        return mb_strlen($content) <= self::MAX_FILE_SIZE ? $content : null;
     }
 }

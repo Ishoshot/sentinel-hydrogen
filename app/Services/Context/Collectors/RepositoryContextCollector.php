@@ -8,7 +8,9 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
-use App\Services\GitHub\GitHubApiService;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Services\GitHub\Support\GitHubContentDecoder;
+use App\Services\GitHub\Support\RepositoryCoordinatesResolver;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -55,7 +57,11 @@ final readonly class RepositoryContextCollector implements ContextCollector
     /**
      * Create a new RepositoryContextCollector instance.
      */
-    public function __construct(private GitHubApiService $gitHubApiService) {}
+    public function __construct(
+        private GitHubApiServiceContract $gitHubApiService,
+        private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
+        private GitHubContentDecoder $contentDecoder = new GitHubContentDecoder,
+    ) {}
 
     /**
      * {@inheritdoc}
@@ -91,30 +97,20 @@ final readonly class RepositoryContextCollector implements ContextCollector
         /** @var Repository $repository */
         $repository = $params['repository'];
 
-        $repository->loadMissing('installation');
+        $coordinates = $this->coordinatesResolver->resolve($repository);
 
-        $installation = $repository->installation;
-
-        if ($installation === null) {
+        if (! $coordinates instanceof \App\Services\GitHub\ValueObjects\RepositoryCoordinates) {
             return;
         }
-
-        $fullName = $repository->full_name ?? '';
-        if ($fullName === '' || ! str_contains((string) $fullName, '/')) {
-            return;
-        }
-
-        [$owner, $repo] = explode('/', (string) $fullName, 2);
-        $installationId = $installation->installation_id;
 
         $context = [];
         $contextPaths = [];
 
         // Fetch README
         $readme = $this->fetchFirstAvailable(
-            $installationId,
-            $owner,
-            $repo,
+            $coordinates->installationId,
+            $coordinates->owner,
+            $coordinates->repo,
             self::README_FILES
         );
 
@@ -125,9 +121,9 @@ final readonly class RepositoryContextCollector implements ContextCollector
 
         // Fetch CONTRIBUTING guide
         $contributing = $this->fetchFirstAvailable(
-            $installationId,
-            $owner,
-            $repo,
+            $coordinates->installationId,
+            $coordinates->owner,
+            $coordinates->repo,
             self::CONTRIBUTING_FILES
         );
 
@@ -142,7 +138,7 @@ final readonly class RepositoryContextCollector implements ContextCollector
         }
 
         Log::info('RepositoryContextCollector: Collected repository context', [
-            'repository' => $fullName,
+            'repository' => $coordinates->fullName,
             'has_readme' => isset($context['readme']),
             'has_contributing' => isset($context['contributing']),
         ]);
@@ -194,35 +190,15 @@ final readonly class RepositoryContextCollector implements ContextCollector
                 $repo,
                 $path
             );
+            $content = $this->contentDecoder->decode($response);
 
-            // Handle different response formats
-            if (is_string($response)) {
-                return $response;
-            }
-
-            // @phpstan-ignore function.alreadyNarrowedType (defensive check against GitHub API changes)
-            if (! is_array($response)) {
-                Log::debug('RepositoryContextCollector: Unexpected response format', [
-                    'path' => $path,
-                ]);
-
-                return null;
-            }
-
-            // Response is array - check if content is base64 encoded
-            if (isset($response['content']) && is_string($response['content'])) {
-                $content = $response['content'];
-                $encoding = $response['encoding'] ?? 'base64';
-
-                if ($encoding === 'base64') {
-                    // Remove newlines that GitHub adds and decode
-                    $decoded = base64_decode(str_replace("\n", '', $content), true);
-
-                    return $decoded !== false ? $decoded : null;
-                }
-
+            if ($content !== null) {
                 return $content;
             }
+
+            Log::debug('RepositoryContextCollector: Unexpected response format', [
+                'path' => $path,
+            ]);
 
             return null;
         } catch (Throwable $throwable) {

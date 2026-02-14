@@ -9,7 +9,8 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
-use App\Services\GitHub\GitHubApiService;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Services\GitHub\Support\RepositoryCoordinatesResolver;
 use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use App\Support\MetadataExtractor;
 use Illuminate\Support\Facades\Log;
@@ -25,9 +26,10 @@ final readonly class DiffCollector implements ContextCollector
      * Create a new collector instance.
      */
     public function __construct(
-        private GitHubApiService $gitHubApiService,
+        private GitHubApiServiceContract $gitHubApiService,
         private FetchesSentinelConfig $fetchConfig,
         private SentinelConfigParser $configParser,
+        private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
     ) {}
 
     /**
@@ -68,10 +70,9 @@ final readonly class DiffCollector implements ContextCollector
         $run = $params['run'];
 
         $metadata = MetadataExtractor::from($run->metadata ?? []);
-        $repository->loadMissing('installation');
-        $installation = $repository->installation;
+        $coordinates = $this->coordinatesResolver->resolve($repository);
 
-        if ($installation === null) {
+        if (! $coordinates instanceof \App\Services\GitHub\ValueObjects\RepositoryCoordinates) {
             Log::warning('DiffCollector: Repository has no installation', [
                 'repository_id' => $repository->id,
             ]);
@@ -79,17 +80,6 @@ final readonly class DiffCollector implements ContextCollector
             return;
         }
 
-        $fullName = $repository->full_name ?? '';
-        if ($fullName === '' || ! str_contains((string) $fullName, '/')) {
-            Log::warning('DiffCollector: Invalid repository full name', [
-                'repository_id' => $repository->id,
-            ]);
-
-            return;
-        }
-
-        [$owner, $repo] = explode('/', (string) $fullName, 2);
-        $installationId = $installation->installation_id;
         $pullRequestNumber = $metadata->int('pull_request_number');
 
         if ($pullRequestNumber <= 0) {
@@ -98,12 +88,12 @@ final readonly class DiffCollector implements ContextCollector
             return;
         }
 
-        $bag->pullRequest = $this->extractPullRequestData($metadata, $fullName);
+        $bag->pullRequest = $this->extractPullRequestData($metadata, $coordinates->fullName);
 
         $files = $this->gitHubApiService->getPullRequestFiles(
-            $installationId,
-            $owner,
-            $repo,
+            $coordinates->installationId,
+            $coordinates->owner,
+            $coordinates->repo,
             $pullRequestNumber
         );
 
@@ -133,7 +123,7 @@ final readonly class DiffCollector implements ContextCollector
         $bag->metadata['config_from_branch'] = $configResult['branch'];
 
         Log::info('DiffCollector: Collected PR data', [
-            'repository' => $fullName,
+            'repository' => $coordinates->fullName,
             'pr_number' => $pullRequestNumber,
             'files_count' => count($bag->files),
             'files_with_patches' => $bag->getFilesWithPatchCount(),
