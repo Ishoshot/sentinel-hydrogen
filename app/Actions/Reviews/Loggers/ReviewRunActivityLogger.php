@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Reviews\Support;
+namespace App\Actions\Reviews\Loggers;
 
 use App\Actions\Activities\LogActivity;
 use App\Enums\Workspace\ActivityType;
