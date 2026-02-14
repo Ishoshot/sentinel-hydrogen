@@ -4,22 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Subscriptions;
 
-use App\Actions\Activities\LogActivity;
 use App\Enums\Billing\BillingInterval;
 use App\Enums\Billing\PlanTier;
-use App\Enums\Billing\SubscriptionStatus;
-use App\Enums\Promotions\PromotionUsageStatus;
 use App\Enums\Workspace\ActivityType;
 use App\Models\Plan;
 use App\Models\Promotion;
-use App\Models\PromotionUsage;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Billing\PolarBillingService;
+use App\Services\Billing\Contracts\PolarBillingServiceContract;
 use App\Services\Promotions\Contracts\PromotionValidatorContract;
 use App\Support\PlanDefaults;
-use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
@@ -31,9 +26,10 @@ final readonly class ChangeSubscription
      * Create a new action instance.
      */
     public function __construct(
-        private PolarBillingService $billingService,
+        private PolarBillingServiceContract $billingService,
         private PromotionValidatorContract $promotionValidator,
-        private LogActivity $logActivity,
+        private ApplyWorkspacePlanChange $applyWorkspacePlanChange,
+        private RecordPromotionUsage $recordPromotionUsage,
     ) {}
 
     /**
@@ -102,8 +98,6 @@ final readonly class ChangeSubscription
     }
 
     /**
-     * Handle new subscription from free tier to a paid tier.
-     *
      * @return array{action: string, checkout_url?: string, subscription?: Subscription, promotion?: array{code: string, discount: string}|null, billing_interval: string}
      */
     private function handleSubscribe(
@@ -114,48 +108,38 @@ final readonly class ChangeSubscription
         ?User $actor,
     ): array {
         if ($this->billingService->isConfigured()) {
-            $successUrl = $this->buildSuccessUrl();
-
             $checkoutUrl = $this->billingService->createCheckoutSession(
                 $workspace,
                 $plan,
                 $interval,
                 $promotion,
-                $successUrl,
+                $this->buildSuccessUrl(),
                 $actor?->email,
             );
 
             if ($promotion instanceof Promotion) {
-                PromotionUsage::create([
-                    'promotion_id' => $promotion->id,
-                    'workspace_id' => $workspace->id,
-                    'status' => PromotionUsageStatus::Pending,
-                    'checkout_url' => $checkoutUrl,
-                ]);
+                $this->recordPromotionUsage->pendingCheckout($workspace, $promotion, $checkoutUrl);
             }
 
             return [
                 'action' => 'checkout',
                 'checkout_url' => $checkoutUrl,
-                'promotion' => $promotion instanceof Promotion ? [
-                    'code' => $promotion->code,
-                    'discount' => $promotion->discountDisplay(),
-                ] : null,
+                'promotion' => $promotion instanceof Promotion
+                    ? ['code' => $promotion->code, 'discount' => $promotion->discountDisplay()]
+                    : null,
                 'billing_interval' => $interval->value,
             ];
         }
 
-        $subscription = $this->applyLocally($workspace, $plan, SubscriptionStatus::Active, ActivityType::SubscriptionUpgraded, $actor);
+        $subscription = $this->applyWorkspacePlanChange->applyActivePlan(
+            $workspace,
+            $plan,
+            ActivityType::SubscriptionUpgraded,
+            $actor,
+        );
 
         if ($promotion instanceof Promotion) {
-            PromotionUsage::create([
-                'promotion_id' => $promotion->id,
-                'workspace_id' => $workspace->id,
-                'subscription_id' => $subscription->id,
-                'status' => PromotionUsageStatus::Completed,
-                'confirmed_at' => now(),
-            ]);
-            $promotion->incrementUsage();
+            $this->recordPromotionUsage->completed($workspace, $promotion, $subscription);
         }
 
         return [
@@ -166,8 +150,6 @@ final readonly class ChangeSubscription
     }
 
     /**
-     * Handle upgrade from one paid tier to a higher paid tier.
-     *
      * @return array{action: string, checkout_url?: string, subscription?: Subscription, promotion?: array{code: string, discount: string}|null, billing_interval: string}
      */
     private function handleUpgrade(
@@ -184,17 +166,15 @@ final readonly class ChangeSubscription
             if (is_string($polarSubscriptionId) && $polarSubscriptionId !== '') {
                 $this->billingService->updateSubscription($workspace, $polarSubscriptionId, $plan, $interval);
 
-                $subscription = $this->applyLocally($workspace, $plan, SubscriptionStatus::Active, ActivityType::SubscriptionUpgraded, $actor);
+                $subscription = $this->applyWorkspacePlanChange->applyActivePlan(
+                    $workspace,
+                    $plan,
+                    ActivityType::SubscriptionUpgraded,
+                    $actor,
+                );
 
                 if ($promotion instanceof Promotion) {
-                    PromotionUsage::create([
-                        'promotion_id' => $promotion->id,
-                        'workspace_id' => $workspace->id,
-                        'subscription_id' => $subscription->id,
-                        'status' => PromotionUsageStatus::Completed,
-                        'confirmed_at' => now(),
-                    ]);
-                    $promotion->incrementUsage();
+                    $this->recordPromotionUsage->completed($workspace, $promotion, $subscription);
                 }
 
                 return [
@@ -204,48 +184,38 @@ final readonly class ChangeSubscription
                 ];
             }
 
-            $successUrl = $this->buildSuccessUrl();
-
             $checkoutUrl = $this->billingService->createCheckoutSession(
                 $workspace,
                 $plan,
                 $interval,
                 $promotion,
-                $successUrl,
+                $this->buildSuccessUrl(),
                 $actor?->email,
             );
 
             if ($promotion instanceof Promotion) {
-                PromotionUsage::create([
-                    'promotion_id' => $promotion->id,
-                    'workspace_id' => $workspace->id,
-                    'status' => PromotionUsageStatus::Pending,
-                    'checkout_url' => $checkoutUrl,
-                ]);
+                $this->recordPromotionUsage->pendingCheckout($workspace, $promotion, $checkoutUrl);
             }
 
             return [
                 'action' => 'checkout',
                 'checkout_url' => $checkoutUrl,
-                'promotion' => $promotion instanceof Promotion ? [
-                    'code' => $promotion->code,
-                    'discount' => $promotion->discountDisplay(),
-                ] : null,
+                'promotion' => $promotion instanceof Promotion
+                    ? ['code' => $promotion->code, 'discount' => $promotion->discountDisplay()]
+                    : null,
                 'billing_interval' => $interval->value,
             ];
         }
 
-        $subscription = $this->applyLocally($workspace, $plan, SubscriptionStatus::Active, ActivityType::SubscriptionUpgraded, $actor);
+        $subscription = $this->applyWorkspacePlanChange->applyActivePlan(
+            $workspace,
+            $plan,
+            ActivityType::SubscriptionUpgraded,
+            $actor,
+        );
 
         if ($promotion instanceof Promotion) {
-            PromotionUsage::create([
-                'promotion_id' => $promotion->id,
-                'workspace_id' => $workspace->id,
-                'subscription_id' => $subscription->id,
-                'status' => PromotionUsageStatus::Completed,
-                'confirmed_at' => now(),
-            ]);
-            $promotion->incrementUsage();
+            $this->recordPromotionUsage->completed($workspace, $promotion, $subscription);
         }
 
         return [
@@ -256,8 +226,6 @@ final readonly class ChangeSubscription
     }
 
     /**
-     * Handle downgrade from one paid tier to a lower paid tier.
-     *
      * @return array{action: string, subscription: Subscription, billing_interval: string}
      */
     private function handleDowngrade(
@@ -275,7 +243,12 @@ final readonly class ChangeSubscription
             }
         }
 
-        $subscription = $this->applyLocally($workspace, $plan, SubscriptionStatus::Active, ActivityType::SubscriptionDowngraded, $actor);
+        $subscription = $this->applyWorkspacePlanChange->applyActivePlan(
+            $workspace,
+            $plan,
+            ActivityType::SubscriptionDowngraded,
+            $actor,
+        );
 
         return [
             'action' => 'downgrade',
@@ -285,15 +258,14 @@ final readonly class ChangeSubscription
     }
 
     /**
-     * Handle cancellation (paid tier to Foundation/free).
-     *
      * @return array{action: string, subscription: Subscription, billing_interval: string}
      */
     private function handleCancel(Workspace $workspace, ?User $actor): array
     {
-        if ($this->billingService->isConfigured()) {
-            $latestSubscription = $workspace->subscriptions()->latest()->first();
-            $polarSubscriptionId = $latestSubscription?->polar_subscription_id;
+        $latestSubscription = $workspace->subscriptions()->latest()->first();
+
+        if ($this->billingService->isConfigured() && $latestSubscription !== null) {
+            $polarSubscriptionId = $latestSubscription->polar_subscription_id;
 
             if (is_string($polarSubscriptionId) && $polarSubscriptionId !== '') {
                 $this->billingService->revokeSubscription($workspace, $polarSubscriptionId);
@@ -305,31 +277,12 @@ final readonly class ChangeSubscription
             PlanDefaults::forTier(PlanTier::Foundation)
         );
 
-        $subscription = DB::transaction(function () use ($workspace, $foundationPlan, $actor): Subscription {
-            $workspace->forceFill([
-                'plan_id' => $foundationPlan->id,
-                'subscription_status' => SubscriptionStatus::Canceled,
-            ])->save();
-
-            $subscription = Subscription::create([
-                'workspace_id' => $workspace->id,
-                'plan_id' => $foundationPlan->id,
-                'status' => SubscriptionStatus::Canceled,
-                'started_at' => now(),
-                'ends_at' => now(),
-            ]);
-
-            $this->logActivity->handle(
-                workspace: $workspace,
-                type: ActivityType::SubscriptionCanceled,
-                description: 'Subscription canceled and downgraded to Foundation plan',
-                actor: $actor,
-                subject: $subscription,
-                metadata: ['plan_tier' => $foundationPlan->tier],
-            );
-
-            return $subscription;
-        });
+        $subscription = $this->applyWorkspacePlanChange->cancelToFoundation(
+            $workspace,
+            $foundationPlan,
+            $latestSubscription,
+            $actor,
+        );
 
         return [
             'action' => 'cancel',
@@ -339,50 +292,7 @@ final readonly class ChangeSubscription
     }
 
     /**
-     * Apply subscription change locally (database only).
-     */
-    private function applyLocally(
-        Workspace $workspace,
-        Plan $plan,
-        SubscriptionStatus $status,
-        ActivityType $activityType,
-        ?User $actor,
-    ): Subscription {
-        return DB::transaction(function () use ($workspace, $plan, $status, $activityType, $actor): Subscription {
-            $workspace->forceFill([
-                'plan_id' => $plan->id,
-                'subscription_status' => $status,
-            ])->save();
-
-            // Set initial billing period (one month from now for local/dev)
-            $periodStart = now();
-            $periodEnd = now()->addMonth();
-
-            $subscription = Subscription::create([
-                'workspace_id' => $workspace->id,
-                'plan_id' => $plan->id,
-                'status' => $status,
-                'started_at' => now(),
-                'ends_at' => null,
-                'current_period_start' => $periodStart,
-                'current_period_end' => $periodEnd,
-            ]);
-
-            $this->logActivity->handle(
-                workspace: $workspace,
-                type: $activityType,
-                description: sprintf('Subscription %s to %s plan', $activityType === ActivityType::SubscriptionDowngraded ? 'downgraded' : 'upgraded', ucfirst($plan->tier)),
-                actor: $actor,
-                subject: $subscription,
-                metadata: ['plan_tier' => $plan->tier],
-            );
-
-            return $subscription;
-        });
-    }
-
-    /**
-     * Build the success URL for Polar checkout redirects.
+     * Build the checkout success redirect URL template.
      */
     private function buildSuccessUrl(): string
     {

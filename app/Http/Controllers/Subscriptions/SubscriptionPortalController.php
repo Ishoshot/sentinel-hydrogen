@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Subscriptions;
 
 use App\Models\Workspace;
-use App\Services\Billing\PolarBillingService;
+use App\Services\Billing\Contracts\PolarBillingServiceContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -17,7 +17,7 @@ final class SubscriptionPortalController
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Workspace $workspace, PolarBillingService $billingService): JsonResponse
+    public function __invoke(Workspace $workspace, PolarBillingServiceContract $billingService): JsonResponse
     {
         Gate::authorize('manageSubscription', $workspace);
 

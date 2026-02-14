@@ -43,6 +43,7 @@ enum ActivityType: string
     case SubscriptionUpgraded = 'subscription.upgraded';
     case SubscriptionDowngraded = 'subscription.downgraded';
     case SubscriptionCanceled = 'subscription.canceled';
+    case SubscriptionExpired = 'subscription.expired';
     case PlanLimitReached = 'plan.limit_reached';
 
     /**
@@ -83,6 +84,7 @@ enum ActivityType: string
             self::SubscriptionUpgraded => 'Subscription Upgraded',
             self::SubscriptionDowngraded => 'Subscription Downgraded',
             self::SubscriptionCanceled => 'Subscription Canceled',
+            self::SubscriptionExpired => 'Subscription Expired',
             self::PlanLimitReached => 'Plan Limit Reached',
         };
     }
@@ -117,6 +119,7 @@ enum ActivityType: string
             self::SubscriptionUpgraded => 'arrow-up-right',
             self::SubscriptionDowngraded => 'arrow-down-right',
             self::SubscriptionCanceled => 'x-circle',
+            self::SubscriptionExpired => 'clock',
             self::PlanLimitReached => 'alert-triangle',
         };
     }
@@ -151,6 +154,7 @@ enum ActivityType: string
             self::SubscriptionUpgraded,
             self::SubscriptionDowngraded,
             self::SubscriptionCanceled,
+            self::SubscriptionExpired,
             self::PlanLimitReached => 'billing',
         };
     }
