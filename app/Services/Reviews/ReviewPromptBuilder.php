@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Reviews;
 
 use App\Services\Context\ContextBag;
-use App\Services\GitHub\GitHubApiService;
 use App\Support\PromptRenderer;
 
 /**
@@ -20,10 +19,7 @@ final readonly class ReviewPromptBuilder
     /**
      * Create a new builder instance.
      */
-    public function __construct(
-        private GitHubApiService $gitHubApiService,
-        private PromptRenderer $renderer,
-    ) {}
+    public function __construct(private PromptRenderer $renderer) {}
 
     /**
      * Build the system prompt for the AI review engine.
@@ -58,60 +54,5 @@ final readonly class ReviewPromptBuilder
             'project_context' => $bag->projectContext,
             'sensitive_files' => is_array($sensitiveFiles) ? $sensitiveFiles : [],
         ]);
-    }
-
-    /**
-     * Fetch file contents for changed files in the pull request.
-     *
-     * @param  array<int, array{filename: string, additions: int, deletions: int, changes: int}>  $files
-     * @return array<string, string>
-     */
-    public function fetchFileContents(
-        int $installationId,
-        string $owner,
-        string $repo,
-        string $ref,
-        array $files
-    ): array {
-        $contents = [];
-
-        foreach ($files as $file) {
-            $filename = $file['filename'];
-
-            if ($this->shouldSkipFile($filename)) {
-                continue;
-            }
-
-            $content = $this->gitHubApiService->getFileContents(
-                $installationId,
-                $owner,
-                $repo,
-                $filename,
-                $ref
-            );
-
-            if (is_string($content)) {
-                $contents[$filename] = $content;
-            }
-        }
-
-        return $contents;
-    }
-
-    /**
-     * Determine if a file should be skipped based on filename patterns.
-     */
-    private function shouldSkipFile(string $filename): bool
-    {
-        $skipPatterns = [
-            '/^vendor\//',
-            '/^node_modules\//',
-            '/\.lock$/',
-            '/\.min\.(js|css)$/',
-            '/\.map$/',
-            '/^\./',
-        ];
-
-        return array_any($skipPatterns, static fn (string $pattern): bool => preg_match($pattern, $filename) === 1);
     }
 }

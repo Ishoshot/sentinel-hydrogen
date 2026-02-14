@@ -6,7 +6,7 @@ namespace App\Services\Reviews;
 
 use App\Models\Repository;
 use App\Models\Run;
-use App\Services\GitHub\GitHubApiService;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\Logging\LogContext;
 use App\Services\Reviews\Contracts\PullRequestDataResolver;
 use App\Support\MetadataExtractor;
@@ -21,7 +21,7 @@ final readonly class GitHubPullRequestDataResolver implements PullRequestDataRes
     /**
      * Create a new resolver instance.
      */
-    public function __construct(private GitHubApiService $gitHubApiService) {}
+    public function __construct(private GitHubApiServiceContract $gitHubApiService) {}
 
     /**
      * Resolve pull request data from the run metadata and GitHub API.
