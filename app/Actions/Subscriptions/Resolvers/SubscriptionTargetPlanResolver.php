@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Subscriptions\Support;
+namespace App\Actions\Subscriptions\Resolvers;
 
 use App\Enums\Billing\PlanTier;
 use App\Models\Plan;

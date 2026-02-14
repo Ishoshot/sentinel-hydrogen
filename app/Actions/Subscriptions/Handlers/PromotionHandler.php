@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Subscriptions\Support;
+namespace App\Actions\Subscriptions\Handlers;
 
 use App\Actions\Subscriptions\RecordPromotionUsage;
+use App\Actions\Subscriptions\Support\TransitionDirection;
 use App\Models\Promotion;
 use App\Models\Subscription;
 use App\Models\Workspace;

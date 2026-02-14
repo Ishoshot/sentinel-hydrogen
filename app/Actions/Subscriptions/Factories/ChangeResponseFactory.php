@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Subscriptions\Support;
+namespace App\Actions\Subscriptions\Factories;
 
 use App\Enums\Billing\BillingInterval;
 use App\Models\Promotion;

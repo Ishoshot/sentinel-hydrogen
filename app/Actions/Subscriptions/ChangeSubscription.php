@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Actions\Subscriptions;
 
-use App\Actions\Subscriptions\Support\ChangeResponseFactory;
+use App\Actions\Subscriptions\Factories\ChangeResponseFactory;
+use App\Actions\Subscriptions\Handlers\PromotionHandler;
+use App\Actions\Subscriptions\Resolvers\SubscriptionTargetPlanResolver;
 use App\Actions\Subscriptions\Support\CheckoutInitiator;
 use App\Actions\Subscriptions\Support\DirectPlanApplicator;
-use App\Actions\Subscriptions\Support\PromotionHandler;
 use App\Actions\Subscriptions\Support\SubscriptionBillingCoordinator;
-use App\Actions\Subscriptions\Support\SubscriptionTargetPlanResolver;
 use App\Actions\Subscriptions\Support\TransitionDirection;
 use App\Enums\Billing\BillingInterval;
 use App\Enums\Billing\PlanTier;
