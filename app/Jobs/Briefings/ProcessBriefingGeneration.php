@@ -4,22 +4,14 @@ declare(strict_types=1);
 
 namespace App\Jobs\Briefings;
 
+use App\Actions\Briefings\GenerateBriefingContent;
 use App\Enums\Briefings\BriefingGenerationStatus;
 use App\Enums\Queue\Queue;
-use App\Events\Briefings\BriefingGenerationCompleted;
 use App\Events\Briefings\BriefingGenerationFailed;
-use App\Events\Briefings\BriefingGenerationProgress;
-use App\Events\Briefings\BriefingGenerationStarted;
 use App\Models\BriefingGeneration;
-use App\Services\Briefings\BriefingProviderKeyResolver;
-use App\Services\Briefings\Contracts\BriefingDataCollector;
-use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
-use App\Services\Briefings\Contracts\BriefingSlidesBuilder;
-use App\Services\Briefings\ValueObjects\BriefingParameters;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 use Throwable;
 
 final class ProcessBriefingGeneration implements ShouldQueue
@@ -27,11 +19,13 @@ final class ProcessBriefingGeneration implements ShouldQueue
     use Queueable;
 
     /**
-     * The number of seconds the job can run before timing out.
+     * Maximum execution time in seconds for processing generation content.
      */
     public int $timeout;
 
-    /** @param BriefingGeneration $generation The generation to process */
+    /**
+     * Create a new job instance.
+     */
     public function __construct(
         public BriefingGeneration $generation,
     ) {
@@ -39,96 +33,13 @@ final class ProcessBriefingGeneration implements ShouldQueue
         $this->onQueue(Queue::BriefingsDefault->value);
     }
 
-    /** Execute the job. */
-    public function handle(
-        BriefingDataCollector $dataCollector,
-        BriefingNarrativeGenerator $narrativeGenerator,
-        BriefingSlidesBuilder $slidesBuilder,
-        BriefingProviderKeyResolver $providerKeyResolver,
-    ): void {
+    /**
+     * Execute the job.
+     */
+    public function handle(GenerateBriefingContent $generateBriefingContent): void
+    {
         try {
-            $this->updateProgress(BriefingGenerationStatus::Processing, 0, 'Starting briefing generation...');
-            BriefingGenerationStarted::dispatch($this->generation);
-
-            $this->generation->loadMissing(['briefing', 'workspace']);
-            $briefing = $this->generation->briefing;
-            $workspace = $this->generation->workspace;
-
-            if ($briefing === null) {
-                throw new RuntimeException('Briefing template not found');
-            }
-
-            if ($workspace === null) {
-                throw new RuntimeException('Workspace not found');
-            }
-
-            // Resolve full AI configuration (provider, model, key) for this workspace
-            $aiConfig = $providerKeyResolver->resolveConfiguration($workspace);
-
-            $this->updateProgress(BriefingGenerationStatus::Processing, 20, 'Collecting data...');
-            $parameters = BriefingParameters::fromArray($this->generation->parameters ?? []);
-            $structuredData = $dataCollector->collect(
-                $this->generation->workspace_id,
-                $briefing->slug,
-                $parameters,
-            );
-
-            $this->updateProgress(BriefingGenerationStatus::Processing, 40, 'Detecting achievements...');
-            $achievements = $dataCollector->detectAchievements($structuredData);
-
-            $narrative = null;
-            $metadata = $this->generation->metadata ?? [];
-            $metadata['byok'] = $aiConfig->isByok;
-
-            if ($briefing->requires_ai && $briefing->prompt_path !== null) {
-                $this->updateProgress(BriefingGenerationStatus::Processing, 60, 'Generating narrative...');
-                $narrativeResult = $narrativeGenerator->generate(
-                    $briefing->prompt_path,
-                    $structuredData,
-                    $achievements,
-                    $aiConfig,
-                );
-                $narrative = $narrativeResult->text;
-                $metadata['ai_telemetry'] = $narrativeResult->telemetry->toArray();
-            }
-
-            $this->updateProgress(BriefingGenerationStatus::Processing, 80, 'Generating excerpts...');
-            $excerpts = $narrativeGenerator->generateExcerpts($narrative ?? '', $structuredData);
-
-            $this->updateProgress(BriefingGenerationStatus::Processing, 85, 'Building slide deck...');
-            $slides = $slidesBuilder->build(
-                $briefing,
-                $structuredData,
-                $achievements,
-                $narrative,
-            );
-            $structuredPayload = $structuredData->toArray();
-            $structuredPayload['slides'] = $slides->toArray();
-
-            $this->updateProgress(BriefingGenerationStatus::Processing, 90, 'Rendering outputs...');
-
-            $this->generation->update([
-                'status' => BriefingGenerationStatus::Completed,
-                'progress' => 100,
-                'progress_message' => 'Completed',
-                'narrative' => $narrative,
-                'structured_data' => $structuredPayload,
-                'achievements' => $achievements->toArray(),
-                'excerpts' => $excerpts->toArray(),
-                'metadata' => $metadata,
-                'completed_at' => now(),
-            ]);
-
-            // Dispatch rendering job to generate HTML, PDF, and Markdown outputs
-            RenderBriefingPdf::dispatch($this->generation);
-
-            BriefingGenerationCompleted::dispatch($this->generation);
-
-            Log::info('Briefing generation completed', [
-                'generation_id' => $this->generation->id,
-                'briefing_id' => $this->generation->briefing_id,
-                'workspace_id' => $this->generation->workspace_id,
-            ]);
+            $generateBriefingContent->handle($this->generation);
         } catch (Throwable $throwable) {
             $this->handleFailure($throwable);
 
@@ -136,31 +47,17 @@ final class ProcessBriefingGeneration implements ShouldQueue
         }
     }
 
-    /** Handle a job failure. */
+    /**
+     * Handle a job failure callback.
+     */
     public function failed(Throwable $exception): void
     {
         $this->handleFailure($exception);
     }
 
-    /** Update the generation progress. */
-    private function updateProgress(
-        BriefingGenerationStatus $status,
-        int $progress,
-        string $message,
-    ): void {
-        $this->generation->update([
-            'status' => $status,
-            'progress' => $progress,
-            'progress_message' => $message,
-            'started_at' => $status === BriefingGenerationStatus::Processing && $this->generation->started_at === null
-                ? now()
-                : $this->generation->started_at,
-        ]);
-
-        BriefingGenerationProgress::dispatch($this->generation, $progress, $message);
-    }
-
-    /** Handle generation failure. */
+    /**
+     * Persist failure state and emit failure events for the generation.
+     */
     private function handleFailure(Throwable $exception): void
     {
         $this->generation->update([

@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Briefings\ValueObjects\BriefingDeliveryChannels;
 use App\Services\Briefings\ValueObjects\BriefingParameters;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Validation\ValidationException;
 
 final readonly class CreateBriefingSubscription
 {
@@ -26,6 +28,8 @@ final readonly class CreateBriefingSubscription
      * @param  int|null  $scheduleDay  Optional schedule day override
      * @param  int  $scheduleHour  The hour of day to schedule deliveries
      * @return BriefingSubscription The created subscription
+     *
+     * @throws ValidationException When a subscription already exists for this user and briefing
      */
     public function handle(
         Workspace $workspace,
@@ -50,7 +54,14 @@ final readonly class CreateBriefingSubscription
         ]);
 
         $subscription->next_scheduled_at = $subscription->calculateNextScheduledAt();
-        $subscription->save();
+
+        try {
+            $subscription->save();
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages([
+                'briefing_id' => ['You already have a subscription for this briefing in this workspace.'],
+            ]);
+        }
 
         return $subscription;
     }
