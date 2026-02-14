@@ -5,16 +5,23 @@ declare(strict_types=1);
 namespace App\Services\GitHub;
 
 use App\Enums\GitHub\GitHubWebhookEvent;
-use App\Enums\GitHub\PullRequestAction;
 use App\Services\GitHub\Contracts\GitHubWebhookServiceContract;
+use App\Services\GitHub\Support\GitHubPullRequestActionPolicy;
+use App\Services\GitHub\Support\GitHubWebhookPayloadFieldExtractor;
 use App\Services\GitHub\Support\GitHubWebhookPayloadParser;
+use App\Services\GitHub\Support\GitHubWebhookSignatureVerifier;
 
 final readonly class GitHubWebhookService implements GitHubWebhookServiceContract
 {
     /**
      * Create a new instance.
      */
-    public function __construct(private GitHubWebhookPayloadParser $payloadParser = new GitHubWebhookPayloadParser) {}
+    public function __construct(
+        private GitHubWebhookPayloadParser $payloadParser = new GitHubWebhookPayloadParser,
+        private GitHubWebhookSignatureVerifier $signatureVerifier = new GitHubWebhookSignatureVerifier,
+        private GitHubWebhookPayloadFieldExtractor $payloadFieldExtractor = new GitHubWebhookPayloadFieldExtractor,
+        private GitHubPullRequestActionPolicy $pullRequestActionPolicy = new GitHubPullRequestActionPolicy,
+    ) {}
 
     /**
      * Verify the webhook signature from GitHub.
@@ -25,17 +32,7 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      */
     public function verifySignature(string $payload, string $signature): bool
     {
-        $secret = config('github.webhook_secret');
-
-        if (empty($secret)) {
-            return false;
-        }
-
-        /** @var string $secretString */
-        $secretString = $secret;
-        $expectedSignature = 'sha256='.hash_hmac('sha256', $payload, $secretString);
-
-        return hash_equals($expectedSignature, $signature);
+        return $this->signatureVerifier->verify($payload, $signature);
     }
 
     /**
@@ -55,10 +52,7 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      */
     public function extractInstallationId(array $payload): ?int
     {
-        /** @var array{id: int}|null $installation */
-        $installation = $payload['installation'] ?? null;
-
-        return $installation['id'] ?? null;
+        return $this->payloadFieldExtractor->installationId($payload);
     }
 
     /**
@@ -68,10 +62,7 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      */
     public function extractAction(array $payload): ?string
     {
-        /** @var string|null $action */
-        $action = $payload['action'] ?? null;
-
-        return $action;
+        return $this->payloadFieldExtractor->action($payload);
     }
 
     /**
@@ -112,9 +103,7 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      */
     public function shouldTriggerReview(string $action): bool
     {
-        $prAction = PullRequestAction::tryFrom($action);
-
-        return $prAction?->shouldTriggerReview() ?? false;
+        return $this->pullRequestActionPolicy->shouldTriggerReview($action);
     }
 
     /**
@@ -128,8 +117,6 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      */
     public function shouldSyncMetadata(string $action): bool
     {
-        $prAction = PullRequestAction::tryFrom($action);
-
-        return $prAction?->shouldSyncMetadata() ?? false;
+        return $this->pullRequestActionPolicy->shouldSyncMetadata($action);
     }
 }

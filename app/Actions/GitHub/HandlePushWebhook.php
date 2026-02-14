@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
+use App\Actions\GitHub\Support\PushWebhookCodeIndexingTrigger;
+use App\Actions\GitHub\Support\PushWebhookPayloadContextResolver;
+use App\Actions\GitHub\Support\PushWebhookRepositoryResolver;
 use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
-use App\Models\Installation;
-use App\Models\Repository;
-use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;
 use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Log;
 
@@ -18,8 +18,10 @@ final readonly class HandlePushWebhook
      */
     public function __construct(
         private SyncRepositorySentinelConfig $syncConfig,
-        private CodeIndexingServiceContract $indexingService,
         private ExtractPushChanges $extractPushChanges,
+        private PushWebhookPayloadContextResolver $payloadContextResolver,
+        private PushWebhookRepositoryResolver $repositoryResolver,
+        private PushWebhookCodeIndexingTrigger $codeIndexingTrigger,
     ) {}
 
     /**
@@ -27,28 +29,20 @@ final readonly class HandlePushWebhook
      */
     public function handle(array $payload): void
     {
-        $ref = $payload['ref'] ?? '';
-
-        /** @var array{id?: int}|null $installationData */
-        $installationData = $payload['installation'] ?? null;
-        $installationId = $installationData['id'] ?? null;
-
-        /** @var array{id?: int, full_name?: string}|null $repositoryData */
-        $repositoryData = $payload['repository'] ?? null;
-        $repositoryId = $repositoryData['id'] ?? null;
-        $repositoryFullName = $repositoryData['full_name'] ?? 'unknown';
-
-        $webhookContext = LogContext::forWebhook($installationId, $repositoryFullName, 'push');
+        $context = $this->payloadContextResolver->resolve($payload);
+        $ref = $context->ref;
+        $webhookContext = $context->logContext;
 
         Log::debug('Processing push webhook', array_merge($webhookContext, ['ref' => $ref]));
 
-        if ($installationId === null || $repositoryId === null) {
+        if ($context->installationId === null || $context->repositoryId === null) {
             Log::warning('Push webhook missing installation or repository data', $webhookContext);
 
             return;
         }
 
-        $installation = Installation::query()->where('installation_id', $installationId)->first();
+        $resolution = $this->repositoryResolver->resolve((int) $context->installationId, (int) $context->repositoryId);
+        $installation = $resolution->installation;
 
         if ($installation === null) {
             Log::warning('Installation not found for push webhook', $webhookContext);
@@ -56,14 +50,11 @@ final readonly class HandlePushWebhook
             return;
         }
 
-        $repository = Repository::query()
-            ->where('installation_id', $installation->id)
-            ->where('github_id', $repositoryId)
-            ->first();
+        $repository = $resolution->repository;
 
         if ($repository === null) {
             Log::warning('Repository not found for push webhook', array_merge($webhookContext, [
-                'github_repository_id' => $repositoryId,
+                'github_repository_id' => $context->repositoryId,
             ]));
 
             return;
@@ -81,7 +72,7 @@ final readonly class HandlePushWebhook
             return;
         }
 
-        $this->triggerCodeIndexing($repository, $payload);
+        $this->codeIndexingTrigger->trigger($repository, $payload);
 
         if (! $this->extractPushChanges->hasConfigChanges($payload)) {
             Log::debug('No .sentinel/ changes in push, skipping config sync', $context);
@@ -104,38 +95,5 @@ final readonly class HandlePushWebhook
         Log::warning('Failed to sync Sentinel config from push', array_merge($context, [
             'error' => $result['error'],
         ]));
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function triggerCodeIndexing(Repository $repository, array $payload): void
-    {
-        $commitSha = $payload['after'] ?? null;
-
-        if ($commitSha === null) {
-            return;
-        }
-
-        $changedFiles = $this->extractPushChanges->files($payload);
-        $totalChanges = count($changedFiles['added']) + count($changedFiles['modified']) + count($changedFiles['removed']);
-
-        if ($totalChanges === 0) {
-            Log::debug('No changed files detected in push, skipping indexing', [
-                'repository_id' => $repository->id,
-            ]);
-
-            return;
-        }
-
-        Log::info('Triggering incremental code indexing', [
-            'repository_id' => $repository->id,
-            'commit_sha' => $commitSha,
-            'added' => count($changedFiles['added']),
-            'modified' => count($changedFiles['modified']),
-            'removed' => count($changedFiles['removed']),
-        ]);
-
-        $this->indexingService->indexChangedFiles($repository, $commitSha, $changedFiles);
     }
 }
