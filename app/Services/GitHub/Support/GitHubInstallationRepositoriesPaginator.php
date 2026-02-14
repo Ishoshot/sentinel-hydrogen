@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\GitHub\Support;
 
+use App\Services\GitHub\Executors\GitHubApiRequestExecutor;
 use GrahamCampbell\GitHub\GitHubManager;
 
 final readonly class GitHubInstallationRepositoriesPaginator

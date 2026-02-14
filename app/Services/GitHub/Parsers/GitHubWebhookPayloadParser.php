@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\GitHub\Support;
+namespace App\Services\GitHub\Parsers;
 
 final readonly class GitHubWebhookPayloadParser
 {
