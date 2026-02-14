@@ -1,311 +1,111 @@
-# Sentinel – Backend Architecture
+# Sentinel - Backend Architecture
 
-This document defines the backend architecture of Sentinel.
-It describes system boundaries, execution flow, and architectural principles.
-
-All backend implementation MUST conform to this document.
+This file defines backend boundaries and ownership.
+If implementation diverges, refactor code or update this document intentionally.
 
 ---
 
-## Architectural Overview
+## Primary Goal
 
-Sentinel’s backend is built as a **multi-tenant, event-driven system**
-designed for enterprise-scale reliability, observability, and extensibility.
+Keep backend behavior predictable under scale:
 
-The backend is responsible for:
-
--   authentication and authorization
--   source control integrations
--   review execution
--   policy enforcement
--   usage metering
--   analytics ingestion
--   billing enforcement
+- strict workspace scoping
+- explicit orchestration
+- swappable integrations
+- retry-safe asynchronous execution
 
 ---
 
-## Technology Stack
+## Layer Contract
 
--   Language: PHP 8.4
--   Framework: Laravel 12
--   Database: PostgreSQL 15+
--   Cache / Queue: Redis
--   AI Routing: Prism PHP
--   Workers: Laravel Horizon
--   WebSockets: Laravel Reverb
--   API Auth: Laravel Sanctum
--   OAuth: Laravel Socialite
+- `Controllers`:
+  transport only (auth, request validation handoff, response)
+- `Actions`:
+  use-case orchestration (policy, transaction boundaries, service composition)
+- `Services`:
+  focused domain logic and integration boundaries
+- `Jobs`:
+  async/idempotent execution units
+- `Events/Listeners`:
+  decoupled side effects and telemetry
+- `Models`:
+  persistence and relationships
 
-The backend is designed to scale horizontally and operate reliably under load.
-
----
-
-## High-Level System Components
-
-### API Layer
-
-Handles:
-
--   authentication
--   dashboard APIs
--   configuration management
--   webhook intake
-
-The API layer is:
-
--   stateless
--   request/response only
--   free of long-running work
-
-All expensive operations are delegated to background jobs.
+Controllers do not contain business workflows.
 
 ---
 
-### Worker Layer
+## Domain Map
 
-Executes:
+Key backend domains:
 
--   review runs
--   AI calls
--   ingestion and rollups
--   notifications
--   enforcement logic
+- Reviews
+- Commands
+- Briefings
+- Billing/Subscriptions/Plans
+- GitHub and external integrations
+- Context and code indexing
 
-Workers are horizontally scalable and operate independently
-from the API layer.
-
----
-
-### Integration Layer
-
-Encapsulates all external systems, including:
-
--   source control providers
--   AI providers
--   billing systems
-
-All integrations are accessed through interfaces and managers.
+Each domain should keep one responsibility per class and explicit boundaries between orchestration and execution.
 
 ---
 
-## Action-Based Architecture
+## Core Runtime Flows
 
-Sentinel uses an **Action-based architecture** where business logic is encapsulated
-in single-purpose Action classes.
+### Review Flow
 
-### Key Rules
+1. Webhook or manual trigger reaches an Action.
+2. Action performs eligibility and policy checks.
+3. Run is queued.
+4. Worker builds context and executes review engine.
+5. Findings/annotations are persisted and published.
+6. Run reaches terminal state (`completed`, `failed`, or `skipped`).
 
--   Controllers MUST delegate to an Action for all non-trivial flows
--   Actions represent a single business use-case
--   Actions orchestrate services, contracts, and jobs
--   Services MUST NOT coordinate multi-step workflows
--   Controllers MUST NOT call services directly for complex logic
--   Actions depend on interfaces/contracts, never concrete implementations
--   Actions are the primary unit of business-flow testing
+### Command Flow
 
-### Action Domains
+1. Command payload is parsed and normalized.
+2. Eligibility/plan checks run.
+3. Command run is queued and executed.
+4. Result is persisted and posted back to source channel.
 
-| Domain | Location | Purpose |
-|--------|----------|---------|
-| Reviews | `app/Actions/Reviews/` | Review execution workflow |
-| Briefings | `app/Actions/Briefings/` | Report generation |
-| Commands | `app/Actions/Commands/` | @sentinel command processing |
-| Workspaces | `app/Actions/Workspaces/` | Workspace management |
-| Teams | `app/Actions/Teams/` | Team and member management |
-| Repositories | `app/Actions/Repositories/` | Repository configuration |
-| Subscriptions | `app/Actions/Subscriptions/` | Billing operations |
-| Installations | `app/Actions/Installations/` | GitHub App management |
-| Activities | `app/Actions/Activities/` | Activity logging |
-| ProviderKeys | `app/Actions/ProviderKeys/` | BYOK key management |
-| SentinelConfig | `app/Actions/SentinelConfig/` | Config file sync |
+### Briefing Flow
+
+1. User or schedule triggers generation.
+2. Data collection and summarization run in background jobs.
+3. Delivery channels publish output (email, Slack, share link).
+4. Generation status and telemetry are recorded.
 
 ---
 
-## Domain-Driven Structure
+## Reliability Rules
 
-The backend is organized by **domain**, not by technical layer alone.
-
-Each domain owns:
-
--   models
--   services
--   jobs
--   events
--   policies
--   configuration
-
-Example domains include:
-
--   Workspaces
--   Teams & Membership
--   Integrations
--   Repositories
--   Reviews
--   Commands (@sentinel mentions)
--   Briefings (AI-generated reports)
--   Usage & Billing
--   Analytics
+- All async jobs must be idempotent.
+- Retries must not duplicate side effects.
+- External API failures must produce actionable logs and deterministic failure states.
+- Queue routing must follow plan-aware priorities.
 
 ---
 
-## Execution Flow (Review Run)
+## Multi-Tenancy Rules
 
-1. An external event or manual trigger is received
-2. The request is validated and authenticated
-3. A Review Run record is created
-4. A background job is dispatched
-5. The worker:
-    - evaluates plan limits
-    - resolves eligible AI providers
-    - executes the review
-    - stores results
-    - emits domain events
-6. Results are surfaced back to the source control platform
-7. Usage and analytics are recorded
-
-No step in this flow blocks an HTTP request.
+- Application data is scoped by `workspace_id`.
+- Cross-workspace access is forbidden by default.
+- Authorization checks run before domain mutations.
 
 ---
 
-## Execution Flow (Command Run)
+## Extensibility Rules
 
-1. A GitHub comment containing `@sentinel` is received via webhook
-2. The comment is parsed to extract the command and query
-3. A Command Run record is created
-4. A background job is dispatched
-5. The worker:
-    - evaluates plan limits
-    - resolves eligible AI providers
-    - builds context from repository (code indexing if needed)
-    - executes the command using AI tools
-    - stores results
-    - emits domain events
-6. Response is posted as a GitHub comment
-7. Usage and analytics are recorded
-
-Commands support multiple tools including code search, file reading, and web search.
+- External providers must sit behind contracts.
+- Provider selection must be config-driven.
+- Cross-cutting behavior should use events, listeners, or pipeline-style composition.
 
 ---
 
-## Event-Driven Design
+## Architectural Red Flags
 
-Sentinel uses domain events to decouple responsibilities.
+- Fat controllers
+- God services mixing orchestration and execution
+- Hidden side effects in helper classes
+- Workspace scope checks done inconsistently
 
-Examples:
-
--   `RunStarted`, `RunCompleted`, `RunFailed`
--   `CommandRunStarted`, `CommandRunCompleted`
--   `BriefingGenerationStarted`, `BriefingGenerationCompleted`
--   `InstallationConnected`, `InstallationSuspended`
--   `WorkspaceCreated`, `MemberInvited`
--   `RepositoryEnabled`, `RepositorySynced`
-
-Events trigger listeners that perform secondary actions
-without coupling to core logic.
-
-Broadcast events (via Laravel Reverb) are used for real-time UI updates.
-
----
-
-## Idempotency & Reliability
-
--   All webhook handlers are idempotent
--   Jobs are safe to retry
--   Duplicate events do not produce duplicate side effects
--   External calls are guarded with retries and backoff
-
-Idempotency keys are used wherever external systems are involved.
-
----
-
-## Multi-Tenancy
-
--   All data is scoped to a Workspace
--   Workspace boundaries are enforced at the database and application layers
--   No cross-workspace access is permitted
-
-Tenant isolation is a core invariant.
-
----
-
-## Configuration & Policy
-
--   Behavior is driven by configuration and policy, not hard-coded rules
--   Policies are versioned and captured per Run
--   Configuration precedence is deterministic
-
-Configuration sources include:
-
--   repository config files
--   dashboard settings
--   workspace defaults
-
----
-
-## AI Review Architecture
-
--   AI calls are routed through PrismPHP
--   Providers are selected based on eligibility rules
--   BYOK keys are required for provider usage
--   Review logic is provider-agnostic
-
-The AI layer is treated as an external dependency, not a core system.
-
----
-
-## Analytics & Ingestion
-
--   All review activity is recorded as append-only events
--   Rollup tables are maintained for dashboard performance
--   Analytics ingestion is asynchronous
-
-PostgreSQL is the system of record.
-
----
-
-## Observability
-
--   All operations emit structured logs
--   Correlation IDs are propagated across requests and jobs
--   Metrics capture:
-    -   execution time
-    -   failure rates
-    -   queue latency
-    -   usage patterns
-
-Failures must be visible and diagnosable.
-
----
-
-## Scalability Model
-
--   API layer scales independently of workers
--   Worker concurrency is adjustable via configuration
--   Queue priorities ensure critical jobs are processed first
--   Per-workspace throttling prevents abuse
-
----
-
-## Security Principles
-
--   Least-privilege access to external systems
--   Secrets stored securely
--   Sensitive data is never logged
--   All inputs are validated and sanitized
-
-Security is foundational, not optional.
-
----
-
-## Guiding Principles
-
--   Explicit boundaries over convenience
--   Configuration over code
--   Events over coupling
--   Reliability over raw speed
--   Observability by default
-
----
-
-This document defines Sentinel’s backend architecture.
-Implementation details are defined in supporting backend documentation.
