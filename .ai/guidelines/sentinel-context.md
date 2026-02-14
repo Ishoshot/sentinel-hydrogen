@@ -25,6 +25,7 @@ The `/docs` folder contains authoritative contracts for this codebase. **Before 
 | Briefings feature               | `docs/backend/BRIEFINGS.md`            |
 | External APIs, GitHub, Polar    | `docs/backend/INTEGRATIONS.md`         |
 | Code style, conventions         | `docs/backend/CODING_STANDARDS.md`     |
+| Backend refactor yardstick      | `docs/backend/LARAVEL_REFACTOR_YARDSTICK.md` |
 | Tests                           | `docs/backend/TESTING_STRATEGY.md`     |
 | Sentinel config schema          | `docs/SENTINEL_CONFIG.md`              |
 | Product scope, goals            | `docs/product/PRD.md`                  |
@@ -41,6 +42,7 @@ The `/docs` folder contains authoritative contracts for this codebase. **Before 
 - Actions orchestrate; Services encapsulate focused logic
 - Jobs are idempotent and retry-safe
 - Use exact terms from `GLOSSARY.md` (Workspace, Run, Finding, Member)
+- Use `docs/backend/LARAVEL_REFACTOR_YARDSTICK.md` as the quality bar for backend refactors
 
 ## Tooling
 

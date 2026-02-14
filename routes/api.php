@@ -90,7 +90,9 @@ Route::get('/slack/callback', SlackCallbackController::class)->name('slack.callb
 |
 */
 
-Route::get('/briefings/share/{token}', [PublicBriefingController::class, 'show'])->name('briefings.share.show');
+Route::middleware('throttle:10,1')
+    ->get('/briefings/share/{token}', [PublicBriefingController::class, 'show'])
+    ->name('briefings.share.show');
 
 /*
 |--------------------------------------------------------------------------

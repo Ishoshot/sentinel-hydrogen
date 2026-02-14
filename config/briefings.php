@@ -76,6 +76,9 @@ return [
 
         // Default expiry in days for new share links
         'shares_default_expiry_days' => (int) env('BRIEFINGS_SHARE_EXPIRY', 7),
+
+        // Number of records to process per chunk during cleanup
+        'cleanup_batch_size' => (int) env('BRIEFINGS_CLEANUP_BATCH_SIZE', 100),
     ],
 
     /*

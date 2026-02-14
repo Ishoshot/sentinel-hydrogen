@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('horizon:snapshot')->everyFiveMinutes()->onOneServer();
 Schedule::command('usage:aggregate')->hourly()->withoutOverlapping()->onOneServer();
 
+Schedule::command('subscriptions:expire-canceled')->daily()->withoutOverlapping()->onOneServer();
+
 // Briefings scheduled jobs
 Schedule::job(new GenerateScheduledBriefings)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::job(new CleanupExpiredBriefings)->daily()->withoutOverlapping()->onOneServer();

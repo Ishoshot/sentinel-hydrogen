@@ -28,12 +28,14 @@ The `/docs` folder contains authoritative contracts for this codebase. **Before 
 | Briefings feature               | `docs/backend/BRIEFINGS.md`            |
 | External APIs, GitHub, Polar    | `docs/backend/INTEGRATIONS.md`         |
 | Code style, conventions         | `docs/backend/CODING_STANDARDS.md`     |
+| Backend refactor yardstick      | `docs/backend/LARAVEL_REFACTOR_YARDSTICK.md` |
 | Tests                           | `docs/backend/TESTING_STRATEGY.md`     |
 | Sentinel config schema          | `docs/SENTINEL_CONFIG.md`              |
-| Product scope, goals            | `docs/product/PRD.md`                  |
-| Naming, terminology             | `docs/product/GLOSSARY.md`             |
-| Billing, limits, plans          | `docs/product/PLANS_AND_LIMITS.md`     |
-| UX behavior                     | `docs/product/UX_PRINCIPLES.md`        |
+| Frontend architecture           | `/Users/oluwatobi/Herd/dev/frontend/sentinel/docs/frontend/FRONTEND_ARCHITECTURE.md` |
+| Frontend state and data         | `/Users/oluwatobi/Herd/dev/frontend/sentinel/docs/frontend/STATE_AND_DATA.md` |
+| Frontend components             | `/Users/oluwatobi/Herd/dev/frontend/sentinel/docs/frontend/COMPONENTS.md` |
+| Frontend design system          | `/Users/oluwatobi/Herd/dev/frontend/sentinel/docs/frontend/DESIGN_SYSTEM.md` |
+| Frontend UX principles          | `/Users/oluwatobi/Herd/dev/frontend/sentinel/docs/frontend/UX_PRINCIPLE.md` |
 
 **Conflict handling:** If a change would violate a documented contract, stop and ask. Offer to update the doc if the change is intentional.
 
@@ -43,7 +45,8 @@ The `/docs` folder contains authoritative contracts for this codebase. **Before 
 - Controllers delegate to Actions (no business logic in controllers)
 - Actions orchestrate; Services encapsulate focused logic
 - Jobs are idempotent and retry-safe
-- Use exact terms from `GLOSSARY.md` (Workspace, Run, Finding, Member)
+- Use canonical terms: Workspace, Repository, Run, Finding, Member, Plan
+- Use `docs/backend/LARAVEL_REFACTOR_YARDSTICK.md` as the quality bar for backend refactors
 
 ## Tooling
 
