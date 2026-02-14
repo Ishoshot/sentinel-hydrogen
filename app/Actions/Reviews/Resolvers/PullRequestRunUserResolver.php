@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Reviews\Support;
+namespace App\Actions\Reviews\Resolvers;
 
 use App\Enums\Auth\OAuthProvider;
 use App\Models\ProviderIdentity;

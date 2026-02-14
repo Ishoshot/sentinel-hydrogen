@@ -2,17 +2,18 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Reviews\Support;
+namespace App\Actions\Reviews\Checkers;
 
 use App\Actions\Reviews\ResolvePullRequestSentinelConfig;
+use App\Actions\Reviews\Support\PullRequestWebhookPreflightResult;
 use App\Models\Repository;
 use App\Services\SentinelConfig\TriggerRuleEvaluator;
 use Illuminate\Support\Facades\Log;
 
-final readonly class PullRequestWebhookPreflightGate
+final readonly class PullRequestWebhookPreflightChecker
 {
     /**
-     * Create a new preflight gate instance.
+     * Create a new preflight checker instance.
      */
     public function __construct(
         private ResolvePullRequestSentinelConfig $resolvePullRequestSentinelConfig,

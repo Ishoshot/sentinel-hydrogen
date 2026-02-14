@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Reviews\Support;
+namespace App\Actions\Reviews\Checkers;
 
+use App\Actions\Reviews\Support\ManualReviewEligibilityResult;
 use App\Models\Repository;
 use Illuminate\Support\Facades\Log;
 
