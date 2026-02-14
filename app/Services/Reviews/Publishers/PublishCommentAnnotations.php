@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Reviews\Support;
+namespace App\Services\Reviews\Publishers;
 
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
-final readonly class PublishReviewAnnotations
+final readonly class PublishCommentAnnotations
 {
     /**
      * Create a new instance.
@@ -26,44 +26,41 @@ final readonly class PublishReviewAnnotations
         int $pullRequestNumber,
         string $reviewBody,
         array $inlineComments,
-        ?string $commitId,
         bool $grouped,
     ): array {
-        if ($grouped) {
-            return $this->gitHubApiService->createPullRequestReview(
-                $installationId,
-                $owner,
-                $repo,
-                $pullRequestNumber,
-                $reviewBody,
-                'COMMENT',
-                $inlineComments,
-                $commitId
-            );
-        }
-
-        /** @var array<string, mixed> $response */
-        $response = $this->gitHubApiService->createPullRequestReview(
+        $response = $this->gitHubApiService->createPullRequestComment(
             $installationId,
             $owner,
             $repo,
             $pullRequestNumber,
-            $reviewBody,
-            'COMMENT',
-            [],
-            $commitId
+            $reviewBody
         );
 
-        foreach ($inlineComments as $comment) {
-            $this->gitHubApiService->createPullRequestReview(
+        if ($grouped) {
+            $findingsBody = "## Detailed Findings\n\n";
+            foreach ($inlineComments as $comment) {
+                $findingsBody .= sprintf("### `%s` (line %d)\n\n%s\n\n---\n\n", $comment['path'], $comment['line'], $comment['body']);
+            }
+
+            $this->gitHubApiService->createPullRequestComment(
                 $installationId,
                 $owner,
                 $repo,
                 $pullRequestNumber,
-                '',
-                'COMMENT',
-                [$comment],
-                $commitId
+                $findingsBody
+            );
+
+            return $response;
+        }
+
+        foreach ($inlineComments as $comment) {
+            $commentBody = sprintf("**File:** `%s` (line %d)\n\n%s", $comment['path'], $comment['line'], $comment['body']);
+            $this->gitHubApiService->createPullRequestComment(
+                $installationId,
+                $owner,
+                $repo,
+                $pullRequestNumber,
+                $commentBody
             );
         }
 
@@ -71,7 +68,7 @@ final readonly class PublishReviewAnnotations
     }
 
     /**
-     * Post only a summary review comment without inline annotations.
+     * Post only the summary body when inline comments are unavailable.
      */
     public function postSummaryOnly(
         int $installationId,
@@ -80,14 +77,12 @@ final readonly class PublishReviewAnnotations
         int $pullRequestNumber,
         string $summary,
     ): void {
-        $this->gitHubApiService->createPullRequestReview(
+        $this->gitHubApiService->createPullRequestComment(
             $installationId,
             $owner,
             $repo,
             $pullRequestNumber,
-            $summary,
-            'COMMENT',
-            []
+            $summary
         );
     }
 }

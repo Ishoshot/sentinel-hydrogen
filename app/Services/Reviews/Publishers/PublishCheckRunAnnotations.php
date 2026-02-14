@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Reviews\Support;
+namespace App\Services\Reviews\Publishers;
 
 use App\Models\Run;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;

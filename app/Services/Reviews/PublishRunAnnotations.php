@@ -6,9 +6,9 @@ namespace App\Services\Reviews;
 
 use App\Enums\Reviews\AnnotationStyle;
 use App\Models\Run;
-use App\Services\Reviews\Support\PublishCheckRunAnnotations;
-use App\Services\Reviews\Support\PublishCommentAnnotations;
-use App\Services\Reviews\Support\PublishReviewAnnotations;
+use App\Services\Reviews\Publishers\PublishCheckRunAnnotations;
+use App\Services\Reviews\Publishers\PublishCommentAnnotations;
+use App\Services\Reviews\Publishers\PublishReviewAnnotations;
 
 final readonly class PublishRunAnnotations
 {
