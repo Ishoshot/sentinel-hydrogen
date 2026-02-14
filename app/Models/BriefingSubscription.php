@@ -77,17 +77,27 @@ final class BriefingSubscription extends Model
 
     /**
      * Calculate the next scheduled time based on the current schedule.
+     *
+     * @param  bool  $withJitter  Whether to apply random jitter (0-5 minutes) to spread load
      */
-    public function calculateNextScheduledAt(): \Carbon\Carbon
+    public function calculateNextScheduledAt(bool $withJitter = false): \Carbon\Carbon
     {
         $now = now()->utc();
         $hour = $this->schedule_hour;
 
-        return match ($this->schedule_preset) {
+        $next = match ($this->schedule_preset) {
             BriefingSchedulePreset::Daily => $now->copy()->addDay()->setTime($hour, 0),
-            BriefingSchedulePreset::Weekly => $now->copy()->next($this->schedule_day ?? 1)->setTime($hour, 0),
+            BriefingSchedulePreset::Weekly => $now->copy()->next(
+                $this->convertIsoToCarbonDay($this->schedule_day ?? 1)
+            )->setTime($hour, 0),
             BriefingSchedulePreset::Monthly => $now->copy()->addMonth()->setDay($this->schedule_day ?? 1)->setTime($hour, 0),
         };
+
+        if ($withJitter) {
+            $next->addMinutes(random_int(0, 5));
+        }
+
+        return $next;
     }
 
     /**
@@ -97,7 +107,7 @@ final class BriefingSubscription extends Model
     {
         $this->update([
             'last_generated_at' => now(),
-            'next_scheduled_at' => $this->calculateNextScheduledAt(),
+            'next_scheduled_at' => $this->calculateNextScheduledAt(withJitter: true),
         ]);
     }
 
@@ -107,7 +117,7 @@ final class BriefingSubscription extends Model
     public function markDeferred(): void
     {
         $this->update([
-            'next_scheduled_at' => $this->calculateNextScheduledAt(),
+            'next_scheduled_at' => $this->calculateNextScheduledAt(withJitter: true),
         ]);
     }
 
@@ -169,5 +179,13 @@ final class BriefingSubscription extends Model
             'next_scheduled_at' => 'datetime',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Convert an ISO-8601 day number (1=Monday to 7=Sunday) to a Carbon day constant (0=Sunday to 6=Saturday).
+     */
+    private function convertIsoToCarbonDay(int $isoDay): int
+    {
+        return $isoDay % 7;
     }
 }
