@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\SentinelConfig\Support;
+namespace App\Actions\SentinelConfig\Parsers;
+
+use App\Actions\SentinelConfig\Factories\SentinelConfigFetchResultFactory;
 
 final readonly class SentinelConfigGitHubResponseParser
 {

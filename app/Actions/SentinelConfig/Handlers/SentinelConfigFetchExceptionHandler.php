@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\SentinelConfig\Support;
+namespace App\Actions\SentinelConfig\Handlers;
 
+use App\Actions\SentinelConfig\Factories\SentinelConfigFetchResultFactory;
 use App\Models\Repository;
 use Github\Exception\RuntimeException;
 use Illuminate\Support\Facades\Log;

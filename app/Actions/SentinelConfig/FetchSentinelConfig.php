@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\SentinelConfig;
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
-use App\Actions\SentinelConfig\Support\SentinelConfigFetchExceptionHandler;
+use App\Actions\SentinelConfig\Handlers\SentinelConfigFetchExceptionHandler;
+use App\Actions\SentinelConfig\Parsers\SentinelConfigGitHubResponseParser;
+use App\Actions\SentinelConfig\Resolvers\SentinelConfigFetchTargetResolver;
 use App\Actions\SentinelConfig\Support\SentinelConfigFetchTarget;
-use App\Actions\SentinelConfig\Support\SentinelConfigFetchTargetResolver;
-use App\Actions\SentinelConfig\Support\SentinelConfigGitHubResponseParser;
 use App\Models\Repository;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Github\Exception\RuntimeException;

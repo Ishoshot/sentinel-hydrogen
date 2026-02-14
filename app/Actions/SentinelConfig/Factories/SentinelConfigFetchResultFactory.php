@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\SentinelConfig\Support;
+namespace App\Actions\SentinelConfig\Factories;
 
 final class SentinelConfigFetchResultFactory
 {
