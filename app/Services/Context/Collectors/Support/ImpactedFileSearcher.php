@@ -9,8 +9,6 @@ use App\Models\Run;
 use App\Services\CodeIndexing\Contracts\CodeSearchServiceContract;
 use App\Services\Context\ValueObjects\ImpactedFile;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
-use Illuminate\Support\Facades\Log;
-use Throwable;
 
 /**
  * Searches indexed code for symbol references and resolves impacted file contents.
@@ -25,8 +23,7 @@ final readonly class ImpactedFileSearcher
         private GitHubApiServiceContract $gitHubApiService,
         private ?ImpactSearchPatternFactory $searchPatternFactory = null,
         private ?ImpactedFileCandidateCollector $candidateCollector = null,
-        private ?ImpactedFileRepositoryCoordinatesResolver $coordinatesResolver = null,
-        private ?ImpactedFileContentFetcher $contentFetcher = null,
+        private ?ImpactedFileBatchFetcher $batchFetcher = null,
     ) {}
 
     /**
@@ -62,55 +59,7 @@ final readonly class ImpactedFileSearcher
 
         $candidateFiles = $this->candidateCollector()->rank($candidateFiles, $this->maxFiles());
 
-        return $this->fetchFileContents($repository, $candidateFiles, $run);
-    }
-
-    /**
-     * @param  array<int, array{file_path: string, symbol: string, match_type: string, score: float, match_count: int, content: string}>  $candidates
-     * @return array<int, ImpactedFile>
-     */
-    private function fetchFileContents(Repository $repository, array $candidates, Run $run): array
-    {
-        $coordinates = $this->coordinatesResolver()->resolve($repository, $run);
-
-        if ($coordinates === null) {
-            return [];
-        }
-
-        $impactedFiles = [];
-
-        foreach ($candidates as $candidate) {
-            try {
-                $content = $this->contentFetcher()->fetch(
-                    installationId: $coordinates['installation_id'],
-                    owner: $coordinates['owner'],
-                    repo: $coordinates['repo'],
-                    path: $candidate['file_path'],
-                    ref: $coordinates['head_sha'],
-                    maxFileSize: $this->maxFileSize(),
-                );
-
-                if ($content === null) {
-                    continue;
-                }
-
-                $impactedFiles[] = new ImpactedFile(
-                    filePath: $candidate['file_path'],
-                    content: $content,
-                    matchedSymbol: $candidate['symbol'],
-                    matchType: $candidate['match_type'],
-                    score: $candidate['score'],
-                    matchCount: $candidate['match_count'],
-                );
-            } catch (Throwable $throwable) {
-                Log::debug('ImpactAnalysisCollector: Failed to fetch file', [
-                    'file' => $candidate['file_path'],
-                    'error' => $throwable->getMessage(),
-                ]);
-            }
-        }
-
-        return $impactedFiles;
+        return $this->batchFetcher()->fetch($repository, $candidateFiles, $run);
     }
 
     /**
@@ -119,14 +68,6 @@ final readonly class ImpactedFileSearcher
     private function maxFiles(): int
     {
         return (int) config('reviews.impact_analysis.max_files', 20);
-    }
-
-    /**
-     * Resolve the maximum file size allowed for impacted file content.
-     */
-    private function maxFileSize(): int
-    {
-        return (int) config('reviews.impact_analysis.max_file_size', 50000);
     }
 
     /**
@@ -168,18 +109,10 @@ final readonly class ImpactedFileSearcher
     }
 
     /**
-     * Resolve the repository coordinate resolver dependency.
+     * Resolve the batch fetcher dependency.
      */
-    private function coordinatesResolver(): ImpactedFileRepositoryCoordinatesResolver
+    private function batchFetcher(): ImpactedFileBatchFetcher
     {
-        return $this->coordinatesResolver ?? new ImpactedFileRepositoryCoordinatesResolver;
-    }
-
-    /**
-     * Resolve the impacted-file content fetcher dependency.
-     */
-    private function contentFetcher(): ImpactedFileContentFetcher
-    {
-        return $this->contentFetcher ?? new ImpactedFileContentFetcher($this->gitHubApiService);
+        return $this->batchFetcher ?? new ImpactedFileBatchFetcher($this->gitHubApiService);
     }
 }

@@ -35,8 +35,8 @@ final readonly class ReviewHistoryCollector implements ContextCollector
      * Create a new instance.
      */
     public function __construct(
-        private ?ReviewHistoryRunFetcher $runFetcher = null,
-        private ?ReviewHistoryEntryBuilder $entryBuilder = null,
+        private ReviewHistoryRunFetcher $runFetcher = new ReviewHistoryRunFetcher,
+        private ReviewHistoryEntryBuilder $entryBuilder = new ReviewHistoryEntryBuilder,
     ) {}
 
     /**
@@ -95,14 +95,12 @@ final readonly class ReviewHistoryCollector implements ContextCollector
         }
 
         // Find previous completed runs for the same PR
-        $maxFindingsPerReview = self::MAX_FINDINGS_PER_REVIEW;
-
-        $previousRuns = $this->runFetcher()->fetch(
+        $previousRuns = $this->runFetcher->fetch(
             repository: $repository,
             currentRun: $currentRun,
             prNumber: $prNumber,
             maxReviews: self::MAX_REVIEWS,
-            maxFindingsPerReview: $maxFindingsPerReview,
+            maxFindingsPerReview: self::MAX_FINDINGS_PER_REVIEW,
             completedStatus: RunStatus::Completed,
         );
 
@@ -118,7 +116,7 @@ final readonly class ReviewHistoryCollector implements ContextCollector
         $reviewHistory = [];
 
         foreach ($previousRuns as $run) {
-            $reviewHistory[] = $this->entryBuilder()->build($run, self::MAX_FINDINGS_PER_REVIEW);
+            $reviewHistory[] = $this->entryBuilder->build($run, self::MAX_FINDINGS_PER_REVIEW);
         }
 
         $bag->reviewHistory = $reviewHistory;
@@ -128,21 +126,5 @@ final readonly class ReviewHistoryCollector implements ContextCollector
             'pr_number' => $prNumber,
             'previous_reviews' => count($reviewHistory),
         ]);
-    }
-
-    /**
-     * RunFetcher.
-     */
-    private function runFetcher(): ReviewHistoryRunFetcher
-    {
-        return $this->runFetcher ?? new ReviewHistoryRunFetcher;
-    }
-
-    /**
-     * EntryBuilder.
-     */
-    private function entryBuilder(): ReviewHistoryEntryBuilder
-    {
-        return $this->entryBuilder ?? new ReviewHistoryEntryBuilder;
     }
 }

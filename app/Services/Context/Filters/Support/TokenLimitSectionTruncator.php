@@ -27,8 +27,9 @@ final class TokenLimitSectionTruncator
         private readonly TokenLimitCodeSectionTruncator $codeSectionTruncator,
         private readonly TokenLimitSupplementalSectionTruncator $supplementalSectionTruncator,
         private readonly TokenLimitProgressiveTruncator $progressiveTruncator,
+        ?TokenLimitContextManager $contextManager = null,
     ) {
-        $this->contextManager = new TokenLimitContextManager(
+        $this->contextManager = $contextManager ?? new TokenLimitContextManager(
             $this->tokenCounter,
             $this->filePatchTruncator,
             $this->codeSectionTruncator,

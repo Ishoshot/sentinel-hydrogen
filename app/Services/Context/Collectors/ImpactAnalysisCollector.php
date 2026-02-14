@@ -22,25 +22,14 @@ use Illuminate\Support\Facades\Log;
 final readonly class ImpactAnalysisCollector implements ContextCollector
 {
     /**
-     * Extracts symbols touched by the current pull request changes.
-     */
-    private ImpactModifiedSymbolExtractor $symbolExtractor;
-
-    /**
-     * Searches indexed code and resolves impacted repository files.
-     */
-    private ImpactedFileSearcher $fileSearcher;
-
-    /**
      * Create a new ImpactAnalysisCollector instance.
      */
     public function __construct(
         private CodeSearchServiceContract $codeSearchService,
         private GitHubApiServiceContract $gitHubApiService,
-    ) {
-        $this->symbolExtractor = new ImpactModifiedSymbolExtractor;
-        $this->fileSearcher = new ImpactedFileSearcher($this->codeSearchService, $this->gitHubApiService);
-    }
+        private ?ImpactModifiedSymbolExtractor $symbolExtractor = null,
+        private ?ImpactedFileSearcher $fileSearcher = null,
+    ) {}
 
     /**
      * {@inheritdoc}
@@ -93,7 +82,7 @@ final readonly class ImpactAnalysisCollector implements ContextCollector
             return;
         }
 
-        $modifiedSymbols = $this->symbolExtractor->extractModifiedSymbols($bag);
+        $modifiedSymbols = $this->symbolExtractor()->extractModifiedSymbols($bag);
 
         if ($modifiedSymbols === []) {
             Log::debug('ImpactAnalysisCollector: No modified symbols found');
@@ -110,7 +99,7 @@ final readonly class ImpactAnalysisCollector implements ContextCollector
 
         $prFiles = array_column($bag->files, 'filename');
 
-        $impactedFiles = $this->fileSearcher->findImpactedFiles($repository, $symbolsToSearch, $prFiles, $run);
+        $impactedFiles = $this->fileSearcher()->findImpactedFiles($repository, $symbolsToSearch, $prFiles, $run);
 
         if ($impactedFiles === []) {
             Log::debug('ImpactAnalysisCollector: No impacted files found');
@@ -144,5 +133,21 @@ final readonly class ImpactAnalysisCollector implements ContextCollector
     private function maxSymbols(): int
     {
         return (int) config('reviews.impact_analysis.max_symbols', 25);
+    }
+
+    /**
+     * Resolve the symbol extractor dependency.
+     */
+    private function symbolExtractor(): ImpactModifiedSymbolExtractor
+    {
+        return $this->symbolExtractor ?? new ImpactModifiedSymbolExtractor;
+    }
+
+    /**
+     * Resolve the file searcher dependency.
+     */
+    private function fileSearcher(): ImpactedFileSearcher
+    {
+        return $this->fileSearcher ?? new ImpactedFileSearcher($this->codeSearchService, $this->gitHubApiService);
     }
 }
