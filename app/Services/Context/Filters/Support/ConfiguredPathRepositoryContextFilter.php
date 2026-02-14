@@ -45,7 +45,7 @@ final readonly class ConfiguredPathRepositoryContextFilter
                 'removed' => 0,
             ];
         }
-
+        /** @var array<string, mixed> $paths */
         $removed = 0;
         $repositoryContext = $this->filterSection($repositoryContext, $paths, $pathsConfig, 'readme', $removed);
         $repositoryContext = $this->filterSection($repositoryContext, $paths, $pathsConfig, 'contributing', $removed);
