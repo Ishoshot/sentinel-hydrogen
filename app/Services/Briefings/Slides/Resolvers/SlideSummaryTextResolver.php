@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings\Slides\Support;
+namespace App\Services\Briefings\Slides\Resolvers;
 
 use App\Services\Briefings\ValueObjects\BriefingSummary;
 

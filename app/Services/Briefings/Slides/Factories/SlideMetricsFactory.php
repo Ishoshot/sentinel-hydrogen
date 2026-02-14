@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings\Slides\Support;
+namespace App\Services\Briefings\Slides\Factories;
 
 use App\Services\Briefings\ValueObjects\BriefingSlideMetric;
 use App\Services\Briefings\ValueObjects\BriefingSummary;
