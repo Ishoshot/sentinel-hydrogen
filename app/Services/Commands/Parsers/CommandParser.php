@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Commands\Parsers;
 
 use App\Enums\Commands\CommandType;
-use App\Services\Commands\Support\CommandParserAliasResolver;
+use App\Services\Commands\Resolvers\CommandParserAliasResolver;
 use App\Services\Commands\Support\CommandParserContextHintsExtractor;
 use App\Services\Commands\ValueObjects\ContextHints;
 use App\Services\Commands\ValueObjects\ParsedCommand;

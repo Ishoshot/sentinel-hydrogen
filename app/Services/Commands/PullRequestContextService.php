@@ -6,7 +6,7 @@ namespace App\Services\Commands;
 
 use App\Models\CommandRun;
 use App\Services\Commands\Contracts\PullRequestContextServiceContract;
-use App\Services\Commands\Support\PullRequestApiParameterResolver;
+use App\Services\Commands\Resolvers\PullRequestApiParameterResolver;
 use App\Services\Commands\Support\PullRequestContextFormatter;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Illuminate\Support\Facades\Log;

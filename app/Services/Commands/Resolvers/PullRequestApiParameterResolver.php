@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Commands\Support;
+namespace App\Services\Commands\Resolvers;
 
 use App\Models\CommandRun;
 
