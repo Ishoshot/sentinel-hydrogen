@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Billing\Support;
+namespace App\Actions\Billing\Resolvers;
 
+use App\Actions\Billing\Support\PolarOrderPaidPayload;
+use App\Actions\Billing\Support\PolarOrderPaidWorkspaceResolution;
 use App\Models\Subscription;
 use App\Models\Workspace;
 

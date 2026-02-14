@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Billing\Support;
+namespace App\Actions\Billing\Resolvers;
 
 use App\Actions\Billing\PolarWebhookSupport;
+use App\Actions\Billing\Support\PolarOrderPaidPayload;
 use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
 
 final readonly class PolarOrderPaidPayloadResolver

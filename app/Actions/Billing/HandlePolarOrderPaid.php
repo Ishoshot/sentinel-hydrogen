@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Billing;
 
-use App\Actions\Billing\Support\PolarOrderPaidPayloadResolver;
-use App\Actions\Billing\Support\PolarOrderPaidPlanResolver;
+use App\Actions\Billing\Resolvers\PolarOrderPaidPayloadResolver;
+use App\Actions\Billing\Resolvers\PolarOrderPaidPlanResolver;
+use App\Actions\Billing\Resolvers\PolarOrderPaidWorkspaceResolver;
 use App\Actions\Billing\Support\PolarOrderPaidStateUpdater;
-use App\Actions\Billing\Support\PolarOrderPaidWorkspaceResolver;
 use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
 use Illuminate\Support\Facades\Log;
 
