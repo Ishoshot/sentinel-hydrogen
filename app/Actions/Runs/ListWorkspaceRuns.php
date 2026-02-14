@@ -17,6 +17,15 @@ use stdClass;
 final class ListWorkspaceRuns
 {
     /**
+     * Create a new action instance.
+     */
+    public function __construct(
+        private ApplyRunFilters $runFilters = new ApplyRunFilters,
+        private ResolveRunQueryExpressions $runQueryExpressions = new ResolveRunQueryExpressions,
+        private ?HydrateRunGroups $runGroupHydrator = null,
+    ) {}
+
+    /**
      * List runs with flat pagination (no grouping).
      *
      * @param  array<string, mixed>  $filters
@@ -34,8 +43,8 @@ final class ListWorkspaceRuns
             ->with(['repository:id,name,full_name,private,language'])
             ->withCount('findings');
 
-        $this->applyRunFilters()->applyFilters($query, $filters, $workspace);
-        $this->applyRunFilters()->applySorting($query, $sortBy, $sortOrder);
+        $this->runFilters->applyFilters($query, $filters, $workspace);
+        $this->runFilters->applySorting($query, $sortBy, $sortOrder);
 
         return $query->paginate($perPage);
     }
@@ -51,14 +60,14 @@ final class ListWorkspaceRuns
         array $filters,
         int $perPage,
     ): array {
-        $effectivePrNumber = $this->resolveRunQueryExpressions()->effectivePrNumber();
-        $effectivePrTitle = $this->resolveRunQueryExpressions()->effectivePrTitle();
+        $effectivePrNumber = $this->runQueryExpressions->effectivePrNumber();
+        $effectivePrTitle = $this->runQueryExpressions->effectivePrTitle();
 
         $baseQuery = Run::query()
             ->where('workspace_id', $workspace->id)
             ->whereRaw($effectivePrNumber.' IS NOT NULL');
 
-        $this->applyRunFilters()->applyFilters($baseQuery, $filters, $workspace);
+        $this->runFilters->applyFilters($baseQuery, $filters, $workspace);
 
         $paginatedGroups = DB::table('runs')
             ->whereIn('id', $baseQuery->select('id'))
@@ -99,9 +108,9 @@ final class ListWorkspaceRuns
     ): array {
         $baseQuery = Run::query()->where('workspace_id', $workspace->id);
 
-        $this->applyRunFilters()->applyFilters($baseQuery, $filters, $workspace);
+        $this->runFilters->applyFilters($baseQuery, $filters, $workspace);
 
-        $effectivePrNumber = $this->resolveRunQueryExpressions()->effectivePrNumber();
+        $effectivePrNumber = $this->runQueryExpressions->effectivePrNumber();
 
         $paginatedRepos = DB::table('runs')
             ->whereIn('id', $baseQuery->select('id'))
@@ -128,26 +137,10 @@ final class ListWorkspaceRuns
     }
 
     /**
-     * Resolve the run filter helper from the container.
-     */
-    private function applyRunFilters(): ApplyRunFilters
-    {
-        return app(ApplyRunFilters::class);
-    }
-
-    /**
-     * Resolve SQL expression helpers for run grouping queries.
-     */
-    private function resolveRunQueryExpressions(): ResolveRunQueryExpressions
-    {
-        return app(ResolveRunQueryExpressions::class);
-    }
-
-    /**
      * Resolve the run group hydration action from the container.
      */
     private function hydrateRunGroups(): HydrateRunGroups
     {
-        return app(HydrateRunGroups::class);
+        return $this->runGroupHydrator ?? app(HydrateRunGroups::class);
     }
 }
