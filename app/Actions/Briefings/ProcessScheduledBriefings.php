@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\Briefings;
 
+use App\Actions\Briefings\Support\ScheduledBriefingDenialHandler;
 use App\Jobs\Briefings\DeliverBriefing;
 use App\Models\BriefingSubscription;
 use App\Services\Briefings\BriefingLimitEnforcer;
 use App\Services\Briefings\BriefingParameterValidator;
-use App\Services\Briefings\ValueObjects\BriefingLimitResult;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -27,6 +27,7 @@ final readonly class ProcessScheduledBriefings
         private GenerateBriefing $generateBriefing,
         private BriefingLimitEnforcer $limitEnforcer,
         private BriefingParameterValidator $parameterValidator,
+        private ScheduledBriefingDenialHandler $denialHandler = new ScheduledBriefingDenialHandler,
     ) {}
 
     /**
@@ -80,7 +81,7 @@ final readonly class ProcessScheduledBriefings
             $canGenerate = $this->limitEnforcer->canGenerate($subscription->workspace, $subscription->briefing, $parameters);
 
             if ($canGenerate->isDenied()) {
-                $this->handleDeniedSubscription($subscription, $canGenerate);
+                $this->denialHandler->handle($subscription, $canGenerate);
 
                 return;
             }
@@ -116,30 +117,5 @@ final readonly class ProcessScheduledBriefings
                 'error' => $throwable->getMessage(),
             ]);
         }
-    }
-
-    /**
-     * Handle a subscription denied by limits.
-     */
-    private function handleDeniedSubscription(BriefingSubscription $subscription, BriefingLimitResult $result): void
-    {
-        Log::warning('Scheduled briefing blocked by limits', [
-            'subscription_id' => $subscription->id,
-            'reason' => $result->reason,
-        ]);
-
-        if ($this->shouldDeferDeniedSubscription($result)) {
-            $subscription->markDeferred();
-        }
-    }
-
-    /**
-     * Determine if denied subscriptions should be deferred.
-     */
-    private function shouldDeferDeniedSubscription(BriefingLimitResult $result): bool
-    {
-        $reason = $result->reason ?? '';
-
-        return $reason === '' || ! str_contains($reason, 'currently generating');
     }
 }

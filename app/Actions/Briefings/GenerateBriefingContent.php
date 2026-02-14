@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Briefings;
 
+use App\Actions\Briefings\Support\BriefingGenerationProgressTracker;
 use App\Enums\Briefings\BriefingGenerationStatus;
 use App\Events\Briefings\BriefingGenerationCompleted;
-use App\Events\Briefings\BriefingGenerationProgress;
 use App\Events\Briefings\BriefingGenerationStarted;
 use App\Jobs\Briefings\RenderBriefingPdf;
 use App\Models\BriefingGeneration;
@@ -28,6 +28,7 @@ final readonly class GenerateBriefingContent
         private BriefingNarrativeGenerator $narrativeGenerator,
         private BriefingSlidesBuilder $slidesBuilder,
         private BriefingProviderKeyResolver $providerKeyResolver,
+        private BriefingGenerationProgressTracker $progressTracker = new BriefingGenerationProgressTracker,
     ) {}
 
     /**
@@ -35,7 +36,7 @@ final readonly class GenerateBriefingContent
      */
     public function handle(BriefingGeneration $generation): void
     {
-        $this->updateProgress($generation, BriefingGenerationStatus::Processing, 0, 'Starting briefing generation...');
+        $this->progressTracker->update($generation, BriefingGenerationStatus::Processing, 0, 'Starting briefing generation...');
         BriefingGenerationStarted::dispatch($generation);
 
         $generation->loadMissing(['briefing', 'workspace']);
@@ -52,12 +53,12 @@ final readonly class GenerateBriefingContent
 
         $aiConfig = $this->providerKeyResolver->resolveConfiguration($workspace);
 
-        $this->updateProgress($generation, BriefingGenerationStatus::Processing, 20, 'Collecting data...');
+        $this->progressTracker->update($generation, BriefingGenerationStatus::Processing, 20, 'Collecting data...');
 
         $parameters = BriefingParameters::fromArray($generation->parameters ?? []);
         $structuredData = $this->dataCollector->collect($generation->workspace_id, $briefing->slug, $parameters);
 
-        $this->updateProgress($generation, BriefingGenerationStatus::Processing, 40, 'Detecting achievements...');
+        $this->progressTracker->update($generation, BriefingGenerationStatus::Processing, 40, 'Detecting achievements...');
         $achievements = $this->dataCollector->detectAchievements($structuredData);
 
         $narrative = null;
@@ -65,7 +66,7 @@ final readonly class GenerateBriefingContent
         $metadata['byok'] = $aiConfig->isByok;
 
         if ($briefing->requires_ai && $briefing->prompt_path !== null) {
-            $this->updateProgress($generation, BriefingGenerationStatus::Processing, 60, 'Generating narrative...');
+            $this->progressTracker->update($generation, BriefingGenerationStatus::Processing, 60, 'Generating narrative...');
 
             $narrativeResult = $this->narrativeGenerator->generate(
                 $briefing->prompt_path,
@@ -78,16 +79,16 @@ final readonly class GenerateBriefingContent
             $metadata['ai_telemetry'] = $narrativeResult->telemetry->toArray();
         }
 
-        $this->updateProgress($generation, BriefingGenerationStatus::Processing, 80, 'Generating excerpts...');
+        $this->progressTracker->update($generation, BriefingGenerationStatus::Processing, 80, 'Generating excerpts...');
         $excerpts = $this->narrativeGenerator->generateExcerpts($narrative ?? '', $structuredData);
 
-        $this->updateProgress($generation, BriefingGenerationStatus::Processing, 85, 'Building slide deck...');
+        $this->progressTracker->update($generation, BriefingGenerationStatus::Processing, 85, 'Building slide deck...');
         $slides = $this->slidesBuilder->build($briefing, $structuredData, $achievements, $narrative);
 
         $structuredPayload = $structuredData->toArray();
         $structuredPayload['slides'] = $slides->toArray();
 
-        $this->updateProgress($generation, BriefingGenerationStatus::Processing, 90, 'Rendering outputs...');
+        $this->progressTracker->update($generation, BriefingGenerationStatus::Processing, 90, 'Rendering outputs...');
 
         $generation->update([
             'status' => BriefingGenerationStatus::Completed,
@@ -109,26 +110,5 @@ final readonly class GenerateBriefingContent
             'briefing_id' => $generation->briefing_id,
             'workspace_id' => $generation->workspace_id,
         ]);
-    }
-
-    /**
-     * Persist generation progress and broadcast progress updates.
-     */
-    private function updateProgress(
-        BriefingGeneration $generation,
-        BriefingGenerationStatus $status,
-        int $progress,
-        string $message,
-    ): void {
-        $generation->update([
-            'status' => $status,
-            'progress' => $progress,
-            'progress_message' => $message,
-            'started_at' => $status === BriefingGenerationStatus::Processing && $generation->started_at === null
-                ? now()
-                : $generation->started_at,
-        ]);
-
-        BriefingGenerationProgress::dispatch($generation, $progress, $message);
     }
 }
