@@ -55,18 +55,18 @@ final readonly class ProjectManifestParser
         $javaManifestParser ??= new JavaManifestParser($this->dependencyRegistry);
 
         $this->manifestParsers = [
-            'composer.json' => fn (string $content): ?array => $composerJsonParser->parse($content),
-            'package.json' => fn (string $content): ?array => $packageJsonParser->parse($content),
-            'go.mod' => fn (string $content): array => $goManifestParser->parse($content),
-            'Cargo.toml' => fn (string $content): array => $rustManifestParser->parseCargoToml($content),
-            'pyproject.toml' => fn (string $content): array => $pythonManifestParser->parsePyprojectToml($content),
-            'requirements.txt' => fn (string $content): array => $pythonManifestParser->parseRequirementsTxt($content),
-            'Gemfile' => fn (string $content): array => $rubyManifestParser->parseGemfile($content),
-            'pubspec.yaml' => fn (string $content): array => $dartManifestParser->parsePubspecYaml($content),
-            'mix.exs' => fn (string $content): array => $elixirManifestParser->parseMixExs($content),
-            'pom.xml' => fn (string $content): array => $javaManifestParser->parsePomXml($content),
-            'build.gradle' => fn (string $content): array => $javaManifestParser->parseGradleBuild($content),
-            'build.gradle.kts' => fn (string $content): array => $javaManifestParser->parseGradleBuild($content),
+            'composer.json' => fn (string $content) => $composerJsonParser->parse($content),
+            'package.json' => fn (string $content) => $packageJsonParser->parse($content),
+            'go.mod' => fn (string $content) => $goManifestParser->parse($content),
+            'Cargo.toml' => fn (string $content) => $rustManifestParser->parseCargoToml($content),
+            'pyproject.toml' => fn (string $content) => $pythonManifestParser->parsePyprojectToml($content),
+            'requirements.txt' => fn (string $content) => $pythonManifestParser->parseRequirementsTxt($content),
+            'Gemfile' => fn (string $content) => $rubyManifestParser->parseGemfile($content),
+            'pubspec.yaml' => fn (string $content) => $dartManifestParser->parsePubspecYaml($content),
+            'mix.exs' => fn (string $content) => $elixirManifestParser->parseMixExs($content),
+            'pom.xml' => fn (string $content) => $javaManifestParser->parsePomXml($content),
+            'build.gradle' => fn (string $content) => $javaManifestParser->parseGradleBuild($content),
+            'build.gradle.kts' => fn (string $content) => $javaManifestParser->parseGradleBuild($content),
         ];
     }
 
