@@ -6,8 +6,10 @@ namespace App\Services\GitHub;
 
 use App\Models\Installation;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
-use App\Services\GitHub\Support\GitHubApiOperationRunner;
-use Closure;
+use App\Services\GitHub\Support\GitHubApiPayloadFactory;
+use App\Services\GitHub\Support\GitHubApiRequestExecutor;
+use App\Services\GitHub\Support\GitHubApiResponseGuard;
+use App\Services\GitHub\Support\GitHubInstallationRepositoriesPaginator;
 use GrahamCampbell\GitHub\GitHubManager;
 
 final readonly class GitHubApiService implements GitHubApiServiceContract
@@ -15,7 +17,12 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
     /**
      * Create a new service instance.
      */
-    public function __construct(private GitHubApiOperationRunner $operationRunner) {}
+    public function __construct(
+        private GitHubApiRequestExecutor $requestExecutor,
+        private GitHubInstallationRepositoriesPaginator $repositoriesPaginator,
+        private GitHubApiPayloadFactory $payloadFactory,
+        private GitHubApiResponseGuard $responseGuard,
+    ) {}
 
     /**
      * Get installation details from GitHub.
@@ -25,13 +32,10 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getInstallation(int $installationId): array
     {
-        /** @var array<string, mixed> $installation */
-        $installation = $this->runAppOperation(
+        return $this->responseGuard->map($this->requestExecutor->runApp(
             sprintf('getInstallation(%d)', $installationId),
             fn (GitHubManager $github): array => $github->connection()->apps()->getInstallation($installationId),
-        );
-
-        return $installation;
+        ));
     }
 
     /**
@@ -42,25 +46,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getInstallationRepositories(int $installationId): array
     {
-        $repositories = [];
-        $page = 1;
-        $perPage = 100;
-
-        do {
-            /** @var array{repositories?: array<int, array<string, mixed>>} $response */
-            $response = $this->runInstallationOperation(
-                $installationId,
-                sprintf('listRepositories(installation=%d, page=%d)', $installationId, $page),
-                fn (GitHubManager $github): array => $github->connection()->apps()->listRepositories($page),
-            );
-
-            /** @var array<int, array<string, mixed>> $repos */
-            $repos = $response['repositories'] ?? [];
-            $repositories = array_merge($repositories, $repos);
-            $page++;
-        } while (count($repos) === $perPage);
-
-        return $repositories;
+        return $this->repositoriesPaginator->fetch($installationId);
     }
 
     /**
@@ -70,14 +56,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getRepository(int $installationId, string $owner, string $repo): array
     {
-        /** @var array<string, mixed> $repository */
-        $repository = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('getRepository(%s/%s)', $owner, $repo),
             fn (GitHubManager $github): array => $github->connection()->repo()->show($owner, $repo),
-        );
-
-        return $repository;
+        ));
     }
 
     /**
@@ -87,14 +70,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getPullRequest(int $installationId, string $owner, string $repo, int $number): array
     {
-        /** @var array<string, mixed> $pullRequest */
-        $pullRequest = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('getPullRequest(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): mixed => $github->connection()->pullRequest()->show($owner, $repo, $number),
-        );
-
-        return $pullRequest;
+        ));
     }
 
     /**
@@ -104,14 +84,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getPullRequestFiles(int $installationId, string $owner, string $repo, int $number): array
     {
-        /** @var array<int, array<string, mixed>> $files */
-        $files = $this->runInstallationOperation(
+        return $this->responseGuard->listOfMaps($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('getPullRequestFiles(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): mixed => $github->connection()->pullRequest()->files($owner, $repo, $number),
-        );
-
-        return $files;
+        ));
     }
 
     /**
@@ -121,14 +98,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getFileContents(int $installationId, string $owner, string $repo, string $path, ?string $ref = null): array|string
     {
-        /** @var array<string, mixed>|string $contents */
-        $contents = $this->runInstallationOperation(
+        return $this->responseGuard->mapOrString($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('getFileContents(%s/%s/%s)', $owner, $repo, $path),
             fn (GitHubManager $github): array|string => $github->connection()->repo()->contents()->show($owner, $repo, $path, $ref),
-        );
-
-        return $contents;
+        ));
     }
 
     /**
@@ -150,28 +124,13 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         array $comments = [],
         ?string $commitId = null
     ): array {
-        $params = [
-            'body' => $body,
-            'event' => $event,
-        ];
+        $params = $this->payloadFactory->pullRequestReview($body, $event, $comments, $commitId);
 
-        // commit_id is required when using line-based comments
-        if ($commitId !== null) {
-            $params['commit_id'] = $commitId;
-        }
-
-        if ($comments !== []) {
-            $params['comments'] = $comments;
-        }
-
-        /** @var array<string, mixed> $review */
-        $review = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('createPullRequestReview(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): array => $github->connection()->pullRequest()->reviews()->create($owner, $repo, $number, $params),
-        );
-
-        return $review;
+        ));
     }
 
     /**
@@ -186,14 +145,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         int $number,
         string $body
     ): array {
-        /** @var array<string, mixed> $comment */
-        $comment = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('createPullRequestComment(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): array => $github->connection()->issue()->comments()->create($owner, $repo, $number, ['body' => $body]),
-        );
-
-        return $comment;
+        ));
     }
 
     /**
@@ -208,14 +164,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         int $commentId,
         string $body
     ): array {
-        /** @var array<string, mixed> $comment */
-        $comment = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('updatePullRequestComment(%s/%s#%d)', $owner, $repo, $commentId),
             fn (GitHubManager $github): array => $github->connection()->issue()->comments()->update($owner, $repo, $commentId, ['body' => $body]),
-        );
-
-        return $comment;
+        ));
     }
 
     /**
@@ -225,14 +178,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getIssue(int $installationId, string $owner, string $repo, int $number): array
     {
-        /** @var array<string, mixed> $issue */
-        $issue = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('getIssue(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): array => $github->connection()->issue()->show($owner, $repo, $number),
-        );
-
-        return $issue;
+        ));
     }
 
     /**
@@ -242,14 +192,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getIssueComments(int $installationId, string $owner, string $repo, int $number): array
     {
-        /** @var array<int, array<string, mixed>> $comments */
-        $comments = $this->runInstallationOperation(
+        return $this->responseGuard->listOfMaps($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('getIssueComments(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): array => $github->connection()->issue()->comments()->all($owner, $repo, $number),
-        );
-
-        return $comments;
+        ));
     }
 
     /**
@@ -268,7 +215,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getClientForInstallation(Installation $installation): GitHubManager
     {
-        return $this->operationRunner->authenticateInstallation($installation->installation_id);
+        return $this->requestExecutor->getClientForInstallation($installation);
     }
 
     /**
@@ -288,28 +235,9 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         ?string $summary = null,
         array $annotations = []
     ): array {
-        $params = [
-            'name' => $name,
-            'head_sha' => $headSha,
-            'status' => $status,
-        ];
+        $params = $this->payloadFactory->checkRun($name, $headSha, $status, $conclusion, $summary, $annotations);
 
-        if ($status === 'completed' && $conclusion !== null) {
-            $params['conclusion'] = $conclusion;
-        }
-
-        if ($summary !== null) {
-            $params['output'] = [
-                'title' => $name,
-                'summary' => $summary,
-            ];
-
-            if ($annotations !== []) {
-                $params['output']['annotations'] = $annotations;
-            }
-        }
-
-        $checkRun = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('createCheckRun(%s/%s@%s)', $owner, $repo, mb_substr($headSha, 0, 7)),
             function (GitHubManager $github) use ($owner, $repo, $params): mixed {
@@ -318,10 +246,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
 
                 return $repoApi->checkRuns()->create($owner, $repo, $params);
             }
-        );
-
-        /** @var array<string, mixed> $checkRun */
-        return $checkRun;
+        ));
     }
 
     /**
@@ -336,8 +261,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         string $sha,
         bool $recursive = false
     ): array {
-        /** @var array{sha: string, url: string, tree: array<int, array{path: string, mode: string, type: string, sha: string, size?: int}>, truncated: bool} $tree */
-        $tree = $this->runInstallationOperation(
+        return $this->responseGuard->repositoryTree($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('getRepositoryTree(%s/%s@%s)', $owner, $repo, mb_substr($sha, 0, 7)),
             fn (GitHubManager $github): array => $github->connection()->git()->trees()->show(
@@ -346,9 +270,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
                 $sha,
                 $recursive
             ),
-        );
-
-        return $tree;
+        ));
     }
 
     /**
@@ -363,14 +285,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         int $number,
         string $body
     ): array {
-        /** @var array<string, mixed> $comment */
-        $comment = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('createIssueComment(%s/%s#%d)', $owner, $repo, $number),
             fn (GitHubManager $github): array => $github->connection()->issue()->comments()->create($owner, $repo, $number, ['body' => $body]),
-        );
-
-        return $comment;
+        ));
     }
 
     /**
@@ -385,14 +304,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         int $commentId,
         string $body
     ): array {
-        /** @var array<string, mixed> $comment */
-        $comment = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('updateIssueComment(%s/%s#%d)', $owner, $repo, $commentId),
             fn (GitHubManager $github): array => $github->connection()->issue()->comments()->update($owner, $repo, $commentId, ['body' => $body]),
-        );
-
-        return $comment;
+        ));
     }
 
     /**
@@ -402,14 +318,11 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getReference(int $installationId, string $owner, string $repo, string $ref): array
     {
-        /** @var array<string, mixed> $reference */
-        $reference = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('getReference(%s/%s@%s)', $owner, $repo, $ref),
             fn (GitHubManager $github): array => $github->connection()->git()->references()->show($owner, $repo, $ref),
-        );
-
-        return $reference;
+        ));
     }
 
     /**
@@ -419,17 +332,14 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function createReference(int $installationId, string $owner, string $repo, string $ref, string $sha): array
     {
-        /** @var array<string, mixed> $reference */
-        $reference = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('createReference(%s/%s@%s)', $owner, $repo, $ref),
             fn (GitHubManager $github): array => $github->connection()->git()->references()->create($owner, $repo, [
                 'ref' => $ref,
                 'sha' => $sha,
             ]),
-        );
-
-        return $reference;
+        ));
     }
 
     /**
@@ -460,8 +370,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         string $message,
         string $branch
     ): array {
-        /** @var array<string, mixed> $result */
-        $result = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('createFile(%s/%s/%s)', $owner, $repo, $path),
             fn (GitHubManager $github): array => $github->connection()->repo()->contents()->create(
@@ -472,9 +381,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
                 $message,
                 $branch
             ),
-        );
-
-        return $result;
+        ));
     }
 
     /**
@@ -491,8 +398,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
         string $head,
         string $base
     ): array {
-        /** @var array<string, mixed> $pullRequest */
-        $pullRequest = $this->runInstallationOperation(
+        return $this->responseGuard->map($this->requestExecutor->runInstallation(
             $installationId,
             sprintf('createPullRequest(%s/%s %s->%s)', $owner, $repo, $head, $base),
             fn (GitHubManager $github): array => $github->connection()->pullRequest()->create($owner, $repo, [
@@ -501,30 +407,6 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
                 'head' => $head,
                 'base' => $base,
             ]),
-        );
-
-        return $pullRequest;
-    }
-
-    /**
-     * @template TResult
-     *
-     * @param  Closure(GitHubManager): TResult  $operation
-     * @return TResult
-     */
-    private function runAppOperation(string $operationName, Closure $operation): mixed
-    {
-        return $this->operationRunner->runWithAppAuthentication($operationName, $operation);
-    }
-
-    /**
-     * @template TResult
-     *
-     * @param  Closure(GitHubManager): TResult  $operation
-     * @return TResult
-     */
-    private function runInstallationOperation(int $installationId, string $operationName, Closure $operation): mixed
-    {
-        return $this->operationRunner->runWithInstallationAuthentication($installationId, $operationName, $operation);
+        ));
     }
 }
