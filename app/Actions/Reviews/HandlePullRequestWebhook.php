@@ -7,11 +7,10 @@ namespace App\Actions\Reviews;
 use App\Actions\GitHub\Contracts\PostsAutoReviewDisabledComment;
 use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
-use App\Models\Installation;
-use App\Models\Repository;
+use App\Actions\Reviews\Support\PullRequestWebhookPreflightGate;
+use App\Actions\Reviews\Support\PullRequestWebhookRepositoryResolver;
 use App\Services\GitHub\GitHubWebhookService;
 use App\Services\Logging\LogContext;
-use App\Services\SentinelConfig\TriggerRuleEvaluator;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -29,9 +28,9 @@ final readonly class HandlePullRequestWebhook
         private PostsGreetingComment $postGreeting,
         private PostsConfigErrorComment $postConfigError,
         private PostsAutoReviewDisabledComment $postAutoReviewDisabled,
-        private TriggerRuleEvaluator $triggerEvaluator,
         private DispatchReviewRun $dispatchReviewRun,
-        private ResolvePullRequestSentinelConfig $resolvePullRequestSentinelConfig,
+        private PullRequestWebhookRepositoryResolver $repositoryResolver,
+        private PullRequestWebhookPreflightGate $preflightGate,
     ) {}
 
     /**
@@ -61,24 +60,8 @@ final readonly class HandlePullRequestWebhook
             return;
         }
 
-        $installation = Installation::query()->where('installation_id', $data['installation_id'])->first();
-
-        if ($installation === null) {
-            Log::warning('Installation not found for pull request webhook', $webhookCtx);
-
-            return;
-        }
-
-        $repository = Repository::query()
-            ->where('installation_id', $installation->id)
-            ->where('github_id', $data['repository_id'])
-            ->first();
-
+        $repository = $this->repositoryResolver->resolve($data, $webhookCtx);
         if ($repository === null) {
-            Log::warning('Repository not found for pull request webhook', array_merge($webhookCtx, [
-                'github_repository_id' => $data['repository_id'],
-            ]));
-
             return;
         }
 
@@ -91,60 +74,28 @@ final readonly class HandlePullRequestWebhook
         $ctx = LogContext::fromRepository($repository);
         $ctx['pr_number'] = $data['pull_request_number'];
 
-        if (! $repository->hasAutoReviewEnabled()) {
-            Log::info('Auto-review disabled for repository', $ctx);
-
+        $preflight = $this->preflightGate->evaluate($repository, $data, $ctx);
+        if ($preflight->shouldPostAutoReviewDisabledComment) {
             $this->postAutoReviewDisabled->handle($repository, $data['pull_request_number']);
 
             return;
         }
 
-        $repository->loadMissing('settings');
-        $settings = $repository->settings;
-
-        if ($settings !== null && $settings->hasConfigError()) {
-            Log::warning('Repository has config error, skipping review', array_merge($ctx, [
-                'config_error' => $settings->config_error,
-            ]));
-
+        if ($preflight->configErrorMessage !== null) {
             $this->postConfigError->handle(
                 $repository,
                 $data['pull_request_number'],
-                $settings->config_error ?? 'Unknown configuration error'
+                $preflight->configErrorMessage
             );
 
-            $skipReason = sprintf('Configuration error: %s', $settings->config_error ?? 'Unknown error');
+            $skipReason = sprintf('Configuration error: %s', $preflight->configErrorMessage);
             $this->createPullRequestRun->handle($repository, $data, null, $skipReason);
 
             return;
         }
 
-        $sentinelConfig = $this->resolvePullRequestSentinelConfig->handle(
-            $repository,
-            $data['head_branch'],
-            $data['base_branch']
-        );
-
-        $triggersConfig = $sentinelConfig->getTriggersOrDefault();
-
-        $labelNames = array_map(
-            fn (array $label): string => $label['name'],
-            $data['labels']
-        );
-
-        $triggerResult = $this->triggerEvaluator->evaluate($triggersConfig, [
-            'base_branch' => $data['base_branch'],
-            'head_branch' => $data['head_branch'],
-            'author_login' => $data['author']['login'],
-            'labels' => $labelNames,
-        ]);
-
-        if (! $triggerResult['should_trigger']) {
-            Log::info('Review skipped due to trigger rules', array_merge($ctx, [
-                'reason' => $triggerResult['reason'],
-            ]));
-
-            $this->createPullRequestRun->handle($repository, $data, null, $triggerResult['reason']);
+        if ($preflight->skipReason !== null) {
+            $this->createPullRequestRun->handle($repository, $data, null, $preflight->skipReason);
 
             return;
         }
