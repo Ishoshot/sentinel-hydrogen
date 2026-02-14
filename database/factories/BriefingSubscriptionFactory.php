@@ -57,13 +57,18 @@ final class BriefingSubscriptionFactory extends Factory
 
     /**
      * Set as weekly schedule.
+     *
+     * @param  int  $day  ISO-8601 day number (1=Monday to 7=Sunday)
      */
     public function weekly(int $day = 1): static
     {
+        // Convert ISO day (1=Mon..7=Sun) to Carbon day constant (0=Sun..6=Sat)
+        $carbonDay = $day % 7;
+
         return $this->state(fn (array $attributes): array => [
             'schedule_preset' => BriefingSchedulePreset::Weekly,
             'schedule_day' => $day,
-            'next_scheduled_at' => now()->next($day)->startOfDay()->addHours(9),
+            'next_scheduled_at' => now()->next($carbonDay)->startOfDay()->addHours(9),
         ]);
     }
 
