@@ -4,22 +4,16 @@ declare(strict_types=1);
 
 namespace App\Services\Plans;
 
-use App\Actions\Activities\LogActivity;
 use App\Enums\Billing\PlanFeature;
-use App\Enums\Billing\PlanTier;
-use App\Enums\Billing\SubscriptionStatus;
-use App\Enums\Commands\CommandRunStatus;
-use App\Enums\Reviews\RunStatus;
-use App\Enums\Workspace\ActivityType;
-use App\Models\CommandRun;
-use App\Models\Plan;
-use App\Models\Run;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Plans\Support\PlanLimitEventLogger;
+use App\Services\Plans\Support\PlanPeriodUsageCounter;
+use App\Services\Plans\Support\PlanResolver;
+use App\Services\Plans\Support\PlanSubscriptionEligibilityChecker;
+use App\Services\Plans\Support\WorkspaceCreationEligibilityChecker;
 use App\Services\Plans\ValueObjects\BillingPeriod;
 use App\Services\Plans\ValueObjects\PlanLimitResult;
-use App\Support\PlanDefaults;
-use DateTimeInterface;
 
 final readonly class PlanLimitEnforcer
 {
@@ -27,25 +21,23 @@ final readonly class PlanLimitEnforcer
      * Create a new class instance.
      */
     public function __construct(
-        private LogActivity $logActivity,
+        private PlanResolver $planResolver,
+        private PlanSubscriptionEligibilityChecker $subscriptionEligibilityChecker,
+        private PlanPeriodUsageCounter $periodUsageCounter,
+        private WorkspaceCreationEligibilityChecker $workspaceCreationEligibilityChecker,
+        private PlanLimitEventLogger $eventLogger,
     ) {}
 
     /**
      * Ensure the workspace has an active subscription.
+     *
+     * Grants access if the workspace status is Active/Trialing, or if the
+     * status is Canceled but the latest subscription's ends_at is still
+     * in the future (grace period until the billing period ends).
      */
     public function ensureActiveSubscription(Workspace $workspace): PlanLimitResult
     {
-        $status = $workspace->subscription_status;
-
-        if ($status instanceof SubscriptionStatus && $status->isActive()) {
-            return $this->validateSubscriptionRecord($workspace);
-        }
-
-        $message = 'Your subscription is inactive. Upgrade to restore review access.';
-
-        $this->logLimitEvent($workspace, 'subscription_inactive', $message);
-
-        return PlanLimitResult::deny($message, 'subscription_inactive');
+        return $this->subscriptionEligibilityChecker->ensureActiveSubscription($workspace);
     }
 
     /**
@@ -59,7 +51,7 @@ final readonly class PlanLimitEnforcer
             return $activeCheck;
         }
 
-        $plan = $this->resolvePlan($workspace);
+        $plan = $this->planResolver->resolve($workspace);
         $limit = $plan->monthly_runs_limit;
 
         if ($limit === null) {
@@ -67,18 +59,7 @@ final readonly class PlanLimitEnforcer
         }
 
         $period = $this->currentPeriod($workspace);
-
-        $runsCount = Run::query()
-            ->where('workspace_id', $workspace->id)
-            ->whereBetween('created_at', [$period->startAsString(), $period->endAsString()])
-            ->whereIn('status', [
-                RunStatus::Queued,
-                RunStatus::InProgress,
-                RunStatus::Completed,
-                RunStatus::Failed,
-            ])
-            ->lockForUpdate()
-            ->count();
+        $runsCount = $this->periodUsageCounter->countRuns($workspace, $period);
 
         if ($runsCount < $limit) {
             return PlanLimitResult::allow();
@@ -90,7 +71,7 @@ final readonly class PlanLimitEnforcer
             $limit
         );
 
-        $this->logLimitEvent($workspace, 'runs_limit', $message, [
+        $this->eventLogger->log($workspace, 'runs_limit', $message, [
             'runs_count' => $runsCount,
             'limit' => $limit,
         ]);
@@ -109,7 +90,7 @@ final readonly class PlanLimitEnforcer
             return $activeCheck;
         }
 
-        $plan = $this->resolvePlan($workspace);
+        $plan = $this->planResolver->resolve($workspace);
         $limit = $plan->monthly_commands_limit;
 
         if ($limit === null) {
@@ -117,18 +98,7 @@ final readonly class PlanLimitEnforcer
         }
 
         $period = $this->currentPeriod($workspace);
-
-        $commandsCount = CommandRun::query()
-            ->where('workspace_id', $workspace->id)
-            ->whereBetween('created_at', [$period->startAsString(), $period->endAsString()])
-            ->whereIn('status', [
-                CommandRunStatus::Queued,
-                CommandRunStatus::InProgress,
-                CommandRunStatus::Completed,
-                CommandRunStatus::Failed,
-            ])
-            ->lockForUpdate()
-            ->count();
+        $commandsCount = $this->periodUsageCounter->countCommands($workspace, $period);
 
         if ($commandsCount < $limit) {
             return PlanLimitResult::allow();
@@ -140,7 +110,7 @@ final readonly class PlanLimitEnforcer
             $limit
         );
 
-        $this->logLimitEvent($workspace, 'commands_limit', $message, [
+        $this->eventLogger->log($workspace, 'commands_limit', $message, [
             'commands_count' => $commandsCount,
             'limit' => $limit,
         ]);
@@ -153,7 +123,7 @@ final readonly class PlanLimitEnforcer
      */
     public function ensureCanInviteMember(Workspace $workspace): PlanLimitResult
     {
-        $plan = $this->resolvePlan($workspace);
+        $plan = $this->planResolver->resolve($workspace);
         $limit = $plan->team_size_limit;
 
         if ($limit === null) {
@@ -172,7 +142,7 @@ final readonly class PlanLimitEnforcer
             $limit
         );
 
-        $this->logLimitEvent($workspace, 'team_size_limit', $message, [
+        $this->eventLogger->log($workspace, 'team_size_limit', $message, [
             'team_size' => $teamSize,
             'limit' => $limit,
         ]);
@@ -189,30 +159,7 @@ final readonly class PlanLimitEnforcer
      */
     public function ensureCanCreateWorkspace(User $user): PlanLimitResult
     {
-        $ownedWorkspaces = Workspace::query()
-            ->where('owner_id', $user->id)
-            ->with('plan')
-            ->get();
-
-        // First workspace is always allowed
-        if ($ownedWorkspaces->isEmpty()) {
-            return PlanLimitResult::allow();
-        }
-
-        // Check if all existing workspaces are on paid plans (Illuminate or higher)
-        foreach ($ownedWorkspaces as $workspace) {
-            $plan = $workspace->plan;
-            $tier = $plan !== null ? PlanTier::tryFrom($plan->tier) : PlanTier::Foundation;
-
-            // Foundation is free (rank 1), paid plans are Illuminate+ (rank 2+)
-            if ($tier === null || $tier->isFree()) {
-                $message = 'To create additional workspaces, all your existing workspaces must be on a paid plan (Illuminate or higher).';
-
-                return PlanLimitResult::deny($message, 'paid_plan_required');
-            }
-        }
-
-        return PlanLimitResult::allow();
+        return $this->workspaceCreationEligibilityChecker->ensureCanCreate($user);
     }
 
     /**
@@ -220,13 +167,13 @@ final readonly class PlanLimitEnforcer
      */
     public function ensureFeatureEnabled(Workspace $workspace, PlanFeature $feature, string $message): PlanLimitResult
     {
-        $plan = $this->resolvePlan($workspace);
+        $plan = $this->planResolver->resolve($workspace);
 
         if ($plan->hasFeature($feature)) {
             return PlanLimitResult::allow();
         }
 
-        $this->logLimitEvent($workspace, $feature, $message);
+        $this->eventLogger->log($workspace, $feature, $message);
 
         return PlanLimitResult::deny($message, $feature->value);
     }
@@ -237,80 +184,5 @@ final readonly class PlanLimitEnforcer
     public function currentPeriod(Workspace $workspace): BillingPeriod
     {
         return BillingPeriod::forWorkspace($workspace);
-    }
-
-    /**
-     * Validate subscription record and expiry for paid tiers.
-     */
-    private function validateSubscriptionRecord(Workspace $workspace): PlanLimitResult
-    {
-        $plan = $this->resolvePlan($workspace);
-        $tier = PlanTier::tryFrom($plan->tier) ?? PlanTier::Foundation;
-
-        // Foundation (free) tier doesn't require a subscription record
-        if ($tier->isFree()) {
-            return PlanLimitResult::allow();
-        }
-
-        // Paid tiers must have a subscription record
-        $subscription = $workspace->subscriptions()->latest()->first();
-
-        if ($subscription === null) {
-            $message = 'No subscription record found. Please contact support or re-subscribe.';
-            $this->logLimitEvent($workspace, 'subscription_missing', $message);
-
-            return PlanLimitResult::deny($message, 'subscription_missing');
-        }
-
-        // Check subscription period hasn't expired
-        $periodEnd = $subscription->current_period_end;
-
-        if ($periodEnd instanceof DateTimeInterface && $periodEnd->getTimestamp() < time()) {
-            $message = 'Your subscription period has expired. Please renew to continue.';
-            $this->logLimitEvent($workspace, 'subscription_expired', $message);
-
-            return PlanLimitResult::deny($message, 'subscription_expired');
-        }
-
-        return PlanLimitResult::allow();
-    }
-
-    /**
-     * Resolve the workspace's current plan, creating a Foundation plan if none exists.
-     */
-    private function resolvePlan(Workspace $workspace): Plan
-    {
-        if ($workspace->plan !== null) {
-            return $workspace->plan;
-        }
-
-        $plan = Plan::query()->firstOrCreate(
-            ['tier' => PlanTier::Foundation->value],
-            PlanDefaults::forTier(PlanTier::Foundation)
-        );
-
-        $workspace->forceFill([
-            'plan_id' => $plan->id,
-            'subscription_status' => $workspace->subscription_status ?? SubscriptionStatus::Active,
-        ])->save();
-
-        return $plan;
-    }
-
-    /**
-     * Log a plan limit event to the activity log.
-     *
-     * @param  array<string, mixed>|null  $metadata
-     */
-    private function logLimitEvent(Workspace $workspace, PlanFeature|string $limitType, string $message, ?array $metadata = null): void
-    {
-        $limitTypeValue = $limitType instanceof PlanFeature ? $limitType->value : $limitType;
-
-        $this->logActivity->handle(
-            workspace: $workspace,
-            type: ActivityType::PlanLimitReached,
-            description: $message,
-            metadata: array_merge(['limit_type' => $limitTypeValue], $metadata ?? []),
-        );
     }
 }
