@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Services\GitHub;
 
 use App\Services\GitHub\Contracts\GitHubRateLimiterContract;
+use App\Services\GitHub\Support\GitHubRateLimitBackoffCalculator;
+use App\Services\GitHub\Support\GitHubRateLimitErrorInspector;
+use App\Services\GitHub\Support\GitHubRateLimitStateStore;
 use Closure;
 use Github\Exception\RuntimeException;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 use Throwable;
@@ -27,19 +29,13 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
     private const int MAX_RETRIES = 3;
 
     /**
-     * Base delay in seconds for exponential backoff.
+     * Create a new rate limiter instance.
      */
-    private const int BASE_DELAY_SECONDS = 1;
-
-    /**
-     * Maximum delay in seconds.
-     */
-    private const int MAX_DELAY_SECONDS = 60;
-
-    /**
-     * Cache key prefix for rate limit tracking.
-     */
-    private const string CACHE_PREFIX = 'github_rate_limit:';
+    public function __construct(
+        private readonly ?GitHubRateLimitStateStore $stateStore = null,
+        private readonly ?GitHubRateLimitErrorInspector $errorInspector = null,
+        private readonly ?GitHubRateLimitBackoffCalculator $backoffCalculator = null,
+    ) {}
 
     /**
      * Execute a GitHub API call with rate limiting and retry logic.
@@ -60,9 +56,7 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
         while ($attempt < self::MAX_RETRIES) {
             $attempt++;
 
-            // Check if we're in a cooldown period
-            $cooldownKey = self::CACHE_PREFIX.'cooldown';
-            $cooldownUntil = Cache::get($cooldownKey);
+            $cooldownUntil = $this->stateStore()->getCooldownUntil();
 
             if (is_int($cooldownUntil) && $cooldownUntil > time()) {
                 $waitTime = $cooldownUntil - time();
@@ -71,7 +65,7 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
                     'wait_seconds' => $waitTime,
                 ]);
 
-                if ($waitTime > 0 && $waitTime <= self::MAX_DELAY_SECONDS) {
+                if ($waitTime > 0 && $waitTime <= $this->backoffCalculator()->maxDelaySeconds()) {
                     Sleep::for($waitTime)->seconds();
                 }
             }
@@ -79,12 +73,11 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
             try {
                 $result = $callback();
 
-                // Reset backoff on success
                 $this->resetBackoff();
 
                 return $result;
             } catch (RuntimeException $e) {
-                if ($this->isRateLimitError($e)) {
+                if ($this->errorInspector()->isRateLimitError($e)) {
                     $this->handleRateLimitError($e, $attempt, $operation);
 
                     if ($attempt >= self::MAX_RETRIES) {
@@ -113,11 +106,7 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
      */
     public function getRateLimitHitsThisHour(): int
     {
-        $key = self::CACHE_PREFIX.'hits:'.date('Y-m-d:H');
-
-        $count = Cache::get($key, 0);
-
-        return is_int($count) ? $count : 0;
+        return $this->stateStore()->getRateLimitHitsThisHour();
     }
 
     /**
@@ -125,9 +114,7 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
      */
     public function isInCooldown(): bool
     {
-        $cooldownUntil = Cache::get(self::CACHE_PREFIX.'cooldown');
-
-        return is_int($cooldownUntil) && $cooldownUntil > time();
+        return $this->stateStore()->isInCooldown();
     }
 
     /**
@@ -135,39 +122,7 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
      */
     public function getCooldownRemaining(): int
     {
-        $cooldownUntil = Cache::get(self::CACHE_PREFIX.'cooldown');
-
-        if (! is_int($cooldownUntil) || $cooldownUntil <= time()) {
-            return 0;
-        }
-
-        return $cooldownUntil - time();
-    }
-
-    /**
-     * Check if an exception is a rate limit error.
-     */
-    private function isRateLimitError(RuntimeException $e): bool
-    {
-        $message = mb_strtolower($e->getMessage());
-
-        // Primary rate limit
-        if (str_contains($message, 'rate limit')) {
-            return true;
-        }
-
-        // Secondary rate limit (abuse detection)
-        if (str_contains($message, 'abuse') || str_contains($message, 'secondary rate')) {
-            return true;
-        }
-
-        // HTTP 403 with rate limit indication
-        if (str_contains($message, '403') && str_contains($message, 'limit')) {
-            return true;
-        }
-
-        // HTTP 429 Too Many Requests
-        return str_contains($message, '429');
+        return $this->stateStore()->getCooldownRemaining();
     }
 
     /**
@@ -175,21 +130,12 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
      */
     private function handleRateLimitError(RuntimeException $e, int $attempt, string $operation): void
     {
-        // Calculate delay with exponential backoff and jitter
-        $delay = min(
-            self::BASE_DELAY_SECONDS * (2 ** ($attempt - 1)) + random_int(0, 1000) / 1000,
-            self::MAX_DELAY_SECONDS
-        );
-
-        // Try to extract reset time from error message
-        $resetTime = $this->extractResetTime($e->getMessage());
+        $delay = $this->backoffCalculator()->calculate($attempt);
+        $resetTime = $this->errorInspector()->extractResetTime($e->getMessage());
 
         if ($resetTime !== null && $resetTime > time()) {
-            // Use GitHub's suggested reset time
-            $delay = min($resetTime - time(), self::MAX_DELAY_SECONDS);
-
-            // Set cooldown for other requests
-            Cache::put(self::CACHE_PREFIX.'cooldown', $resetTime, $resetTime - time() + 10);
+            $delay = min($resetTime - time(), $this->backoffCalculator()->maxDelaySeconds());
+            $this->stateStore()->setCooldownUntil($resetTime);
         }
 
         Log::warning('GitHub rate limit hit, backing off', [
@@ -199,47 +145,36 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
             'error' => $e->getMessage(),
         ]);
 
-        // Increment rate limit counter for monitoring
         $this->incrementRateLimitCounter();
 
         Sleep::for((int) ceil($delay))->seconds();
     }
 
     /**
-     * Try to extract the rate limit reset time from an error message.
-     */
-    private function extractResetTime(string $message): ?int
-    {
-        // GitHub often includes reset time in error responses
-        // Pattern: "rate limit ... resets at TIMESTAMP" or "retry after N seconds"
-        if (preg_match('/retry.?after[:\s]+(\d+)/i', $message, $matches)) {
-            return time() + (int) $matches[1];
-        }
-
-        if (preg_match('/reset[s]?.+?(\d{10,})/i', $message, $matches)) {
-            return (int) $matches[1];
-        }
-
-        return null;
-    }
-
-    /**
      * Reset the backoff state after a successful request.
      */
-    private function resetBackoff(): void
-    {
-        // We don't clear the cooldown here as it should expire naturally
-        // This prevents a single successful request from allowing a flood
-    }
+    private function resetBackoff(): void {}
 
     /**
      * Increment the rate limit counter for monitoring.
      */
     private function incrementRateLimitCounter(): void
     {
-        $key = self::CACHE_PREFIX.'hits:'.date('Y-m-d:H');
-        $count = Cache::get($key, 0);
-        $currentCount = is_int($count) ? $count : 0;
-        Cache::put($key, $currentCount + 1, 3600);
+        $this->stateStore()->incrementRateLimitHitsThisHour();
+    }
+
+    private function stateStore(): GitHubRateLimitStateStore
+    {
+        return $this->stateStore ?? new GitHubRateLimitStateStore;
+    }
+
+    private function errorInspector(): GitHubRateLimitErrorInspector
+    {
+        return $this->errorInspector ?? new GitHubRateLimitErrorInspector;
+    }
+
+    private function backoffCalculator(): GitHubRateLimitBackoffCalculator
+    {
+        return $this->backoffCalculator ?? new GitHubRateLimitBackoffCalculator;
     }
 }
