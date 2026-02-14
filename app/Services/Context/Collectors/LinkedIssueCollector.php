@@ -6,6 +6,7 @@ namespace App\Services\Context\Collectors;
 
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Context\Collectors\Support\LinkedIssueFetcher;
 use App\Services\Context\Collectors\Support\LinkedIssueReferenceExtractor;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
@@ -28,17 +29,13 @@ final readonly class LinkedIssueCollector implements ContextCollector
     private const int MAX_ISSUES = 5;
 
     /**
-     * Maximum comments per issue to include.
-     */
-    private const int MAX_COMMENTS_PER_ISSUE = 10;
-
-    /**
      * Create a new LinkedIssueCollector instance.
      */
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
         private LinkedIssueReferenceExtractor $issueReferenceExtractor = new LinkedIssueReferenceExtractor,
+        private LinkedIssueFetcher $issueFetcher = new LinkedIssueFetcher,
     ) {}
 
     /**
@@ -113,7 +110,8 @@ final readonly class LinkedIssueCollector implements ContextCollector
 
         foreach ($issueNumbers as $issueNumber) {
             try {
-                $issue = $this->fetchIssueWithComments(
+                $issue = $this->issueFetcher->fetchIssueWithComments(
+                    $this->gitHubApiService,
                     $coordinates->installationId,
                     $coordinates->owner,
                     $coordinates->repo,
@@ -149,116 +147,5 @@ final readonly class LinkedIssueCollector implements ContextCollector
     private function extractIssueNumbers(string $body): array
     {
         return $this->issueReferenceExtractor->extractIssueNumbers($body);
-    }
-
-    /**
-     * Fetch issue details with comments.
-     *
-     * @return array{number: int, title: string, body: string|null, state: string, labels: array<int, string>, comments: array<int, array{author: string, body: string}>}|null
-     */
-    private function fetchIssueWithComments(
-        int $installationId,
-        string $owner,
-        string $repo,
-        int $issueNumber
-    ): ?array {
-        $issue = $this->gitHubApiService->getIssue($installationId, $owner, $repo, $issueNumber);
-
-        // @phpstan-ignore function.alreadyNarrowedType (defensive check against GitHub API changes)
-        if (! is_array($issue)) {
-            Log::debug('LinkedIssueCollector: Unexpected issue response format', [
-                'issue_number' => $issueNumber,
-            ]);
-
-            return null;
-        }
-
-        // Skip if this is actually a PR (PRs are issues in GitHub API)
-        if (isset($issue['pull_request'])) {
-            return null;
-        }
-
-        $labels = [];
-        if (isset($issue['labels']) && is_array($issue['labels'])) {
-            foreach ($issue['labels'] as $label) {
-                if (is_array($label) && isset($label['name']) && is_string($label['name'])) {
-                    $labels[] = $label['name'];
-                }
-            }
-        }
-
-        $comments = $this->fetchIssueComments($installationId, $owner, $repo, $issueNumber);
-
-        return [
-            'number' => $issueNumber,
-            'title' => is_string($issue['title'] ?? null) ? $issue['title'] : '',
-            'body' => is_string($issue['body'] ?? null) ? $issue['body'] : null,
-            'state' => is_string($issue['state'] ?? null) ? $issue['state'] : 'open',
-            'labels' => $labels,
-            'comments' => $comments,
-        ];
-    }
-
-    /**
-     * Fetch comments for an issue.
-     *
-     * @return array<int, array{author: string, body: string}>
-     */
-    private function fetchIssueComments(
-        int $installationId,
-        string $owner,
-        string $repo,
-        int $issueNumber
-    ): array {
-        try {
-            $rawComments = $this->gitHubApiService->getIssueComments(
-                $installationId,
-                $owner,
-                $repo,
-                $issueNumber
-            );
-
-            // @phpstan-ignore function.alreadyNarrowedType (defensive check against GitHub API changes)
-            if (! is_array($rawComments)) {
-                Log::debug('LinkedIssueCollector: Unexpected comments response format', [
-                    'issue_number' => $issueNumber,
-                ]);
-
-                return [];
-            }
-
-            $comments = [];
-            $count = 0;
-
-            foreach ($rawComments as $comment) {
-                if ($count >= self::MAX_COMMENTS_PER_ISSUE) {
-                    break;
-                }
-
-                $author = '';
-                if (isset($comment['user']) && is_array($comment['user'])) {
-                    $author = is_string($comment['user']['login'] ?? null) ? $comment['user']['login'] : '';
-                }
-
-                $body = is_string($comment['body'] ?? null) ? $comment['body'] : '';
-
-                if ($body !== '') {
-                    $comments[] = [
-                        'author' => $author,
-                        'body' => $body,
-                    ];
-                    $count++;
-                }
-            }
-
-            return $comments;
-        } catch (Throwable $throwable) {
-            Log::debug('LinkedIssueCollector: Failed to fetch issue comments', [
-                'issue_number' => $issueNumber,
-                'error' => $throwable->getMessage(),
-            ]);
-
-            return [];
-        }
     }
 }

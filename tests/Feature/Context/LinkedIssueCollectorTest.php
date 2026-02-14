@@ -9,6 +9,8 @@ use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Collectors\LinkedIssueCollector;
+use App\Services\Context\ContextBag;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
 it('extracts issue numbers from PR body with Fixes keyword', function (): void {
     $collector = app(LinkedIssueCollector::class);
@@ -136,4 +138,107 @@ it('has correct name', function (): void {
     $collector = app(LinkedIssueCollector::class);
 
     expect($collector->name())->toBe('linked_issues');
+});
+
+it('collects linked issues with normalized labels and comments', function (): void {
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forProvider($provider)->active()->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 9911,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'full_name' => 'acme/platform',
+    ]);
+    $run = Run::factory()->forRepository($repository)->create([
+        'metadata' => [
+            'pull_request_body' => 'Fixes #123',
+        ],
+    ]);
+
+    $issueComments = [];
+    foreach (range(1, 12) as $commentNumber) {
+        $issueComments[] = [
+            'user' => ['login' => 'user-'.$commentNumber],
+            'body' => 'comment-'.$commentNumber,
+        ];
+    }
+
+    $gitHubService = Mockery::mock(GitHubApiServiceContract::class);
+    $gitHubService->shouldReceive('getIssue')
+        ->once()
+        ->with(9911, 'acme', 'platform', 123)
+        ->andReturn([
+            'title' => 'Issue title',
+            'body' => 'Issue body',
+            'state' => 'open',
+            'labels' => [
+                ['name' => 'bug'],
+                ['name' => 'high-priority'],
+                ['id' => 77],
+            ],
+        ]);
+    $gitHubService->shouldReceive('getIssueComments')
+        ->once()
+        ->with(9911, 'acme', 'platform', 123)
+        ->andReturn($issueComments);
+
+    $collector = new LinkedIssueCollector($gitHubService);
+    $bag = new ContextBag();
+
+    $collector->collect($bag, [
+        'repository' => $repository,
+        'run' => $run,
+    ]);
+
+    expect($bag->linkedIssues)->toHaveCount(1)
+        ->and($bag->linkedIssues[0]['number'])->toBe(123)
+        ->and($bag->linkedIssues[0]['title'])->toBe('Issue title')
+        ->and($bag->linkedIssues[0]['labels'])->toBe(['bug', 'high-priority'])
+        ->and($bag->linkedIssues[0]['comments'])->toHaveCount(10)
+        ->and($bag->linkedIssues[0]['comments'][0])->toBe([
+            'author' => 'user-1',
+            'body' => 'comment-1',
+        ]);
+});
+
+it('skips linked issue records that are pull requests', function (): void {
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forProvider($provider)->active()->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 6612,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'full_name' => 'acme/platform',
+    ]);
+    $run = Run::factory()->forRepository($repository)->create([
+        'metadata' => [
+            'pull_request_body' => 'Fixes #44',
+        ],
+    ]);
+
+    $gitHubService = Mockery::mock(GitHubApiServiceContract::class);
+    $gitHubService->shouldReceive('getIssue')
+        ->once()
+        ->with(6612, 'acme', 'platform', 44)
+        ->andReturn([
+            'title' => 'PR masquerading as issue',
+            'pull_request' => ['url' => 'https://api.github.com/repos/acme/platform/pulls/44'],
+        ]);
+    $gitHubService->shouldNotReceive('getIssueComments');
+
+    $collector = new LinkedIssueCollector($gitHubService);
+    $bag = new ContextBag();
+
+    $collector->collect($bag, [
+        'repository' => $repository,
+        'run' => $run,
+    ]);
+
+    expect($bag->linkedIssues)->toBeEmpty();
 });
