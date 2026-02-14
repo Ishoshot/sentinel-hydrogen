@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Commands;
 
+use App\Actions\Commands\Support\IssueCommentCommandPayloadResolver;
+use App\Actions\Commands\Support\IssueCommentReviewCommandGate;
 use App\Enums\Commands\CommandType;
 use App\Jobs\Commands\ExecuteCommandRunJob;
 use App\Models\Repository;
@@ -22,6 +24,8 @@ final readonly class HandleIssueCommentCommand
      * Create a new action instance.
      */
     public function __construct(
+        private IssueCommentCommandPayloadResolver $payloadResolver,
+        private IssueCommentReviewCommandGate $reviewCommandGate,
         private CommandParser $commandParser,
         private CommandPermissionService $permissionService,
         private CreateCommandRun $createCommandRun,
@@ -36,30 +40,21 @@ final readonly class HandleIssueCommentCommand
      */
     public function handle(array $payload): void
     {
-        // Only process 'created' action (new comments)
-        $action = $payload['action'] ?? '';
+        $resolvedPayload = $this->payloadResolver->resolve($payload);
+        $action = $resolvedPayload['action'];
+
         if ($action !== 'created') {
             return;
         }
 
-        $commentBody = $payload['comment']['body'] ?? '';
-        $commentId = $payload['comment']['id'] ?? 0;
-        $senderLogin = $payload['sender']['login'] ?? '';
-        $repositoryFullName = $payload['repository']['full_name'] ?? '';
-        $installationId = $payload['installation']['id'] ?? 0;
-
-        // Check if this is an issue or PR
-        $issueNumber = $payload['issue']['number'] ?? null;
-        $isPullRequest = isset($payload['issue']['pull_request']);
-
-        $ctx = [
-            'installation_id' => $installationId,
-            'repository' => $repositoryFullName,
-            'sender' => $senderLogin,
-            'comment_id' => $commentId,
-            'issue_number' => $issueNumber,
-            'is_pull_request' => $isPullRequest,
-        ];
+        $commentBody = $resolvedPayload['comment_body'];
+        $commentId = $resolvedPayload['comment_id'];
+        $senderLogin = $resolvedPayload['sender_login'];
+        $repositoryFullName = $resolvedPayload['repository_full_name'];
+        $installationId = $resolvedPayload['installation_id'];
+        $issueNumber = $resolvedPayload['issue_number'];
+        $isPullRequest = $resolvedPayload['is_pull_request'];
+        $ctx = $resolvedPayload['context'];
 
         // Check if this is an @sentinel mention
         $parsed = $this->commandParser->parse($commentBody);
@@ -111,7 +106,7 @@ final readonly class HandleIssueCommentCommand
         }
 
         // Handle @sentinel review command on PRs - triggers full automated review flow
-        if ($commandType === CommandType::Review && $isPullRequest && $issueNumber !== null) {
+        if ($this->reviewCommandGate->shouldTriggerManualReview($commandType, $isPullRequest, $issueNumber)) {
             $this->triggerReviewFromIssueComment->handle(
                 repository: $permissionResult->repository,
                 pullRequestNumber: $issueNumber,
@@ -123,7 +118,7 @@ final readonly class HandleIssueCommentCommand
             return;
         }
 
-        if ($commandType === CommandType::Review && ! $isPullRequest && $issueNumber !== null) {
+        if ($this->reviewCommandGate->shouldPostIssueReviewGuidance($commandType, $isPullRequest, $issueNumber)) {
             $this->postIssueCommentMessage->postReviewError(
                 installationId: $installationId,
                 repositoryFullName: $repositoryFullName,

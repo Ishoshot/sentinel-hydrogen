@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Commands;
 
+use App\Actions\Commands\Support\IssueCommentManualReviewResultHandler;
 use App\Actions\Reviews\TriggerManualReview;
 use App\Models\Repository;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +16,7 @@ final readonly class TriggerReviewFromIssueComment
      */
     public function __construct(
         private TriggerManualReview $triggerManualReview,
-        private PostIssueCommentMessage $postIssueCommentMessage,
+        private IssueCommentManualReviewResultHandler $resultHandler,
     ) {}
 
     /**
@@ -38,14 +39,7 @@ final readonly class TriggerReviewFromIssueComment
             senderLogin: $senderLogin,
         );
 
-        if (! $result['success'] && $result['run'] === null) {
-            $this->postIssueCommentMessage->postReviewError(
-                installationId: $installationId,
-                repositoryFullName: $repository->full_name,
-                pullRequestNumber: $pullRequestNumber,
-                message: $result['message'],
-            );
-        }
+        $this->resultHandler->handle($result, $installationId, $repository->full_name, $pullRequestNumber);
 
         Log::info('Manual review trigger completed', array_merge($context, [
             'success' => $result['success'],

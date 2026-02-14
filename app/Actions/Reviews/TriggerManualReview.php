@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews;
 
+use App\Actions\Reviews\Support\ManualReviewAcknowledgmentCommentPoster;
+use App\Actions\Reviews\Support\ManualReviewEligibilityChecker;
+use App\Actions\Reviews\Support\ManualReviewPullRequestFetcher;
 use App\Enums\Reviews\RunStatus;
 use App\Models\Repository;
 use App\Models\Run;
-use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\Reviews\ManualPullRequestPayloadFactory;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
 /**
  * Triggers a manual code review for a pull request.
@@ -24,7 +25,9 @@ final readonly class TriggerManualReview
      * Create a new action instance.
      */
     public function __construct(
-        private GitHubApiServiceContract $githubApi,
+        private ManualReviewEligibilityChecker $eligibilityChecker,
+        private ManualReviewPullRequestFetcher $pullRequestFetcher,
+        private ManualReviewAcknowledgmentCommentPoster $acknowledgmentCommentPoster,
         private CreatePullRequestRun $createPullRequestRun,
         private DispatchReviewRun $dispatchReviewRun,
         private ManualPullRequestPayloadFactory $payloadFactory,
@@ -40,16 +43,6 @@ final readonly class TriggerManualReview
         int $prNumber,
         string $senderLogin,
     ): array {
-        $installation = $repository->installation;
-
-        if ($installation === null) {
-            return [
-                'success' => false,
-                'run' => null,
-                'message' => 'Repository installation not found.',
-            ];
-        }
-
         $ctx = [
             'repository_id' => $repository->id,
             'pr_number' => $prNumber,
@@ -58,46 +51,53 @@ final readonly class TriggerManualReview
 
         Log::info('Triggering manual review', $ctx);
 
-        // Check if auto-review is enabled
-        if (! $repository->hasAutoReviewEnabled()) {
-            Log::info('Manual review requested but auto-review disabled', $ctx);
-
+        $eligibility = $this->eligibilityChecker->check($repository, $ctx);
+        if (! $eligibility->allowed) {
             return [
                 'success' => false,
                 'run' => null,
-                'message' => 'Code reviews are disabled for this repository. Enable auto-review in repository settings to use this feature.',
+                'message' => $eligibility->message ?? 'Repository installation not found.',
             ];
         }
 
-        // Fetch PR data from GitHub API
-        try {
-            $prData = $this->githubApi->getPullRequest(
-                installationId: $installation->installation_id,
-                owner: $repository->owner,
-                repo: $repository->name,
-                number: $prNumber
-            );
-        } catch (Throwable $throwable) {
-            Log::warning('Failed to fetch PR data for manual review', array_merge($ctx, [
-                'error' => $throwable->getMessage(),
-            ]));
-
+        $installation = $eligibility->installation;
+        if ($installation === null) {
             return [
                 'success' => false,
                 'run' => null,
-                'message' => 'Unable to fetch pull request details from GitHub.',
+                'message' => 'Repository installation not found.',
+            ];
+        }
+
+        $pullRequest = $this->pullRequestFetcher->fetch(
+            installationId: $installation->installation_id,
+            owner: $repository->owner,
+            repo: $repository->name,
+            pullRequestNumber: $prNumber,
+            context: $ctx,
+        );
+        if (! $pullRequest->successful) {
+            return [
+                'success' => false,
+                'run' => null,
+                'message' => $pullRequest->message ?? 'Unable to fetch pull request details from GitHub.',
             ];
         }
 
         // Transform GitHub API response to webhook payload format
-        $payload = $this->payloadFactory->make($repository, $installation->installation_id, $prData, $senderLogin);
+        $payload = $this->payloadFactory->make(
+            $repository,
+            $installation->installation_id,
+            $pullRequest->pullRequestData,
+            $senderLogin
+        );
 
         // Post acknowledgment comment
-        $greetingCommentId = $this->postAcknowledgmentComment(
+        $greetingCommentId = $this->acknowledgmentCommentPoster->post(
             $installation->installation_id,
             $repository->owner,
             $repository->name,
-            $prNumber
+            $prNumber,
         );
 
         // Create the run using the existing action
@@ -130,40 +130,5 @@ final readonly class TriggerManualReview
             'run' => $run,
             'message' => "Review started. I'll analyze the changes and post my findings shortly.",
         ];
-    }
-
-    /**
-     * Post an acknowledgment comment to the PR.
-     */
-    private function postAcknowledgmentComment(int $installationId, string $owner, string $repo, int $prNumber): ?int
-    {
-        try {
-            $comment = $this->githubApi->createIssueComment(
-                installationId: $installationId,
-                owner: $owner,
-                repo: $repo,
-                number: $prNumber,
-                body: $this->getAcknowledgmentMessage()
-            );
-
-            return (int) ($comment['id'] ?? 0) ?: null;
-        } catch (Throwable $throwable) {
-            Log::warning('Failed to post acknowledgment comment', [
-                'owner' => $owner,
-                'repo' => $repo,
-                'pr_number' => $prNumber,
-                'error' => $throwable->getMessage(),
-            ]);
-
-            return null;
-        }
-    }
-
-    /**
-     * Get the acknowledgment message for manual review.
-     */
-    private function getAcknowledgmentMessage(): string
-    {
-        return "**Sentinel**: Starting code review...\n\nI'll analyze the changes in this pull request and post my findings shortly.";
     }
 }

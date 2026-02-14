@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Commands;
 
-use App\Services\GitHub\Contracts\GitHubApiServiceContract;
-use App\Support\RepositoryNameParser;
+use App\Actions\Commands\Support\IssueCommentBodyFormatter;
+use App\Actions\Commands\Support\IssueCommentMessagePublisher;
+use App\Actions\Commands\Support\IssueCommentRepositoryContextResolver;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -14,7 +15,11 @@ final readonly class PostIssueCommentMessage
     /**
      * Create a new action instance.
      */
-    public function __construct(private GitHubApiServiceContract $githubApi) {}
+    public function __construct(
+        private IssueCommentRepositoryContextResolver $repositoryContextResolver,
+        private IssueCommentBodyFormatter $bodyFormatter,
+        private IssueCommentMessagePublisher $messagePublisher,
+    ) {}
 
     /**
      * Post a review error comment to a pull request thread.
@@ -65,23 +70,18 @@ final readonly class PostIssueCommentMessage
         string $failureLogMessage,
         string $numberContextKey
     ): void {
-        $parsedRepository = RepositoryNameParser::parse($repositoryFullName);
-
+        $parsedRepository = $this->repositoryContextResolver->resolve($repositoryFullName);
         if ($parsedRepository === null) {
-            Log::warning('Invalid repository full name format', [
-                'repository' => $repositoryFullName,
-            ]);
-
             return;
         }
 
         try {
-            $this->githubApi->createIssueComment(
+            $this->messagePublisher->publish(
                 installationId: $installationId,
                 owner: $parsedRepository['owner'],
                 repo: $parsedRepository['repo'],
                 number: $number,
-                body: '**Sentinel**: '.$message
+                body: $this->bodyFormatter->format($message),
             );
         } catch (Throwable $throwable) {
             Log::warning($failureLogMessage, [
