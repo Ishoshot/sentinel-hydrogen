@@ -16,6 +16,9 @@ use InvalidArgumentException;
  */
 final readonly class PromotionHandler
 {
+    /**
+     * Create a new PromotionHandler instance.
+     */
     public function __construct(
         private PromotionValidatorContract $promotionValidator,
         private RecordPromotionUsage $recordPromotionUsage,
@@ -24,11 +27,13 @@ final readonly class PromotionHandler
     /**
      * Validate a promotion code if the transition direction supports it.
      *
+     * @param  TransitionDirection::Subscribe|TransitionDirection::Upgrade|TransitionDirection::Downgrade|TransitionDirection::Cancel  $direction
+     *
      * @throws InvalidArgumentException if the promotion code is invalid
      */
-    public function validateIfApplicable(TransitionDirection $direction, ?string $promoCode): ?Promotion
+    public function validateIfApplicable(string $direction, ?string $promoCode): ?Promotion
     {
-        if (! $direction->acceptsPromotion() || ! is_string($promoCode) || $promoCode === '') {
+        if (! TransitionDirection::acceptsPromotion($direction) || ! is_string($promoCode) || $promoCode === '') {
             return null;
         }
 

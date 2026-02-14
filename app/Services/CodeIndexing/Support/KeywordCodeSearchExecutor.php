@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 final readonly class KeywordCodeSearchExecutor
 {
+    /**
+     * Create a new KeywordCodeSearchExecutor instance.
+     */
     public function __construct(
         private KeywordSearchScorer $keywordScorer,
     ) {}

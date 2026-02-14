@@ -14,6 +14,9 @@ final readonly class ResponseMarkdownFormatter
 {
     private const int MAX_RESPONSE_LENGTH = 60000;
 
+    /**
+     * Create a new ResponseMarkdownFormatter instance.
+     */
     public function __construct(
         private FooterMetricsBuilder $footerBuilder,
         private ErrorSanitizer $errorSanitizer,

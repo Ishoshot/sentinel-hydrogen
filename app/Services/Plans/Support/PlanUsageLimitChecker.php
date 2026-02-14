@@ -12,6 +12,9 @@ use App\Services\Plans\ValueObjects\PlanLimitResult;
  */
 final readonly class PlanUsageLimitChecker
 {
+    /**
+     * Create a new PlanUsageLimitChecker instance.
+     */
     public function __construct(
         private PlanLimitEventLogger $eventLogger,
     ) {}

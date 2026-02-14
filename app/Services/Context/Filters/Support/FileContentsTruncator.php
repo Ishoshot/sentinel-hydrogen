@@ -15,6 +15,9 @@ final readonly class FileContentsTruncator
 
     private const string LIMIT_SUFFIX = "\n... [truncated - token limit]";
 
+    /**
+     * Create a new FileContentsTruncator instance.
+     */
     public function __construct(
         private AbstractTokenTruncator $tokenTruncator,
     ) {}
@@ -43,6 +46,7 @@ final readonly class FileContentsTruncator
                 if ($truncatedContent !== null) {
                     $result[$path] = $truncatedContent;
                 }
+
                 break;
             }
 
@@ -72,6 +76,9 @@ final readonly class FileContentsTruncator
         return [$content, $contentTokens];
     }
 
+    /**
+     * Truncate content using only the remaining token budget.
+     */
     private function truncateToRemainingBudget(string $content, int $remainingTokens): ?string
     {
         if ($remainingTokens <= AbstractTokenTruncator::MIN_SECTION_TOKENS) {

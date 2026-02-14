@@ -79,7 +79,7 @@ final readonly class CreatePullRequestRun
             $this->activityLogger->logCreated($repository, $run, $payload, $skipResolution->skipReason);
         }
 
-        if ($skipResolution->workspace === null) {
+        if (! $skipResolution->workspace instanceof \App\Models\Workspace) {
             $this->postSkipReasonComment->handle($run, SkipReason::OrphanedRepository);
         } elseif ($skipResolution->shouldPostPlanLimitComment()) {
             $this->postSkipReasonComment->handle($run, SkipReason::PlanLimitReached, $skipResolution->skipReason);

@@ -19,6 +19,9 @@ use Illuminate\Support\Facades\Storage;
 final readonly class BriefingDownloadController
 {
     /** @param TrackBriefingDownload $trackDownload Action to track downloads */
+    /**
+     * Create a new BriefingDownloadController instance.
+     */
     public function __construct(
         private TrackBriefingDownload $trackDownload,
     ) {}

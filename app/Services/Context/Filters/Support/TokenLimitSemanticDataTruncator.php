@@ -33,7 +33,7 @@ final readonly class TokenLimitSemanticDataTruncator
         if (isset($data['classes']) && is_array($data['classes'])) {
             $classes = array_values(array_filter(
                 $data['classes'],
-                static fn (mixed $class): bool => is_array($class)
+                is_array(...)
             ));
             /** @var array<int, array<string, mixed>> $classes */
             $result['classes'] = $this->truncateClasses($classes);
@@ -63,12 +63,17 @@ final readonly class TokenLimitSemanticDataTruncator
         $classes = array_slice($classes, 0, 3);
 
         foreach ($classes as &$class) {
-            if (! isset($class['methods']) || ! is_array($class['methods'])) {
+            if (! isset($class['methods'])) {
+                continue;
+            }
+
+            if (! is_array($class['methods'])) {
                 continue;
             }
 
             $class['methods'] = array_slice($class['methods'], 0, 5);
         }
+
         unset($class);
 
         return $classes;

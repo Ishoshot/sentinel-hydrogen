@@ -26,6 +26,9 @@ use App\Support\PlanDefaults;
  */
 final readonly class ChangeSubscription
 {
+    /**
+     * Create a new ChangeSubscription instance.
+     */
     public function __construct(
         private PolarBillingServiceContract $billingService,
         private ApplyWorkspacePlanChange $applyWorkspacePlanChange,

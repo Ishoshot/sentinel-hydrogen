@@ -12,6 +12,9 @@ use App\Services\Context\ContextBag;
  */
 final readonly class ContextBagPathFilterer
 {
+    /**
+     * Create a new ContextBagPathFilterer instance.
+     */
     public function __construct(
         private ConfiguredPathInclusionDecider $inclusionDecider,
     ) {}
@@ -35,6 +38,9 @@ final readonly class ContextBagPathFilterer
         ];
     }
 
+    /**
+     * Filter changed file entries in the context bag.
+     */
     private function filterFiles(ContextBag $bag, PathsConfig $pathsConfig): void
     {
         $bag->files = array_values(array_filter(
@@ -43,6 +49,9 @@ final readonly class ContextBagPathFilterer
         ));
     }
 
+    /**
+     * Filter full-file content entries keyed by path.
+     */
     private function filterFileContents(ContextBag $bag, PathsConfig $pathsConfig): int
     {
         if ($bag->fileContents === []) {
@@ -60,6 +69,9 @@ final readonly class ContextBagPathFilterer
         return $before - count($bag->fileContents);
     }
 
+    /**
+     * Filter semantic-analysis entries keyed by path.
+     */
     private function filterSemantics(ContextBag $bag, PathsConfig $pathsConfig): int
     {
         if ($bag->semantics === []) {
@@ -77,6 +89,9 @@ final readonly class ContextBagPathFilterer
         return $before - count($bag->semantics);
     }
 
+    /**
+     * Filter guideline entries by guideline path.
+     */
     private function filterGuidelines(ContextBag $bag, PathsConfig $pathsConfig): int
     {
         if ($bag->guidelines === []) {

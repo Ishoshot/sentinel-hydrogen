@@ -23,10 +23,19 @@ use Illuminate\Support\Facades\Log;
  */
 final readonly class ConfiguredPathFilter implements ContextFilter
 {
+    /**
+     * Applies include / ignore filtering to context bag sections.
+     */
     private ContextBagPathFilterer $bagPathFilterer;
 
+    /**
+     * Flags files matching sensitive path rules.
+     */
     private SensitiveFileMarker $sensitiveFileMarker;
 
+    /**
+     * Applies include / ignore filtering to repository context metadata.
+     */
     private ConfiguredPathRepositoryContextFilter $repositoryContextFilter;
 
     /**

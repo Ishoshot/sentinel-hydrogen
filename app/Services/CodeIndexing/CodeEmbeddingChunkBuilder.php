@@ -13,7 +13,7 @@ use App\Services\CodeIndexing\Support\CodeEmbeddingSymbolChunkExtractor;
 /**
  * Builds embedding chunks from indexed source files.
  */
-final class CodeEmbeddingChunkBuilder
+final readonly class CodeEmbeddingChunkBuilder
 {
     /**
      * Create a new chunk builder instance.
@@ -51,11 +51,17 @@ final class CodeEmbeddingChunkBuilder
         return $chunks;
     }
 
+    /**
+     * ContentFormatter.
+     */
     private function contentFormatter(): CodeEmbeddingChunkContentFormatter
     {
         return $this->contentFormatter ?? new CodeEmbeddingChunkContentFormatter;
     }
 
+    /**
+     * SymbolChunkExtractor.
+     */
     private function symbolChunkExtractor(): CodeEmbeddingSymbolChunkExtractor
     {
         return $this->symbolChunkExtractor ?? new CodeEmbeddingSymbolChunkExtractor(

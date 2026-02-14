@@ -10,6 +10,9 @@ final class GitHubRateLimitBackoffCalculator
 
     private const int MAX_DELAY_SECONDS = 60;
 
+    /**
+     * Calculate.
+     */
     public function calculate(int $attempt): float
     {
         return min(
@@ -18,6 +21,9 @@ final class GitHubRateLimitBackoffCalculator
         );
     }
 
+    /**
+     * MaxDelaySeconds.
+     */
     public function maxDelaySeconds(): int
     {
         return self::MAX_DELAY_SECONDS;

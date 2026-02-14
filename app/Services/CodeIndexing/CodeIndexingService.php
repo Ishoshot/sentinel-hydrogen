@@ -153,16 +153,25 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
         return $this->filePolicy->shouldIndex($filePath);
     }
 
+    /**
+     * ChangeSetPlanner.
+     */
     private function changeSetPlanner(): CodeIndexingChangeSetPlanner
     {
         return $this->changeSetPlanner ?? new CodeIndexingChangeSetPlanner($this->changeSetPreparer);
     }
 
+    /**
+     * PayloadFactory.
+     */
     private function payloadFactory(): CodeIndexingPayloadFactory
     {
         return $this->payloadFactory ?? new CodeIndexingPayloadFactory;
     }
 
+    /**
+     * TelemetryLogger.
+     */
     private function telemetryLogger(): CodeIndexingTelemetryLogger
     {
         return $this->telemetryLogger ?? new CodeIndexingTelemetryLogger;

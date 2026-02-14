@@ -9,14 +9,14 @@ use App\Services\Contracts\SentinelMessageServiceContract;
 /**
  * Service for generating Sentinel's fun and friendly PR messages.
  */
-final class SentinelMessageService implements SentinelMessageServiceContract
+final readonly class SentinelMessageService implements SentinelMessageServiceContract
 {
     /**
      * Create a new service instance.
      */
     public function __construct(
-        private readonly SentinelBrandingResolver $brandingResolver = new SentinelBrandingResolver,
-        private readonly SentinelStatusCommentBuilder $statusCommentBuilder = new SentinelStatusCommentBuilder,
+        private SentinelBrandingResolver $brandingResolver = new SentinelBrandingResolver,
+        private SentinelStatusCommentBuilder $statusCommentBuilder = new SentinelStatusCommentBuilder,
     ) {}
 
     /**

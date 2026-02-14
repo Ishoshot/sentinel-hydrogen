@@ -12,6 +12,9 @@ use App\Models\Workspace;
  */
 final readonly class ResolvedBillingContext
 {
+    /**
+     * Create a new ResolvedBillingContext instance.
+     */
     public function __construct(
         public ?Subscription $latestSubscription,
         public ?string $polarSubscriptionId,

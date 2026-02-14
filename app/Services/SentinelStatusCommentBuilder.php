@@ -7,10 +7,13 @@ namespace App\Services;
 /**
  * Builds Sentinel status and error comment templates for GitHub PR comments.
  */
-final class SentinelStatusCommentBuilder
+final readonly class SentinelStatusCommentBuilder
 {
+    /**
+     * Create a new SentinelStatusCommentBuilder instance.
+     */
     public function __construct(
-        private readonly SentinelBrandingResolver $brandingResolver = new SentinelBrandingResolver,
+        private SentinelBrandingResolver $brandingResolver = new SentinelBrandingResolver,
     ) {}
 
     /**

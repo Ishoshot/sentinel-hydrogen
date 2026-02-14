@@ -130,11 +130,17 @@ final readonly class ReviewHistoryCollector implements ContextCollector
         ]);
     }
 
+    /**
+     * RunFetcher.
+     */
     private function runFetcher(): ReviewHistoryRunFetcher
     {
         return $this->runFetcher ?? new ReviewHistoryRunFetcher;
     }
 
+    /**
+     * EntryBuilder.
+     */
     private function entryBuilder(): ReviewHistoryEntryBuilder
     {
         return $this->entryBuilder ?? new ReviewHistoryEntryBuilder;

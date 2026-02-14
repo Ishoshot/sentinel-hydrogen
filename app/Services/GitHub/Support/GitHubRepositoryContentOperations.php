@@ -116,6 +116,9 @@ final readonly class GitHubRepositoryContentOperations
         ));
     }
 
+    /**
+     * FileExists.
+     */
     public function fileExists(int $installationId, string $owner, string $repo, string $path, ?string $ref = null): bool
     {
         try {

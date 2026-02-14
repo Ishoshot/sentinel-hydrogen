@@ -21,7 +21,7 @@ final class PolarSubscriptionLookup
     public function fromLifecyclePayload(array $subscriptionPayload, string $event): ?Subscription
     {
         if ($subscriptionPayload === []) {
-            Log::warning("subscription.{$event} webhook missing data payload");
+            Log::warning(sprintf('subscription.%s webhook missing data payload', $event));
 
             return null;
         }
@@ -29,7 +29,7 @@ final class PolarSubscriptionLookup
         $subscriptionId = $subscriptionPayload['id'] ?? null;
 
         if (! is_string($subscriptionId)) {
-            Log::warning("subscription.{$event} webhook missing subscription id");
+            Log::warning(sprintf('subscription.%s webhook missing subscription id', $event));
 
             return null;
         }
@@ -89,7 +89,7 @@ final class PolarSubscriptionLookup
             return $existingSubscription;
         }
 
-        Log::warning("subscription.{$event} subscription not found in database", [
+        Log::warning(sprintf('subscription.%s subscription not found in database', $event), [
             'polar_subscription_id' => $subscriptionId,
         ]);
 

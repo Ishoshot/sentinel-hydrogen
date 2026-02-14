@@ -55,18 +55,18 @@ final readonly class ProjectManifestParser
         $javaManifestParser ??= new JavaManifestParser($this->dependencyRegistry);
 
         $this->manifestParsers = [
-            'composer.json' => fn (string $content) => $composerJsonParser->parse($content),
-            'package.json' => fn (string $content) => $packageJsonParser->parse($content),
-            'go.mod' => fn (string $content) => $goManifestParser->parse($content),
-            'Cargo.toml' => fn (string $content) => $rustManifestParser->parseCargoToml($content),
-            'pyproject.toml' => fn (string $content) => $pythonManifestParser->parsePyprojectToml($content),
-            'requirements.txt' => fn (string $content) => $pythonManifestParser->parseRequirementsTxt($content),
-            'Gemfile' => fn (string $content) => $rubyManifestParser->parseGemfile($content),
-            'pubspec.yaml' => fn (string $content) => $dartManifestParser->parsePubspecYaml($content),
-            'mix.exs' => fn (string $content) => $elixirManifestParser->parseMixExs($content),
-            'pom.xml' => fn (string $content) => $javaManifestParser->parsePomXml($content),
-            'build.gradle' => fn (string $content) => $javaManifestParser->parseGradleBuild($content),
-            'build.gradle.kts' => fn (string $content) => $javaManifestParser->parseGradleBuild($content),
+            'composer.json' => $composerJsonParser->parse(...),
+            'package.json' => $packageJsonParser->parse(...),
+            'go.mod' => $goManifestParser->parse(...),
+            'Cargo.toml' => $rustManifestParser->parseCargoToml(...),
+            'pyproject.toml' => $pythonManifestParser->parsePyprojectToml(...),
+            'requirements.txt' => $pythonManifestParser->parseRequirementsTxt(...),
+            'Gemfile' => $rubyManifestParser->parseGemfile(...),
+            'pubspec.yaml' => $dartManifestParser->parsePubspecYaml(...),
+            'mix.exs' => $elixirManifestParser->parseMixExs(...),
+            'pom.xml' => $javaManifestParser->parsePomXml(...),
+            'build.gradle' => $javaManifestParser->parseGradleBuild(...),
+            'build.gradle.kts' => $javaManifestParser->parseGradleBuild(...),
         ];
     }
 

@@ -21,7 +21,7 @@ use Throwable;
  * - 5,000 requests per hour for authenticated requests (installation tokens)
  * - Secondary rate limits for abuse detection
  */
-final class GitHubRateLimiter implements GitHubRateLimiterContract
+final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
 {
     /**
      * Maximum number of retry attempts.
@@ -32,9 +32,9 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
      * Create a new rate limiter instance.
      */
     public function __construct(
-        private readonly ?GitHubRateLimitStateStore $stateStore = null,
-        private readonly ?GitHubRateLimitErrorInspector $errorInspector = null,
-        private readonly ?GitHubRateLimitBackoffCalculator $backoffCalculator = null,
+        private ?GitHubRateLimitStateStore $stateStore = null,
+        private ?GitHubRateLimitErrorInspector $errorInspector = null,
+        private ?GitHubRateLimitBackoffCalculator $backoffCalculator = null,
     ) {}
 
     /**
@@ -163,16 +163,25 @@ final class GitHubRateLimiter implements GitHubRateLimiterContract
         $this->stateStore()->incrementRateLimitHitsThisHour();
     }
 
+    /**
+     * StateStore.
+     */
     private function stateStore(): GitHubRateLimitStateStore
     {
         return $this->stateStore ?? new GitHubRateLimitStateStore;
     }
 
+    /**
+     * ErrorInspector.
+     */
     private function errorInspector(): GitHubRateLimitErrorInspector
     {
         return $this->errorInspector ?? new GitHubRateLimitErrorInspector;
     }
 
+    /**
+     * BackoffCalculator.
+     */
     private function backoffCalculator(): GitHubRateLimitBackoffCalculator
     {
         return $this->backoffCalculator ?? new GitHubRateLimitBackoffCalculator;

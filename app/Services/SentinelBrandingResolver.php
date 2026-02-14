@@ -7,10 +7,13 @@ namespace App\Services;
 /**
  * Selects random greeting and branding messages from the Sentinel message catalog.
  */
-final class SentinelBrandingResolver
+final readonly class SentinelBrandingResolver
 {
+    /**
+     * Create a new SentinelBrandingResolver instance.
+     */
     public function __construct(
-        private readonly SentinelMessageCatalogLoader $catalogLoader = new SentinelMessageCatalogLoader,
+        private SentinelMessageCatalogLoader $catalogLoader = new SentinelMessageCatalogLoader,
     ) {}
 
     /**

@@ -13,14 +13,14 @@ use RuntimeException;
 /**
  * Service for managing discounts on Polar.
  */
-final class PolarDiscountService
+final readonly class PolarDiscountService
 {
     /**
      * Create a new service instance.
      */
     public function __construct(
-        private readonly PolarDiscountApiClient $apiClient = new PolarDiscountApiClient,
-        private readonly PolarDiscountPayloadBuilder $payloadBuilder = new PolarDiscountPayloadBuilder,
+        private PolarDiscountApiClient $apiClient = new PolarDiscountApiClient,
+        private PolarDiscountPayloadBuilder $payloadBuilder = new PolarDiscountPayloadBuilder,
     ) {}
 
     /**

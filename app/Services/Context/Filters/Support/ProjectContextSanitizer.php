@@ -11,6 +11,9 @@ use App\Services\Context\SensitiveDataRedactor;
  */
 final readonly class ProjectContextSanitizer
 {
+    /**
+     * Create a new ProjectContextSanitizer instance.
+     */
     public function __construct(
         private SensitiveDataRedactor $redactor,
     ) {}

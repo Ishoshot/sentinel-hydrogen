@@ -16,6 +16,9 @@ use InvalidArgumentException;
  */
 final readonly class PolarProductIdGuard
 {
+    /**
+     * Create a new PolarProductIdGuard instance.
+     */
     public function __construct(
         private PolarProductResolver $productResolver,
     ) {}

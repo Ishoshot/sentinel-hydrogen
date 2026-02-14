@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Log;
  */
 final readonly class CodeIndexingTelemetryLogger
 {
+    /**
+     * LogFullIndexStarted.
+     */
     public function logFullIndexStarted(int $repositoryId, string $commitSha): void
     {
         Log::info('Starting full repository index', [
@@ -19,6 +22,9 @@ final readonly class CodeIndexingTelemetryLogger
         ]);
     }
 
+    /**
+     * LogMissingInstallation.
+     */
     public function logMissingInstallation(int $repositoryId): void
     {
         Log::warning('Cannot index repository without installation', [
@@ -26,6 +32,9 @@ final readonly class CodeIndexingTelemetryLogger
         ]);
     }
 
+    /**
+     * LogIndexableFilesDiscovered.
+     */
     public function logIndexableFilesDiscovered(int $repositoryId, int $totalFiles, int $indexableFiles): void
     {
         Log::info('Found indexable files', [
@@ -35,6 +44,9 @@ final readonly class CodeIndexingTelemetryLogger
         ]);
     }
 
+    /**
+     * LogIncrementalIndexStarted.
+     */
     public function logIncrementalIndexStarted(int $repositoryId, string $commitSha, int $added, int $modified, int $removed): void
     {
         Log::info('Starting incremental index', [
@@ -46,6 +58,9 @@ final readonly class CodeIndexingTelemetryLogger
         ]);
     }
 
+    /**
+     * LogNoIndexableFilesInChangeSet.
+     */
     public function logNoIndexableFilesInChangeSet(int $repositoryId): void
     {
         Log::debug('No indexable files in change set', [
@@ -53,6 +68,9 @@ final readonly class CodeIndexingTelemetryLogger
         ]);
     }
 
+    /**
+     * LogLargeChangeSet.
+     */
     public function logLargeChangeSet(int $repositoryId, int $changedFiles): void
     {
         Log::info('Large change set detected, triggering full reindex', [
@@ -61,6 +79,9 @@ final readonly class CodeIndexingTelemetryLogger
         ]);
     }
 
+    /**
+     * LogRemovedFiles.
+     */
     public function logRemovedFiles(int $repositoryId, int $requested, int $deleted): void
     {
         Log::info('Removed files from index', [

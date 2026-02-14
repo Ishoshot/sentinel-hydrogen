@@ -38,7 +38,7 @@ final readonly class HandlePolarSubscriptionEvent
     public function canceled(VerifiedPolarWebhook $webhook): void
     {
         $existingSubscription = $this->subscriptionLookup->fromLifecyclePayload($webhook->data, 'canceled');
-        if ($existingSubscription === null) {
+        if (! $existingSubscription instanceof \App\Models\Subscription) {
             return;
         }
 
@@ -61,7 +61,7 @@ final readonly class HandlePolarSubscriptionEvent
     public function uncanceled(VerifiedPolarWebhook $webhook): void
     {
         $existingSubscription = $this->subscriptionLookup->fromLifecyclePayload($webhook->data, 'uncanceled');
-        if ($existingSubscription === null) {
+        if (! $existingSubscription instanceof \App\Models\Subscription) {
             return;
         }
 
@@ -79,7 +79,7 @@ final readonly class HandlePolarSubscriptionEvent
     public function revoked(VerifiedPolarWebhook $webhook): void
     {
         $existingSubscription = $this->subscriptionLookup->fromLifecyclePayload($webhook->data, 'revoked');
-        if ($existingSubscription === null) {
+        if (! $existingSubscription instanceof \App\Models\Subscription) {
             return;
         }
 
@@ -116,7 +116,7 @@ final readonly class HandlePolarSubscriptionEvent
     private function updateSubscriptionFromWebhook(VerifiedPolarWebhook $webhook, ?SubscriptionStatus $overrideStatus): void
     {
         $existingSubscription = $this->subscriptionLookup->fromWebhook($webhook);
-        if ($existingSubscription === null) {
+        if (! $existingSubscription instanceof \App\Models\Subscription) {
             return;
         }
 

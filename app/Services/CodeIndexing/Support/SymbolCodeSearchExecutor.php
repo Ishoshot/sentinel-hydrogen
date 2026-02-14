@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 final readonly class SymbolCodeSearchExecutor
 {
+    /**
+     * Create a new SymbolCodeSearchExecutor instance.
+     */
     public function __construct(
         private SymbolSearchResultMapper $resultMapper,
     ) {}

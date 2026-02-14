@@ -17,6 +17,9 @@ final class GenerateScheduledBriefings implements ShouldQueue
     use Queueable;
 
     /** Create a new job instance. */
+    /**
+     * Create a new GenerateScheduledBriefings instance.
+     */
     public function __construct()
     {
         $this->onQueue(Queue::BriefingsDefault->value);

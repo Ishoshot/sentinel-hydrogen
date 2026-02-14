@@ -102,6 +102,9 @@ final readonly class ProjectContextCollector implements ContextCollector
         ]);
     }
 
+    /**
+     * ContextBuilder.
+     */
     private function contextBuilder(): ProjectManifestContextBuilder
     {
         return $this->contextBuilder ?? new ProjectManifestContextBuilder(

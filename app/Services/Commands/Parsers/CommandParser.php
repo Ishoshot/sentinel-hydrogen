@@ -22,20 +22,13 @@ final readonly class CommandParser
      */
     private const string MENTION_TRIGGER = '@sentinel';
 
-    private CommandParserAliasResolver $aliasResolver;
-
-    private CommandParserContextHintsExtractor $contextHintsExtractor;
-
     /**
      * Create a new parser instance.
      */
     public function __construct(
-        ?CommandParserAliasResolver $aliasResolver = null,
-        ?CommandParserContextHintsExtractor $contextHintsExtractor = null,
-    ) {
-        $this->aliasResolver = $aliasResolver ?? new CommandParserAliasResolver();
-        $this->contextHintsExtractor = $contextHintsExtractor ?? new CommandParserContextHintsExtractor();
-    }
+        private CommandParserAliasResolver $aliasResolver = new CommandParserAliasResolver(),
+        private CommandParserContextHintsExtractor $contextHintsExtractor = new CommandParserContextHintsExtractor(),
+    ) {}
 
     /**
      * Parse a comment body for @sentinel commands.

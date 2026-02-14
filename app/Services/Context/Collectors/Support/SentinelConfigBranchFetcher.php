@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Log;
  */
 final readonly class SentinelConfigBranchFetcher
 {
+    /**
+     * Create a new SentinelConfigBranchFetcher instance.
+     */
     public function __construct(
         private FetchesSentinelConfig $fetchConfig,
         private SentinelConfigParser $configParser,

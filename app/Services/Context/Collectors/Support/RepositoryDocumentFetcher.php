@@ -19,6 +19,9 @@ final readonly class RepositoryDocumentFetcher
      */
     private const int MAX_CONTENT_LENGTH = 16000;
 
+    /**
+     * Create a new RepositoryDocumentFetcher instance.
+     */
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,
         private GitHubContentDecoder $contentDecoder = new GitHubContentDecoder,

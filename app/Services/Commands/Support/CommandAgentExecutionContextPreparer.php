@@ -17,6 +17,9 @@ use RuntimeException;
 
 final readonly class CommandAgentExecutionContextPreparer
 {
+    /**
+     * Create a new CommandAgentExecutionContextPreparer instance.
+     */
     public function __construct(
         private CommandAgentProviderResolver $providerResolver,
         private CommandContextHintsNormalizer $contextHintsNormalizer,

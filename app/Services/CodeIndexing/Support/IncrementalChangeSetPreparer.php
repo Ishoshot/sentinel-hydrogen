@@ -12,6 +12,9 @@ final readonly class IncrementalChangeSetPreparer
 {
     private const int FULL_REINDEX_THRESHOLD = 500;
 
+    /**
+     * Create a new IncrementalChangeSetPreparer instance.
+     */
     public function __construct(
         private IndexableFilePolicy $filePolicy,
     ) {}

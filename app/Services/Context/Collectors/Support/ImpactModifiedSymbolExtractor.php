@@ -9,15 +9,15 @@ use App\Services\Context\ContextBag;
 /**
  * Extracts modified symbols by intersecting semantic ranges and patch line edits.
  */
-final class ImpactModifiedSymbolExtractor
+final readonly class ImpactModifiedSymbolExtractor
 {
     /**
      * Create a new extractor instance.
      */
     public function __construct(
-        private readonly ?ImpactPatchFileEntryFinder $fileEntryFinder = null,
-        private readonly ?ImpactPatchModifiedLineParser $modifiedLineParser = null,
-        private readonly ?ImpactSemanticSymbolExtractor $semanticSymbolExtractor = null,
+        private ?ImpactPatchFileEntryFinder $fileEntryFinder = null,
+        private ?ImpactPatchModifiedLineParser $modifiedLineParser = null,
+        private ?ImpactSemanticSymbolExtractor $semanticSymbolExtractor = null,
     ) {}
 
     /**
@@ -50,16 +50,25 @@ final class ImpactModifiedSymbolExtractor
         return $modifiedSymbols;
     }
 
+    /**
+     * Resolve the patch file entry finder dependency.
+     */
     private function fileEntryFinder(): ImpactPatchFileEntryFinder
     {
         return $this->fileEntryFinder ?? new ImpactPatchFileEntryFinder;
     }
 
+    /**
+     * Resolve the patch modified-line parser dependency.
+     */
     private function modifiedLineParser(): ImpactPatchModifiedLineParser
     {
         return $this->modifiedLineParser ?? new ImpactPatchModifiedLineParser;
     }
 
+    /**
+     * Resolve the semantic symbol extractor dependency.
+     */
     private function semanticSymbolExtractor(): ImpactSemanticSymbolExtractor
     {
         return $this->semanticSymbolExtractor ?? new ImpactSemanticSymbolExtractor;

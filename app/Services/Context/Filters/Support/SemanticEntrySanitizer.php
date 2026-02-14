@@ -11,6 +11,9 @@ use App\Services\Context\SensitiveDataRedactor;
  */
 final readonly class SemanticEntrySanitizer
 {
+    /**
+     * Create a new SemanticEntrySanitizer instance.
+     */
     public function __construct(
         private SensitiveDataRedactor $redactor,
     ) {}

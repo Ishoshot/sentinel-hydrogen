@@ -16,6 +16,9 @@ use App\Services\Billing\Contracts\PolarBillingServiceContract;
  */
 final readonly class CheckoutInitiator
 {
+    /**
+     * Create a new CheckoutInitiator instance.
+     */
     public function __construct(
         private PolarBillingServiceContract $billingService,
         private PromotionHandler $promotionHandler,

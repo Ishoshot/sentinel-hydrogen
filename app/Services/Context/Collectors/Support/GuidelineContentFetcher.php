@@ -26,6 +26,9 @@ final readonly class GuidelineContentFetcher
      */
     private const array ALLOWED_EXTENSIONS = ['md', 'mdx', 'blade.php'];
 
+    /**
+     * Create a new GuidelineContentFetcher instance.
+     */
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,
         private GitHubContentDecoder $contentDecoder = new GitHubContentDecoder,

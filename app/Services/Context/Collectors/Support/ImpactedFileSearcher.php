@@ -151,21 +151,33 @@ final readonly class ImpactedFileSearcher
         return 0.3;
     }
 
+    /**
+     * Resolve the search pattern factory dependency.
+     */
     private function searchPatternFactory(): ImpactSearchPatternFactory
     {
         return $this->searchPatternFactory ?? new ImpactSearchPatternFactory;
     }
 
+    /**
+     * Resolve the impacted-file candidate collector dependency.
+     */
     private function candidateCollector(): ImpactedFileCandidateCollector
     {
         return $this->candidateCollector ?? new ImpactedFileCandidateCollector;
     }
 
+    /**
+     * Resolve the repository coordinate resolver dependency.
+     */
     private function coordinatesResolver(): ImpactedFileRepositoryCoordinatesResolver
     {
         return $this->coordinatesResolver ?? new ImpactedFileRepositoryCoordinatesResolver;
     }
 
+    /**
+     * Resolve the impacted-file content fetcher dependency.
+     */
     private function contentFetcher(): ImpactedFileContentFetcher
     {
         return $this->contentFetcher ?? new ImpactedFileContentFetcher($this->gitHubApiService);

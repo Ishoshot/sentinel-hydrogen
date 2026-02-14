@@ -12,6 +12,9 @@ use App\Services\Context\ContextBag;
  */
 final readonly class SensitiveFileMarker
 {
+    /**
+     * Create a new SensitiveFileMarker instance.
+     */
     public function __construct(
         private ConfiguredPathInclusionDecider $inclusionDecider,
     ) {}

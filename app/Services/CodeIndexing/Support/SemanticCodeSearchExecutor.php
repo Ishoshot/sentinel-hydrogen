@@ -12,6 +12,9 @@ use stdClass;
 
 final readonly class SemanticCodeSearchExecutor
 {
+    /**
+     * Create a new SemanticCodeSearchExecutor instance.
+     */
     public function __construct(
         private EmbeddingServiceContract $embeddingService,
         private SemanticSearchResultRowMapper $rowMapper,

@@ -7,16 +7,25 @@ namespace App\Services\Context\Collectors\Support;
 /**
  * Prioritizes and limits dependencies based on semantic import usage.
  */
-final class ProjectDependencyPrioritizer
+final readonly class ProjectDependencyPrioritizer
 {
     private const int MAX_MAIN_DEPENDENCIES = 50;
 
     private const int MAX_DEV_DEPENDENCIES = 20;
 
-    private readonly ModuleNameNormalizer $moduleNormalizer;
+    /**
+     * Normalizes import/module identifiers across language ecosystems.
+     */
+    private ModuleNameNormalizer $moduleNormalizer;
 
-    private readonly DependencyImportMatcher $importMatcher;
+    /**
+     * Matches dependencies against imported modules and prioritizes used entries.
+     */
+    private DependencyImportMatcher $importMatcher;
 
+    /**
+     * Create a new ProjectDependencyPrioritizer instance.
+     */
     public function __construct()
     {
         $this->moduleNormalizer = new ModuleNameNormalizer;

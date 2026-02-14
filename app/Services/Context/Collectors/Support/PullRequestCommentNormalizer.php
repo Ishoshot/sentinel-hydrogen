@@ -51,8 +51,11 @@ final readonly class PullRequestCommentNormalizer
 
             $body = is_string($comment['body'] ?? null) ? $comment['body'] : '';
             $createdAt = is_string($comment['created_at'] ?? null) ? $comment['created_at'] : '';
+            if ($body === '') {
+                continue;
+            }
 
-            if ($body === '' || $this->isBotComment($author, $body)) {
+            if ($this->isBotComment($author, $body)) {
                 continue;
             }
 

@@ -8,6 +8,9 @@ use Github\Exception\RuntimeException;
 
 final class GitHubRateLimitErrorInspector
 {
+    /**
+     * IsRateLimitError.
+     */
     public function isRateLimitError(RuntimeException $exception): bool
     {
         $message = mb_strtolower($exception->getMessage());
@@ -27,6 +30,9 @@ final class GitHubRateLimitErrorInspector
         return str_contains($message, '429');
     }
 
+    /**
+     * ExtractResetTime.
+     */
     public function extractResetTime(string $message): ?int
     {
         if (preg_match('/retry.?after[:\s]+(\d+)/i', $message, $matches) === 1) {

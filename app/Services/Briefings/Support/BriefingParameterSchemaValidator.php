@@ -53,7 +53,11 @@ final class BriefingParameterSchemaValidator
         $properties = $this->normalizedProperties($schema);
 
         foreach ($properties as $field => $definition) {
-            if (! is_string($field) || ! is_array($definition)) {
+            if (! is_string($field)) {
+                continue;
+            }
+
+            if (! is_array($definition)) {
                 continue;
             }
 
@@ -136,6 +140,9 @@ final class BriefingParameterSchemaValidator
         return $fieldRules;
     }
 
+    /**
+     * ResolveTypeRule.
+     */
     private function resolveTypeRule(string $field, mixed $fieldType): string
     {
         if (! is_string($fieldType)) {
@@ -153,6 +160,9 @@ final class BriefingParameterSchemaValidator
         };
     }
 
+    /**
+     * ResolveFormatRule.
+     */
     private function resolveFormatRule(mixed $format): ?string
     {
         return match ((string) $format) {

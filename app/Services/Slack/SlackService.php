@@ -11,13 +11,13 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-final class SlackService implements SlackServiceContract
+final readonly class SlackService implements SlackServiceContract
 {
     /**
      * Create a new service instance.
      */
     public function __construct(
-        private readonly SlackOAuthClient $oauthClient = new SlackOAuthClient,
+        private SlackOAuthClient $oauthClient = new SlackOAuthClient,
     ) {}
 
     /**

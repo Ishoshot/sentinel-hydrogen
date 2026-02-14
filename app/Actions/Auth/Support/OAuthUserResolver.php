@@ -17,6 +17,9 @@ use Laravel\Socialite\Contracts\User as SocialiteUser;
  */
 final readonly class OAuthUserResolver
 {
+    /**
+     * Create a new OAuthUserResolver instance.
+     */
     public function __construct(
         private CreateWorkspaceForNewUser $createWorkspaceForNewUser,
     ) {}

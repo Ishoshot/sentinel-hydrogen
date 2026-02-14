@@ -91,6 +91,9 @@ final readonly class ReviewHistoryEntryBuilder
         return 'Previous review found: '.implode(', ', $parts).'.';
     }
 
+    /**
+     * Generate a stable fingerprint for a finding snapshot.
+     */
     private function generateFingerprint(Finding $finding): string
     {
         $components = [

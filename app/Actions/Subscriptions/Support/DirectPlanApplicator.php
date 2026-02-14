@@ -17,6 +17,9 @@ use App\Models\Workspace;
  */
 final readonly class DirectPlanApplicator
 {
+    /**
+     * Create a new DirectPlanApplicator instance.
+     */
     public function __construct(
         private ApplyWorkspacePlanChange $applyWorkspacePlanChange,
         private PromotionHandler $promotionHandler,

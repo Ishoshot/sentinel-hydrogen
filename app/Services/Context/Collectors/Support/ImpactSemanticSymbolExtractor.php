@@ -29,7 +29,11 @@ final readonly class ImpactSemanticSymbolExtractor
             }
 
             $functionName = $function['name'] ?? null;
-            if (! is_string($functionName) || $functionName === '') {
+            if (! is_string($functionName)) {
+                continue;
+            }
+
+            if ($functionName === '') {
                 continue;
             }
 
@@ -53,7 +57,11 @@ final readonly class ImpactSemanticSymbolExtractor
             }
 
             $className = $class['name'] ?? null;
-            if (! is_string($className) || $className === '') {
+            if (! is_string($className)) {
+                continue;
+            }
+
+            if ($className === '') {
                 continue;
             }
 
@@ -76,7 +84,11 @@ final readonly class ImpactSemanticSymbolExtractor
                 }
 
                 $methodName = $method['name'] ?? null;
-                if (! is_string($methodName) || $methodName === '') {
+                if (! is_string($methodName)) {
+                    continue;
+                }
+
+                if ($methodName === '') {
                     continue;
                 }
 

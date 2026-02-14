@@ -11,14 +11,14 @@ use App\Services\Briefings\ValueObjects\BriefingParameters;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
-final class BriefingParameterValidator
+final readonly class BriefingParameterValidator
 {
     /**
      * Create a new briefing parameter validator instance.
      */
     public function __construct(
-        private readonly BriefingParameterSchemaValidator $schemaValidator,
-        private readonly BriefingParameterLimitEnforcer $limitEnforcer,
+        private BriefingParameterSchemaValidator $schemaValidator,
+        private BriefingParameterLimitEnforcer $limitEnforcer,
     ) {}
 
     /**

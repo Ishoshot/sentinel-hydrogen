@@ -17,6 +17,9 @@ final readonly class ImpactedFileTruncator
 
     private const string LIMIT_SUFFIX = "\n... [truncated - token limit]";
 
+    /**
+     * Create a new ImpactedFileTruncator instance.
+     */
     public function __construct(
         private AbstractTokenTruncator $tokenTruncator,
     ) {}
@@ -45,6 +48,7 @@ final readonly class ImpactedFileTruncator
                 if ($truncatedFile !== null) {
                     $result[] = $truncatedFile;
                 }
+
                 break;
             }
 

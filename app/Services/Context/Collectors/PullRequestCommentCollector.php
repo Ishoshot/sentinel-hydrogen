@@ -69,7 +69,7 @@ final readonly class PullRequestCommentCollector implements ContextCollector
         $run = $params['run'];
 
         $coordinates = $this->coordinatesResolver->resolve($repository);
-        if ($coordinates === null) {
+        if (! $coordinates instanceof \App\Services\GitHub\ValueObjects\RepositoryCoordinates) {
             return;
         }
 

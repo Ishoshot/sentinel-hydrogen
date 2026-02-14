@@ -16,6 +16,9 @@ use Throwable;
  */
 final readonly class PostCommandResponse
 {
+    /**
+     * Create a new PostCommandResponse instance.
+     */
     public function __construct(
         private GitHubApiServiceContract $githubApi,
         private PostingContextResolver $contextResolver,

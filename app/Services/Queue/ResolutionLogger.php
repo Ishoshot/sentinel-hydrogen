@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Log;
  */
 final class ResolutionLogger
 {
+    /**
+     * Indicates whether debug logs should be emitted when resolving queues.
+     */
     private bool $debugMode = false;
 
     /**

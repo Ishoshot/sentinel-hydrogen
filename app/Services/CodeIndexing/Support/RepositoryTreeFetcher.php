@@ -13,6 +13,9 @@ use Throwable;
  */
 final readonly class RepositoryTreeFetcher
 {
+    /**
+     * Create a new RepositoryTreeFetcher instance.
+     */
     public function __construct(
         private GitHubApiServiceContract $githubApi,
     ) {}
