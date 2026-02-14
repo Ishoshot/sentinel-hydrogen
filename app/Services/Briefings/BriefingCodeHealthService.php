@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Briefings;
 
-use App\Enums\Reviews\FindingCategory;
-use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Models\Finding;
 use App\Models\Run;
+use App\Services\Briefings\Support\CodeHealthAggregator;
+use App\Services\Briefings\Support\CodeHealthCriticalFindingsFetcher;
 use App\Services\Briefings\ValueObjects\BriefingDateRange;
 
 /**
@@ -15,7 +15,13 @@ use App\Services\Briefings\ValueObjects\BriefingDateRange;
  */
 final class BriefingCodeHealthService
 {
-    private const int CRITICAL_FINDINGS_LIMIT = 10;
+    /**
+     * Create a new service instance.
+     */
+    public function __construct(
+        private readonly CodeHealthAggregator $aggregator = new CodeHealthAggregator,
+        private readonly CodeHealthCriticalFindingsFetcher $criticalFindingsFetcher = new CodeHealthCriticalFindingsFetcher,
+    ) {}
 
     /**
      * @param  array<int, int>  $repositoryIds
@@ -49,77 +55,19 @@ final class BriefingCodeHealthService
             $findingsQuery->whereIn('run_id', $runIdsSubquery);
         }
 
-        $aggregateRow = (clone $findingsQuery)
-            ->selectRaw('COUNT(*) as total_findings')
-            ->selectRaw('severity')
-            ->selectRaw('category')
-            ->selectRaw('COUNT(*) as count')
-            ->groupBy('severity', 'category')
-            ->get();
-
-        $totalFindings = 0;
-        $severityCounts = [
-            'critical' => 0,
-            'high' => 0,
-            'medium' => 0,
-            'low' => 0,
-            'info' => 0,
-        ];
-
-        $categoryCounts = [];
-        foreach (FindingCategory::cases() as $category) {
-            $categoryCounts[$category->value] = 0;
-        }
-
-        foreach ($aggregateRow as $row) {
-            $count = (int) $row->getAttribute('count');
-            $totalFindings += $count;
-
-            $severity = $row->severity instanceof SentinelConfigSeverity
-                ? $row->severity->value
-                : (string) $row->severity;
-            if (array_key_exists($severity, $severityCounts)) {
-                $severityCounts[$severity] += $count;
-            }
-
-            $category = $row->category instanceof FindingCategory
-                ? $row->category->value
-                : (string) $row->category;
-            if ($category !== '' && isset($categoryCounts[$category])) {
-                $categoryCounts[$category] += $count;
-            }
-        }
-
-        $criticalFindings = (clone $findingsQuery)
-            ->whereIn('severity', [
-                SentinelConfigSeverity::Critical->value,
-                SentinelConfigSeverity::High->value,
-            ])
-            ->orderByRaw('CASE WHEN severity = ? THEN 0 ELSE 1 END', [SentinelConfigSeverity::Critical->value])
-            ->orderByDesc('created_at')
-            ->limit(self::CRITICAL_FINDINGS_LIMIT)
-            ->get(['id', 'title', 'severity', 'category', 'file_path', 'line_start'])
-            ->map(fn (Finding $finding): array => [
-                'id' => $finding->id,
-                'title' => $finding->title,
-                'severity' => $finding->severity?->value,
-                'category' => $finding->category?->value,
-                'file_path' => $finding->file_path,
-                'line_start' => $finding->line_start,
-            ])
-            ->values()
-            ->all();
+        $aggregation = $this->aggregator->aggregate($findingsQuery);
+        $criticalFindings = $this->criticalFindingsFetcher->fetch($findingsQuery);
 
         return [
             'code_health' => [
-                'total_findings' => $totalFindings,
-                'critical_issues' => $severityCounts['critical'],
-                'high_issues' => $severityCounts['high'],
-                'medium_issues' => $severityCounts['medium'],
-                'low_issues' => $severityCounts['low'],
-                'info_issues' => $severityCounts['info'],
-                'severity_breakdown' => $severityCounts,
-                'category_breakdown' => $categoryCounts,
+                'total_findings' => $aggregation['total_findings'],
+                'critical_issues' => $aggregation['severity_counts']['critical'],
+                'high_issues' => $aggregation['severity_counts']['high'],
+                'medium_issues' => $aggregation['severity_counts']['medium'],
+                'low_issues' => $aggregation['severity_counts']['low'],
+                'info_issues' => $aggregation['severity_counts']['info'],
+                'severity_breakdown' => $aggregation['severity_counts'],
+                'category_breakdown' => $aggregation['category_counts'],
                 'top_critical_findings' => $criticalFindings,
             ],
             'critical_finding_ids' => array_map(

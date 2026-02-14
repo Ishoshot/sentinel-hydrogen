@@ -6,6 +6,8 @@ namespace App\Services\Slack;
 
 use App\Models\SlackIntegration;
 use App\Services\Slack\Contracts\SlackServiceContract;
+use App\Services\Slack\Support\SlackChannelLister;
+use App\Services\Slack\Support\SlackMessageSender;
 use App\Services\Slack\Support\SlackOAuthClient;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +20,8 @@ final readonly class SlackService implements SlackServiceContract
      */
     public function __construct(
         private SlackOAuthClient $oauthClient = new SlackOAuthClient,
+        private SlackMessageSender $messageSender = new SlackMessageSender,
+        private SlackChannelLister $channelLister = new SlackChannelLister,
     ) {}
 
     /**
@@ -33,32 +37,7 @@ final readonly class SlackService implements SlackServiceContract
      */
     public function sendMessage(SlackIntegration $integration, string $channelId, string $text, array $blocks = []): void
     {
-        $payload = [
-            'channel' => $channelId,
-            'text' => $text,
-        ];
-
-        if ($blocks !== []) {
-            $payload['blocks'] = $blocks;
-        }
-
-        /** @var string $token */
-        $token = $integration->access_token;
-
-        $response = Http::withToken($token)
-            ->post($this->apiUrl('chat.postMessage'), $payload);
-
-        /** @var array<string, mixed> $data */
-        $data = $response->json();
-
-        if ($response->failed() || ($data['ok'] ?? false) !== true) {
-            Log::error('Slack message delivery failed', [
-                'status' => $response->status(),
-                'error' => $data['error'] ?? 'unknown',
-            ]);
-
-            $response->throw();
-        }
+        $this->messageSender->send($integration, $channelId, $text, $blocks);
     }
 
     /**
@@ -66,38 +45,7 @@ final readonly class SlackService implements SlackServiceContract
      */
     public function listChannels(SlackIntegration $integration): array
     {
-        /** @var string $token */
-        $token = $integration->access_token;
-
-        $response = Http::withToken($token)
-            ->get($this->apiUrl('conversations.list'), [
-                'types' => 'public_channel',
-                'exclude_archived' => true,
-                'limit' => 200,
-            ]);
-
-        $response->throw();
-
-        /** @var array<string, mixed> $data */
-        $data = $response->json();
-
-        if (($data['ok'] ?? false) !== true) {
-            Log::error('Failed to list Slack channels', [
-                'error' => $data['error'] ?? 'unknown',
-            ]);
-
-            return [];
-        }
-
-        /** @var array<int, array<string, mixed>> $channels */
-        $channels = $data['channels'] ?? [];
-
-        return array_map(fn (array $channel): array => [
-            'id' => (string) $channel['id'],
-            'name' => (string) $channel['name'],
-            'is_member' => (bool) ($channel['is_member'] ?? false),
-            'num_members' => (int) ($channel['num_members'] ?? 0),
-        ], $channels);
+        return $this->channelLister->list($integration);
     }
 
     /**
