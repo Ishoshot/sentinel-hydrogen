@@ -4,13 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
-use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
-use App\Jobs\GitHub\CreateConfigPullRequestJob;
 use App\Models\Installation;
-use App\Models\Repository;
-use App\Models\RepositorySettings;
-use App\Services\GitHub\GitHubApiService;
-use Illuminate\Support\Facades\DB;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
 final readonly class SyncInstallationRepositories
 {
@@ -18,8 +13,9 @@ final readonly class SyncInstallationRepositories
      * Create a new action instance.
      */
     public function __construct(
-        private GitHubApiService $gitHubApiService,
-        private SyncRepositorySentinelConfig $syncSentinelConfig,
+        private GitHubApiServiceContract $gitHubApiService,
+        private PersistInstallationRepositories $persistInstallationRepositories,
+        private PostSyncRepositorySetup $postSyncRepositorySetup,
     ) {}
 
     /**
@@ -29,90 +25,23 @@ final readonly class SyncInstallationRepositories
      */
     public function handle(Installation $installation): array
     {
-        $githubRepos = $this->gitHubApiService->getInstallationRepositories(
-            $installation->installation_id
+        $githubRepos = array_map(
+            $this->normalizeRepository(...),
+            $this->gitHubApiService->getInstallationRepositories($installation->installation_id),
         );
 
-        /** @var array<int> $syncedRepositoryIds */
-        $syncedRepositoryIds = [];
+        $result = $this->persistInstallationRepositories->syncFromGitHub($installation, $githubRepos);
 
-        /** @var array<int> $newlyCreatedRepositoryIds */
-        $newlyCreatedRepositoryIds = [];
+        $this->postSyncRepositorySetup->handle(
+            $result['synced_repository_ids'],
+            $result['newly_created_repository_ids'],
+        );
 
-        $result = DB::transaction(function () use ($installation, $githubRepos, &$syncedRepositoryIds, &$newlyCreatedRepositoryIds): array {
-            $existingRepoIds = $installation->repositories()->pluck('github_id')->toArray();
-            $githubRepoIds = array_column($githubRepos, 'id');
-
-            $added = 0;
-            $updated = 0;
-
-            foreach ($githubRepos as $repoData) {
-                $repository = Repository::updateOrCreate(
-                    [
-                        'installation_id' => $installation->id,
-                        'github_id' => $repoData['id'],
-                    ],
-                    [
-                        'workspace_id' => $installation->workspace_id,
-                        'name' => $repoData['name'],
-                        'full_name' => $repoData['full_name'],
-                        'private' => $repoData['private'],
-                        'default_branch' => $repoData['default_branch'] ?? 'main',
-                        'language' => $repoData['language'],
-                        'description' => $repoData['description'],
-                    ]
-                );
-
-                if ($repository->wasRecentlyCreated) {
-                    $added++;
-                    $newlyCreatedRepositoryIds[] = $repository->id;
-
-                    // Create default repository settings
-                    RepositorySettings::create([
-                        'repository_id' => $repository->id,
-                        'workspace_id' => $installation->workspace_id,
-                        'auto_review_enabled' => true,
-                        'review_rules' => null,
-                    ]);
-                } else {
-                    $updated++;
-                }
-
-                $syncedRepositoryIds[] = $repository->id;
-            }
-
-            // Remove repositories that are no longer accessible
-            $reposToRemove = array_diff($existingRepoIds, $githubRepoIds);
-            /** @var int $removed */
-            $removed = Repository::where('installation_id', $installation->id)
-                ->whereIn('github_id', $reposToRemove)
-                ->delete();
-
-            return [
-                'added' => $added,
-                'updated' => $updated,
-                'removed' => $removed,
-            ];
-        });
-
-        // Batch load repositories with settings to avoid N+1 queries
-        $syncedRepositories = Repository::query()
-            ->whereIn('id', $syncedRepositoryIds)
-            ->with('settings')
-            ->get();
-
-        // Sync Sentinel configs for all repositories (outside transaction)
-        foreach ($syncedRepositories as $repository) {
-            $this->syncSentinelConfig->handle($repository);
-        }
-
-        // Dispatch config PR creation jobs for newly created repositories
-        // Add a delay to allow GitHub to propagate access permissions
-        foreach ($newlyCreatedRepositoryIds as $repositoryId) {
-            CreateConfigPullRequestJob::dispatch($repositoryId)->delay(now()->addSeconds(10));
-        }
-
-        return $result;
+        return [
+            'added' => $result['added'],
+            'updated' => $result['updated'],
+            'removed' => $result['removed'],
+        ];
     }
 
     /**
@@ -123,65 +52,14 @@ final readonly class SyncInstallationRepositories
      */
     public function addRepositories(Installation $installation, array $repositories): int
     {
-        /** @var array<int> $addedRepositoryIds */
-        $addedRepositoryIds = [];
+        $result = $this->persistInstallationRepositories->addFromWebhook($installation, $repositories);
 
-        $added = DB::transaction(function () use ($installation, $repositories, &$addedRepositoryIds): int {
-            $count = 0;
+        $this->postSyncRepositorySetup->handle(
+            $result['added_repository_ids'],
+            $result['added_repository_ids'],
+        );
 
-            foreach ($repositories as $repoData) {
-                $repository = Repository::firstOrCreate(
-                    [
-                        'installation_id' => $installation->id,
-                        'github_id' => $repoData['id'],
-                    ],
-                    [
-                        'workspace_id' => $installation->workspace_id,
-                        'name' => $repoData['name'],
-                        'full_name' => $repoData['full_name'],
-                        'private' => $repoData['private'],
-                        'default_branch' => 'main',
-                    ]
-                );
-
-                if ($repository->wasRecentlyCreated) {
-                    $count++;
-
-                    // Create default repository settings
-                    RepositorySettings::create([
-                        'repository_id' => $repository->id,
-                        'workspace_id' => $installation->workspace_id,
-                        'auto_review_enabled' => true,
-                        'review_rules' => null,
-                    ]);
-
-                    $addedRepositoryIds[] = $repository->id;
-                }
-            }
-
-            return $count;
-        });
-
-        // Batch load repositories with settings to avoid N+1 queries
-        if ($addedRepositoryIds !== []) {
-            $addedRepositories = Repository::query()
-                ->whereIn('id', $addedRepositoryIds)
-                ->with('settings')
-                ->get();
-
-            // Sync Sentinel configs for newly added repositories (outside transaction)
-            foreach ($addedRepositories as $repository) {
-                $this->syncSentinelConfig->handle($repository);
-            }
-
-            // Dispatch config PR creation jobs for newly added repositories
-            // Add a delay to allow GitHub to propagate access permissions
-            foreach ($addedRepositoryIds as $repositoryId) {
-                CreateConfigPullRequestJob::dispatch($repositoryId)->delay(now()->addSeconds(10));
-            }
-        }
-
-        return $added;
+        return $result['added'];
     }
 
     /**
@@ -192,13 +70,34 @@ final readonly class SyncInstallationRepositories
      */
     public function removeRepositories(Installation $installation, array $repositories): int
     {
-        $githubIds = array_column($repositories, 'id');
+        return $this->persistInstallationRepositories->removeFromWebhook($installation, $repositories);
+    }
 
-        /** @var int $deleted */
-        $deleted = Repository::where('installation_id', $installation->id)
-            ->whereIn('github_id', $githubIds)
-            ->delete();
+    /**
+     * @param  array<string, mixed>  $repository
+     * @return array{id: int, name: string, full_name: string, private: bool, default_branch?: string, language?: string|null, description?: string|null}
+     */
+    private function normalizeRepository(array $repository): array
+    {
+        $normalized = [
+            'id' => (int) ($repository['id'] ?? 0),
+            'name' => (string) ($repository['name'] ?? ''),
+            'full_name' => (string) ($repository['full_name'] ?? ''),
+            'private' => (bool) ($repository['private'] ?? false),
+        ];
 
-        return $deleted;
+        if (is_string($repository['default_branch'] ?? null) && $repository['default_branch'] !== '') {
+            $normalized['default_branch'] = $repository['default_branch'];
+        }
+
+        if (is_string($repository['language'] ?? null) || $repository['language'] === null) {
+            $normalized['language'] = $repository['language'];
+        }
+
+        if (is_string($repository['description'] ?? null) || $repository['description'] === null) {
+            $normalized['description'] = $repository['description'];
+        }
+
+        return $normalized;
     }
 }

@@ -5,16 +5,12 @@ declare(strict_types=1);
 namespace App\Actions\GitHub;
 
 use App\Actions\Activities\LogActivity;
-use App\Enums\Auth\ProviderType;
-use App\Enums\GitHub\InstallationStatus;
 use App\Enums\Workspace\ActivityType;
-use App\Enums\Workspace\ConnectionStatus;
 use App\Exceptions\GitHub\InvalidInstallationStateException;
 use App\Models\Connection;
 use App\Models\Installation;
-use App\Models\Provider;
 use App\Models\Workspace;
-use App\Services\GitHub\GitHubApiService;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -24,7 +20,9 @@ final readonly class HandleGitHubInstallation
      * Create a new action instance.
      */
     public function __construct(
-        private GitHubApiService $gitHubApiService,
+        private GitHubApiServiceContract $gitHubApiService,
+        private ResolveInstallationConnection $resolveInstallationConnection,
+        private PersistGitHubInstallation $persistGitHubInstallation,
         private SyncInstallationRepositories $syncRepositories,
         private LogActivity $logActivity,
     ) {}
@@ -40,47 +38,11 @@ final readonly class HandleGitHubInstallation
     public function handle(
         int $installationId,
         ?string $state = null,
-        ?array $installationData = null
+        ?array $installationData = null,
     ): array {
         return DB::transaction(function () use ($installationId, $state, $installationData): array {
-            // Find the connection by state if provided
-            $connection = null;
+            $connection = $this->resolveInstallationConnection->handle($installationId, $state);
 
-            if ($state !== null) {
-                // Fetch pending connections created within a reasonable time window (15 minutes)
-                // Then validate state using constant-time comparison to prevent timing attacks
-                $pendingConnections = Connection::where('status', ConnectionStatus::Pending)
-                    ->where('created_at', '>=', now()->subMinutes(15))
-                    ->limit(100)
-                    ->get();
-
-                $connection = $pendingConnections->first(function (Connection $conn) use ($state): bool {
-                    /** @var array<string, mixed> $metadata */
-                    $metadata = $conn->metadata ?? [];
-                    $storedState = $metadata['state'] ?? null;
-
-                    return is_string($storedState) && hash_equals($storedState, $state);
-                });
-
-                if ($connection === null) {
-                    Log::warning('GitHub installation failed - invalid/expired state', [
-                        'github_installation_id' => $installationId,
-                    ]);
-
-                    throw new InvalidInstallationStateException('Invalid or expired state parameter.');
-                }
-            }
-
-            // If no state (webhook flow), find by installation_id
-            if ($connection === null) {
-                $installation = Installation::where('installation_id', $installationId)->first();
-
-                if ($installation !== null) {
-                    $connection = $installation->connection;
-                }
-            }
-
-            // Fetch installation data from GitHub if not provided
             if ($installationData === null) {
                 $installationData = $this->gitHubApiService->getInstallation($installationId);
             }
@@ -88,8 +50,7 @@ final readonly class HandleGitHubInstallation
             /** @var array{type: string, login: string, avatar_url?: string|null} $account */
             $account = $installationData['account'];
 
-            // If still no connection, we can't proceed (orphan installation)
-            if ($connection === null) {
+            if (! $connection instanceof Connection) {
                 Log::warning('GitHub installation failed - orphan installation', [
                     'github_installation_id' => $installationId,
                 ]);
@@ -97,44 +58,10 @@ final readonly class HandleGitHubInstallation
                 throw new InvalidInstallationStateException('No connection found for this installation.');
             }
 
-            /** @var array<string, mixed> $existingMetadata */
-            $existingMetadata = $connection->metadata ?? [];
+            $installation = $this->persistGitHubInstallation->fromGitHub($connection, $installationId, $installationData);
 
-            // Update connection to active
-            $connection->update([
-                'status' => ConnectionStatus::Active,
-                'external_id' => (string) $installationId,
-                'metadata' => array_merge($existingMetadata, [
-                    'connected_at' => now()->toIso8601String(),
-                ]),
-            ]);
-
-            /** @var array<string, string> $permissions */
-            $permissions = $installationData['permissions'] ?? [];
-
-            /** @var array<int, string> $events */
-            $events = $installationData['events'] ?? [];
-
-            // Create or update installation record
-            $installation = Installation::updateOrCreate(
-                ['installation_id' => $installationId],
-                [
-                    'connection_id' => $connection->id,
-                    'workspace_id' => $connection->workspace_id,
-                    'account_type' => $account['type'],
-                    'account_login' => $account['login'],
-                    'account_avatar_url' => $account['avatar_url'] ?? null,
-                    'status' => InstallationStatus::Active,
-                    'permissions' => $permissions,
-                    'events' => $events,
-                    'suspended_at' => null,
-                ]
-            );
-
-            // Sync repositories after installation
             $this->syncRepositories->handle($installation);
 
-            // Log activity
             $workspace = $connection->workspace;
             if ($workspace !== null) {
                 $this->logActivity->handle(
@@ -164,50 +91,9 @@ final readonly class HandleGitHubInstallation
     public function executeFromWebhook(int $workspaceId, array $webhookData): Installation
     {
         return DB::transaction(function () use ($workspaceId, $webhookData): Installation {
-            $workspace = Workspace::findOrFail($workspaceId);
-            $provider = Provider::where('type', ProviderType::GitHub)->firstOrFail();
+            $workspace = Workspace::query()->findOrFail($workspaceId);
 
-            /** @var int|string $installationIdRaw */
-            $installationIdRaw = $webhookData['installation_id'] ?? '';
-            $externalId = (string) $installationIdRaw;
-
-            // Get or create connection
-            $connection = Connection::firstOrCreate(
-                [
-                    'workspace_id' => $workspace->id,
-                    'provider_id' => $provider->id,
-                ],
-                [
-                    'status' => ConnectionStatus::Active,
-                    'external_id' => $externalId,
-                ]
-            );
-
-            // Update to active if not already
-            if (! $connection->isActive()) {
-                $connection->update([
-                    'status' => ConnectionStatus::Active,
-                    'external_id' => $externalId,
-                ]);
-            }
-
-            // Create or update installation
-            $installation = Installation::updateOrCreate(
-                ['installation_id' => $webhookData['installation_id']],
-                [
-                    'connection_id' => $connection->id,
-                    'workspace_id' => $workspace->id,
-                    'account_type' => $webhookData['account_type'],
-                    'account_login' => $webhookData['account_login'],
-                    'account_avatar_url' => $webhookData['account_avatar_url'],
-                    'status' => InstallationStatus::Active,
-                    'permissions' => $webhookData['permissions'] ?? [],
-                    'events' => $webhookData['events'] ?? [],
-                    'suspended_at' => null,
-                ]
-            );
-
-            return $installation;
+            return $this->persistGitHubInstallation->fromWebhook($workspace, $webhookData);
         });
     }
 }

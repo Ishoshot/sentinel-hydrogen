@@ -6,7 +6,7 @@ namespace App\Actions\GitHub;
 
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Models\Repository;
-use App\Services\GitHub\GitHubApiService;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\SentinelMessageService;
 use App\Support\RepositoryNameParser;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +21,7 @@ final readonly class PostPullRequestGreeting implements PostsGreetingComment
      * Create a new action instance.
      */
     public function __construct(
-        private GitHubApiService $gitHubApiService,
+        private GitHubApiServiceContract $gitHubApiService,
         private SentinelMessageService $messageService
     ) {}
 
