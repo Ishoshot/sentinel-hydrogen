@@ -7,13 +7,12 @@ namespace App\Actions\Runs;
 use App\Actions\Runs\Support\LatestRunPerPullRequestLookup;
 use App\Actions\Runs\Support\PullRequestGroupHydrator;
 use App\Actions\Runs\Support\RepositoryGroupHydrator;
+use App\Actions\Runs\Support\RepositoryPullRequestGroupsLookup;
 use App\Actions\Runs\Support\RepositorySummaryLookup;
 use App\Actions\Runs\Support\RunsPerPullRequestLookup;
-use App\Models\Run;
 use App\Models\Workspace;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use stdClass;
 
 final readonly class HydrateRunGroups
@@ -24,8 +23,7 @@ final readonly class HydrateRunGroups
      * Create a new action instance.
      */
     public function __construct(
-        private ResolveRunQueryExpressions $resolveRunQueryExpressions,
-        private ApplyRunFilters $applyRunFilters,
+        private RepositoryPullRequestGroupsLookup $repositoryPullRequestGroupsLookup,
         private LatestRunPerPullRequestLookup $latestRunPerPullRequestLookup,
         private RunsPerPullRequestLookup $runsPerPullRequestLookup,
         private RepositorySummaryLookup $repositorySummaryLookup,
@@ -75,57 +73,15 @@ final readonly class HydrateRunGroups
         /** @var array<int, int> $repositoryIds */
         $repositoryIds = $repoData->pluck('repository_id')->all();
         $repositories = $this->repositorySummaryLookup->lookup($repositoryIds);
-        $prGroupsPerRepo = $this->getPrGroupsPerRepository($repositoryIds, $filters, $workspace);
-
-        return $this->repositoryGroupHydrator->hydrate($repoData, $repositories, $prGroupsPerRepo);
-    }
-
-    /**
-     * @param  array<int, int>  $repositoryIds
-     * @param  array<string, mixed>  $filters
-     * @return Collection<int, Collection<int, stdClass>>
-     */
-    private function getPrGroupsPerRepository(
-        array $repositoryIds,
-        array $filters,
-        Workspace $workspace,
-    ): Collection {
-        if ($repositoryIds === []) {
-            return collect();
-        }
-
-        $effectivePrNumber = $this->resolveRunQueryExpressions->effectivePrNumber();
-        $effectivePrTitle = $this->resolveRunQueryExpressions->effectivePrTitle();
-
-        $baseQuery = Run::query()
-            ->where('workspace_id', $workspace->id)
-            ->whereIn('repository_id', $repositoryIds)
-            ->whereRaw($effectivePrNumber.' IS NOT NULL');
-
-        $this->applyRunFilters->applyFilters($baseQuery, $filters, $workspace);
-
-        /** @var Collection<int, stdClass> $prGroups */
-        $prGroups = DB::table('runs')
-            ->whereIn('id', $baseQuery->select('id'))
-            ->select([
-                'repository_id',
-                DB::raw($effectivePrNumber.' as pr_number'),
-                DB::raw('MAX('.$effectivePrTitle.') as pr_title'),
-                DB::raw('COUNT(*) as runs_count'),
-                DB::raw('MAX(created_at) as latest_created_at'),
-            ])
-            ->groupBy('repository_id', DB::raw($effectivePrNumber))
-            ->orderByDesc('latest_created_at')
-            ->get();
-
+        $prGroups = $this->repositoryPullRequestGroupsLookup->lookup($repositoryIds, $filters, $workspace);
         $prKeys = $this->extractPrKeys($prGroups);
         $latestRuns = $this->latestRunPerPullRequestLookup->lookup($prKeys, $workspace);
         $runsPerPr = $this->runsPerPullRequestLookup->lookup($prKeys, $workspace, self::MAX_RUNS_PER_GROUP);
-        $repositories = $this->repositorySummaryLookup->lookup($repositoryIds);
-
-        return $this->pullRequestGroupHydrator
+        $prGroupsPerRepo = $this->pullRequestGroupHydrator
             ->hydrate($prGroups, $latestRuns, $runsPerPr, $repositories, includeRepositoryId: true)
             ->groupBy('repository_id');
+
+        return $this->repositoryGroupHydrator->hydrate($repoData, $repositories, $prGroupsPerRepo);
     }
 
     /**

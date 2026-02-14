@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\Runs;
 
+use App\Actions\Runs\Support\RunGroupPaginator;
 use App\Models\Run;
 use App\Models\Workspace;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use stdClass;
 
 /**
@@ -21,7 +21,7 @@ final class ListWorkspaceRuns
      */
     public function __construct(
         private ApplyRunFilters $runFilters = new ApplyRunFilters,
-        private ResolveRunQueryExpressions $runQueryExpressions = new ResolveRunQueryExpressions,
+        private ?RunGroupPaginator $runGroupPaginator = null,
         private ?HydrateRunGroups $runGroupHydrator = null,
     ) {}
 
@@ -60,38 +60,21 @@ final class ListWorkspaceRuns
         array $filters,
         int $perPage,
     ): array {
-        $effectivePrNumber = $this->runQueryExpressions->effectivePrNumber();
-        $effectivePrTitle = $this->runQueryExpressions->effectivePrTitle();
+        $runGroupPaginator = $this->runGroupPaginator();
 
         $baseQuery = Run::query()
             ->where('workspace_id', $workspace->id)
-            ->whereRaw($effectivePrNumber.' IS NOT NULL');
+            ->whereRaw($runGroupPaginator->effectivePrNumber().' IS NOT NULL');
 
         $this->runFilters->applyFilters($baseQuery, $filters, $workspace);
 
-        $paginatedGroups = DB::table('runs')
-            ->whereIn('id', $baseQuery->select('id'))
-            ->select([
-                'repository_id',
-                DB::raw($effectivePrNumber.' as pr_number'),
-                DB::raw('MAX('.$effectivePrTitle.') as pr_title'),
-                DB::raw('COUNT(*) as runs_count'),
-                DB::raw('MAX(created_at) as latest_created_at'),
-            ])
-            ->groupBy('repository_id', DB::raw($effectivePrNumber))
-            ->orderByDesc('latest_created_at')
-            ->paginate($perPage);
+        $paginatedGroups = $runGroupPaginator->paginatePullRequestGroups($baseQuery, $perPage);
 
         $groups = $this->hydrateRunGroups()->hydratePrGroups($paginatedGroups, $workspace);
 
         return [
             'groups' => $groups,
-            'pagination' => [
-                'current_page' => $paginatedGroups->currentPage(),
-                'per_page' => $paginatedGroups->perPage(),
-                'total' => $paginatedGroups->total(),
-                'last_page' => $paginatedGroups->lastPage(),
-            ],
+            'pagination' => $runGroupPaginator->pagination($paginatedGroups),
         ];
     }
 
@@ -106,34 +89,27 @@ final class ListWorkspaceRuns
         array $filters,
         int $perPage,
     ): array {
+        $runGroupPaginator = $this->runGroupPaginator();
         $baseQuery = Run::query()->where('workspace_id', $workspace->id);
 
         $this->runFilters->applyFilters($baseQuery, $filters, $workspace);
 
-        $effectivePrNumber = $this->runQueryExpressions->effectivePrNumber();
-
-        $paginatedRepos = DB::table('runs')
-            ->whereIn('id', $baseQuery->select('id'))
-            ->select([
-                'repository_id',
-                DB::raw('COUNT(*) as runs_count'),
-                DB::raw('COUNT(DISTINCT '.$effectivePrNumber.') as pull_requests_count'),
-            ])
-            ->groupBy('repository_id')
-            ->orderByDesc('runs_count')
-            ->paginate($perPage);
+        $paginatedRepos = $runGroupPaginator->paginateRepositoryGroups($baseQuery, $perPage);
 
         $groups = $this->hydrateRunGroups()->hydrateRepositoryGroups($paginatedRepos, $filters, $workspace);
 
         return [
             'groups' => $groups,
-            'pagination' => [
-                'current_page' => $paginatedRepos->currentPage(),
-                'per_page' => $paginatedRepos->perPage(),
-                'total' => $paginatedRepos->total(),
-                'last_page' => $paginatedRepos->lastPage(),
-            ],
+            'pagination' => $runGroupPaginator->pagination($paginatedRepos),
         ];
+    }
+
+    /**
+     * Resolve the run group paginator action from the container.
+     */
+    private function runGroupPaginator(): RunGroupPaginator
+    {
+        return $this->runGroupPaginator ?? app(RunGroupPaginator::class);
     }
 
     /**
