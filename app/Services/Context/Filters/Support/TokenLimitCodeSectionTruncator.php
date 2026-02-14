@@ -15,10 +15,23 @@ final readonly class TokenLimitCodeSectionTruncator
 
     private const float RATIO_FILE_CONTENTS_SINGLE = 0.20;
 
+    private const int IMPACTED_FILE_METADATA_TOKENS = 50;
+
+    private const string IMPACTED_FILE_LARGE_SUFFIX = "\n... [truncated - impacted file too large]";
+
+    private const string IMPACTED_FILE_LIMIT_SUFFIX = "\n... [truncated - token limit]";
+
+    private const string FILE_CONTENT_LARGE_SUFFIX = "\n... [truncated - file too large]";
+
+    private const string FILE_CONTENT_LIMIT_SUFFIX = "\n... [truncated - token limit]";
+
     /**
      * Create a new code section truncator instance.
      */
-    public function __construct(private AbstractTokenTruncator $tokenTruncator) {}
+    public function __construct(
+        private AbstractTokenTruncator $tokenTruncator,
+        private TokenLimitSemanticDataTruncator $semanticDataTruncator,
+    ) {}
 
     /**
      * Set token counting context for the current truncation cycle.
@@ -45,30 +58,13 @@ final readonly class TokenLimitCodeSectionTruncator
         $maxTokensPerFile = (int) ($maxTokens * self::RATIO_IMPACTED_FILE_SINGLE);
 
         foreach ($impactedFiles as $file) {
-            $contentTokens = $this->tokenTruncator->estimateTokens($file['content']);
-            $metadataTokens = 50;
-            $fileTokens = $contentTokens + $metadataTokens;
+            [$file, $fileTokens] = $this->truncateImpactedFileToSingleLimit($file, $maxTokensPerFile);
 
-            if ($fileTokens > $maxTokensPerFile) {
-                $file['content'] = $this->tokenTruncator->truncateText(
-                    $file['content'],
-                    $maxTokensPerFile - $metadataTokens,
-                    "\n... [truncated - impacted file too large]"
-                );
-                $fileTokens = $maxTokensPerFile;
-            }
-
-            if ($totalTokens + $fileTokens > $maxTokens) {
-                $remaining = $maxTokens - $totalTokens;
-                if ($remaining > AbstractTokenTruncator::MIN_SECTION_TOKENS) {
-                    $file['content'] = $this->tokenTruncator->truncateText(
-                        $file['content'],
-                        $remaining - $metadataTokens,
-                        "\n... [truncated - token limit]"
-                    );
-                    $result[] = $file;
+            if ($this->exceedsBudget($totalTokens, $fileTokens, $maxTokens)) {
+                $truncatedFile = $this->truncateImpactedFileToRemainingBudget($file, $maxTokens - $totalTokens);
+                if ($truncatedFile !== null) {
+                    $result[] = $truncatedFile;
                 }
-
                 break;
             }
 
@@ -96,27 +92,13 @@ final readonly class TokenLimitCodeSectionTruncator
         $maxTokensPerFile = (int) ($maxTokens * self::RATIO_FILE_CONTENTS_SINGLE);
 
         foreach ($fileContents as $path => $content) {
-            $contentTokens = $this->tokenTruncator->estimateTokens($content);
+            [$content, $contentTokens] = $this->truncateFileContentToSingleLimit($content, $maxTokensPerFile);
 
-            if ($contentTokens > $maxTokensPerFile) {
-                $content = $this->tokenTruncator->truncateText(
-                    $content,
-                    $maxTokensPerFile,
-                    "\n... [truncated - file too large]"
-                );
-                $contentTokens = $maxTokensPerFile;
-            }
-
-            if ($totalTokens + $contentTokens > $maxTokens) {
-                $remaining = $maxTokens - $totalTokens;
-                if ($remaining > AbstractTokenTruncator::MIN_SECTION_TOKENS) {
-                    $result[$path] = $this->tokenTruncator->truncateText(
-                        $content,
-                        $remaining,
-                        "\n... [truncated - token limit]"
-                    );
+            if ($this->exceedsBudget($totalTokens, $contentTokens, $maxTokens)) {
+                $truncatedContent = $this->truncateFileContentToRemainingBudget($content, $maxTokens - $totalTokens);
+                if ($truncatedContent !== null) {
+                    $result[$path] = $truncatedContent;
                 }
-
                 break;
             }
 
@@ -143,13 +125,13 @@ final readonly class TokenLimitCodeSectionTruncator
         $result = [];
 
         foreach ($semantics as $path => $data) {
-            $dataTokens = $this->tokenTruncator->estimateTokens(json_encode($data) ?: '');
+            $dataTokens = $this->estimateSemanticDataTokens($data);
 
-            if ($totalTokens + $dataTokens > $maxTokens) {
+            if ($this->exceedsBudget($totalTokens, $dataTokens, $maxTokens)) {
                 $remaining = $maxTokens - $totalTokens;
 
-                if ($remaining > AbstractTokenTruncator::MIN_SECTION_TOKENS) {
-                    $truncatedData = $this->truncateSemanticData($data, $remaining);
+                if ($this->hasRemainingSectionBudget($remaining)) {
+                    $truncatedData = $this->semanticDataTruncator->truncate($data, $remaining);
                     if ($truncatedData !== []) {
                         $result[$path] = $truncatedData;
                     }
@@ -166,44 +148,126 @@ final readonly class TokenLimitCodeSectionTruncator
     }
 
     /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
+     * @param  array{
+     *     file_path: string,
+     *     content: string,
+     *     matched_symbol: string,
+     *     match_type: string,
+     *     score: float,
+     *     match_count: int,
+     *     reason: string
+     * }  $file
+     * @return array{
+     *     0: array{
+     *         file_path: string,
+     *         content: string,
+     *         matched_symbol: string,
+     *         match_type: string,
+     *         score: float,
+     *         match_count: int,
+     *         reason: string
+     *     },
+     *     1: int
+     * }
      */
-    private function truncateSemanticData(array $data, int $maxTokens): array
+    private function truncateImpactedFileToSingleLimit(array $file, int $maxTokensPerFile): array
     {
-        $result = [];
+        $fileTokens = $this->tokenTruncator->estimateTokens($file['content']) + self::IMPACTED_FILE_METADATA_TOKENS;
 
-        if (isset($data['language'])) {
-            $result['language'] = $data['language'];
+        if ($fileTokens > $maxTokensPerFile) {
+            $file['content'] = $this->tokenTruncator->truncateText(
+                $file['content'],
+                $maxTokensPerFile - self::IMPACTED_FILE_METADATA_TOKENS,
+                self::IMPACTED_FILE_LARGE_SUFFIX
+            );
+            $fileTokens = $maxTokensPerFile;
         }
 
-        if (isset($data['functions']) && is_array($data['functions'])) {
-            $result['functions'] = array_slice($data['functions'], 0, 5);
+        return [$file, $fileTokens];
+    }
+
+    /**
+     * @param  array{
+     *     file_path: string,
+     *     content: string,
+     *     matched_symbol: string,
+     *     match_type: string,
+     *     score: float,
+     *     match_count: int,
+     *     reason: string
+     * }  $file
+     * @return array{
+     *     file_path: string,
+     *     content: string,
+     *     matched_symbol: string,
+     *     match_type: string,
+     *     score: float,
+     *     match_count: int,
+     *     reason: string
+     * }|null
+     */
+    private function truncateImpactedFileToRemainingBudget(array $file, int $remainingTokens): ?array
+    {
+        if (! $this->hasRemainingSectionBudget($remainingTokens)) {
+            return null;
         }
 
-        if (isset($data['classes']) && is_array($data['classes'])) {
-            $classes = array_slice($data['classes'], 0, 3);
-            foreach ($classes as &$class) {
-                if (isset($class['methods']) && is_array($class['methods'])) {
-                    $class['methods'] = array_slice($class['methods'], 0, 5);
-                }
-            }
+        $file['content'] = $this->tokenTruncator->truncateText(
+            $file['content'],
+            $remainingTokens - self::IMPACTED_FILE_METADATA_TOKENS,
+            self::IMPACTED_FILE_LIMIT_SUFFIX
+        );
 
-            $result['classes'] = $classes;
+        return $file;
+    }
+
+    /**
+     * @return array{0: string, 1: int}
+     */
+    private function truncateFileContentToSingleLimit(string $content, int $maxTokensPerFile): array
+    {
+        $contentTokens = $this->tokenTruncator->estimateTokens($content);
+
+        if ($contentTokens > $maxTokensPerFile) {
+            $content = $this->tokenTruncator->truncateText(
+                $content,
+                $maxTokensPerFile,
+                self::FILE_CONTENT_LARGE_SUFFIX
+            );
+            $contentTokens = $maxTokensPerFile;
         }
 
-        if (isset($data['imports']) && is_array($data['imports'])) {
-            $result['imports'] = array_slice($data['imports'], 0, 5);
+        return [$content, $contentTokens];
+    }
+
+    private function truncateFileContentToRemainingBudget(string $content, int $remainingTokens): ?string
+    {
+        if (! $this->hasRemainingSectionBudget($remainingTokens)) {
+            return null;
         }
 
-        if ($this->tokenTruncator->estimateTokens(json_encode($result) ?: '') <= $maxTokens) {
-            return $result;
-        }
+        return $this->tokenTruncator->truncateText(
+            $content,
+            $remainingTokens,
+            self::FILE_CONTENT_LIMIT_SUFFIX
+        );
+    }
 
-        return [
-            'language' => $data['language'] ?? 'unknown',
-            'functions' => array_slice($data['functions'] ?? [], 0, 2),
-            'classes' => array_slice($data['classes'] ?? [], 0, 1),
-        ];
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function estimateSemanticDataTokens(array $data): int
+    {
+        return $this->tokenTruncator->estimateTokens(json_encode($data) ?: '');
+    }
+
+    private function exceedsBudget(int $currentTokens, int $nextItemTokens, int $budget): bool
+    {
+        return $currentTokens + $nextItemTokens > $budget;
+    }
+
+    private function hasRemainingSectionBudget(int $remainingTokens): bool
+    {
+        return $remainingTokens > AbstractTokenTruncator::MIN_SECTION_TOKENS;
     }
 }
