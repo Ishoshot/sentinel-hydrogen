@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Services\GitHub\Support;
+namespace App\Services\GitHub\Executors;
 
 use App\Models\Installation;
+use App\Services\GitHub\Support\GitHubApiOperationRunner;
 use Closure;
 use GrahamCampbell\GitHub\GitHubManager;
 
