@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Billing\Support;
+namespace App\Services\Billing\Builders;
 
 use App\Enums\Promotions\PromotionValueType;
 use App\Models\Promotion;
