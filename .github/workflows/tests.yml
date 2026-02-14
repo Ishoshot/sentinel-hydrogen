@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
         shard:
           - name: Unit Suite
@@ -65,4 +66,8 @@ jobs:
         uses: ./.github/actions/backend-test-bootstrap
 
       - name: Run Pest (${{ matrix.shard.name }})
-        run: ./vendor/bin/pest --parallel ${{ matrix.shard.target }}
+        run: |
+          set -euo pipefail
+          for target in ${{ matrix.shard.target }}; do
+            ./vendor/bin/pest --parallel "$target"
+          done
