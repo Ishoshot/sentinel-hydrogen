@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Reviews\Support;
+namespace App\Actions\Reviews\Dispatchers;
 
 use App\Jobs\Reviews\PostRunAnnotations;
 use App\Models\Run;

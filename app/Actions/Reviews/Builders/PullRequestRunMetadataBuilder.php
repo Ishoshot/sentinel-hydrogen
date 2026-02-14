@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Reviews\Support;
+namespace App\Actions\Reviews\Builders;
+
+use App\Actions\Reviews\Support\PullRequestRunSkipResolution;
 
 final readonly class PullRequestRunMetadataBuilder
 {
