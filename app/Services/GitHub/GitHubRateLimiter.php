@@ -6,10 +6,10 @@ namespace App\Services\GitHub;
 
 use App\Services\GitHub\Contracts\GitHubRateLimiterContract;
 use App\Services\GitHub\Handlers\GitHubRateLimitRetryHandler;
-use App\Services\GitHub\Support\GitHubRateLimitBackoffCalculator;
-use App\Services\GitHub\Support\GitHubRateLimitCooldownEnforcer;
-use App\Services\GitHub\Support\GitHubRateLimitErrorInspector;
-use App\Services\GitHub\Support\GitHubRateLimitStateStore;
+use App\Services\GitHub\Policies\GitHubRateLimitErrorPolicy;
+use App\Services\GitHub\Repositories\GitHubRateLimitStateRepository;
+use App\Services\GitHub\Strategies\GitHubRateLimitBackoffStrategy;
+use App\Services\GitHub\Strategies\GitHubRateLimitCooldownStrategy;
 use Closure;
 use Github\Exception\RuntimeException;
 use Illuminate\Support\Facades\Log;
@@ -33,10 +33,10 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
      * Create a new rate limiter instance.
      */
     public function __construct(
-        private ?GitHubRateLimitStateStore $stateStore = null,
-        private ?GitHubRateLimitErrorInspector $errorInspector = null,
-        private ?GitHubRateLimitBackoffCalculator $backoffCalculator = null,
-        private ?GitHubRateLimitCooldownEnforcer $cooldownEnforcer = null,
+        private ?GitHubRateLimitStateRepository $stateRepository = null,
+        private ?GitHubRateLimitErrorPolicy $errorPolicy = null,
+        private ?GitHubRateLimitBackoffStrategy $backoffStrategy = null,
+        private ?GitHubRateLimitCooldownStrategy $cooldownStrategy = null,
         private ?GitHubRateLimitRetryHandler $retryHandler = null,
     ) {}
 
@@ -59,7 +59,7 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
         while ($attempt < self::MAX_RETRIES) {
             $attempt++;
 
-            $this->cooldownEnforcer()->enforce($operation);
+            $this->cooldownStrategy()->enforce($operation);
 
             try {
                 $result = $callback();
@@ -96,7 +96,7 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
      */
     public function getRateLimitHitsThisHour(): int
     {
-        return $this->stateStore()->getRateLimitHitsThisHour();
+        return $this->stateRepository()->getRateLimitHitsThisHour();
     }
 
     /**
@@ -104,7 +104,7 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
      */
     public function isInCooldown(): bool
     {
-        return $this->stateStore()->isInCooldown();
+        return $this->stateRepository()->isInCooldown();
     }
 
     /**
@@ -112,7 +112,7 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
      */
     public function getCooldownRemaining(): int
     {
-        return $this->stateStore()->getCooldownRemaining();
+        return $this->stateRepository()->getCooldownRemaining();
     }
 
     /**
@@ -121,49 +121,49 @@ final readonly class GitHubRateLimiter implements GitHubRateLimiterContract
     private function resetBackoff(): void {}
 
     /**
-     * StateStore.
+     * Resolve the state repository instance.
      */
-    private function stateStore(): GitHubRateLimitStateStore
+    private function stateRepository(): GitHubRateLimitStateRepository
     {
-        return $this->stateStore ?? new GitHubRateLimitStateStore;
+        return $this->stateRepository ?? new GitHubRateLimitStateRepository;
     }
 
     /**
-     * ErrorInspector.
+     * Resolve the error policy instance.
      */
-    private function errorInspector(): GitHubRateLimitErrorInspector
+    private function errorPolicy(): GitHubRateLimitErrorPolicy
     {
-        return $this->errorInspector ?? new GitHubRateLimitErrorInspector;
+        return $this->errorPolicy ?? new GitHubRateLimitErrorPolicy;
     }
 
     /**
-     * BackoffCalculator.
+     * Resolve the backoff strategy instance.
      */
-    private function backoffCalculator(): GitHubRateLimitBackoffCalculator
+    private function backoffStrategy(): GitHubRateLimitBackoffStrategy
     {
-        return $this->backoffCalculator ?? new GitHubRateLimitBackoffCalculator;
+        return $this->backoffStrategy ?? new GitHubRateLimitBackoffStrategy;
     }
 
     /**
-     * CooldownEnforcer.
+     * Resolve the cooldown strategy instance.
      */
-    private function cooldownEnforcer(): GitHubRateLimitCooldownEnforcer
+    private function cooldownStrategy(): GitHubRateLimitCooldownStrategy
     {
-        return $this->cooldownEnforcer ?? new GitHubRateLimitCooldownEnforcer(
-            $this->stateStore(),
-            $this->backoffCalculator(),
+        return $this->cooldownStrategy ?? new GitHubRateLimitCooldownStrategy(
+            $this->stateRepository(),
+            $this->backoffStrategy(),
         );
     }
 
     /**
-     * RetryHandler.
+     * Resolve the retry handler instance.
      */
     private function retryHandler(): GitHubRateLimitRetryHandler
     {
         return $this->retryHandler ?? new GitHubRateLimitRetryHandler(
-            $this->stateStore(),
-            $this->errorInspector(),
-            $this->backoffCalculator(),
+            $this->stateRepository(),
+            $this->errorPolicy(),
+            $this->backoffStrategy(),
         );
     }
 }

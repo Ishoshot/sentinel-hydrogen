@@ -2,19 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\Services\GitHub\Support;
+namespace App\Services\GitHub\Strategies;
 
+use App\Services\GitHub\Repositories\GitHubRateLimitStateRepository;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 
-final readonly class GitHubRateLimitCooldownEnforcer
+final readonly class GitHubRateLimitCooldownStrategy
 {
     /**
-     * Create a new cooldown enforcer instance.
+     * Create a new cooldown strategy instance.
      */
     public function __construct(
-        private GitHubRateLimitStateStore $stateStore,
-        private GitHubRateLimitBackoffCalculator $backoffCalculator,
+        private GitHubRateLimitStateRepository $stateRepository,
+        private GitHubRateLimitBackoffStrategy $backoffStrategy,
     ) {}
 
     /**
@@ -22,7 +23,7 @@ final readonly class GitHubRateLimitCooldownEnforcer
      */
     public function enforce(string $operation): void
     {
-        $cooldownUntil = $this->stateStore->getCooldownUntil();
+        $cooldownUntil = $this->stateRepository->getCooldownUntil();
 
         if (! is_int($cooldownUntil) || $cooldownUntil <= time()) {
             return;
@@ -35,7 +36,7 @@ final readonly class GitHubRateLimitCooldownEnforcer
             'wait_seconds' => $waitTime,
         ]);
 
-        if ($waitTime > 0 && $waitTime <= $this->backoffCalculator->maxDelaySeconds()) {
+        if ($waitTime > 0 && $waitTime <= $this->backoffStrategy->maxDelaySeconds()) {
             Sleep::for($waitTime)->seconds();
         }
     }

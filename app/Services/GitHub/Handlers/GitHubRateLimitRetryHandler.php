@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\GitHub\Handlers;
 
-use App\Services\GitHub\Support\GitHubRateLimitBackoffCalculator;
-use App\Services\GitHub\Support\GitHubRateLimitErrorInspector;
-use App\Services\GitHub\Support\GitHubRateLimitStateStore;
+use App\Services\GitHub\Policies\GitHubRateLimitErrorPolicy;
+use App\Services\GitHub\Repositories\GitHubRateLimitStateRepository;
+use App\Services\GitHub\Strategies\GitHubRateLimitBackoffStrategy;
 use Github\Exception\RuntimeException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
@@ -17,9 +17,9 @@ final readonly class GitHubRateLimitRetryHandler
      * Create a new retry handler instance.
      */
     public function __construct(
-        private GitHubRateLimitStateStore $stateStore,
-        private GitHubRateLimitErrorInspector $errorInspector,
-        private GitHubRateLimitBackoffCalculator $backoffCalculator,
+        private GitHubRateLimitStateRepository $stateRepository,
+        private GitHubRateLimitErrorPolicy $errorPolicy,
+        private GitHubRateLimitBackoffStrategy $backoffStrategy,
     ) {}
 
     /**
@@ -27,7 +27,7 @@ final readonly class GitHubRateLimitRetryHandler
      */
     public function isRateLimitError(RuntimeException $exception): bool
     {
-        return $this->errorInspector->isRateLimitError($exception);
+        return $this->errorPolicy->isRateLimitError($exception);
     }
 
     /**
@@ -35,12 +35,12 @@ final readonly class GitHubRateLimitRetryHandler
      */
     public function handle(RuntimeException $exception, int $attempt, string $operation): void
     {
-        $delay = $this->backoffCalculator->calculate($attempt);
-        $resetTime = $this->errorInspector->extractResetTime($exception->getMessage());
+        $delay = $this->backoffStrategy->calculate($attempt);
+        $resetTime = $this->errorPolicy->extractResetTime($exception->getMessage());
 
         if ($resetTime !== null && $resetTime > time()) {
-            $delay = min($resetTime - time(), $this->backoffCalculator->maxDelaySeconds());
-            $this->stateStore->setCooldownUntil($resetTime);
+            $delay = min($resetTime - time(), $this->backoffStrategy->maxDelaySeconds());
+            $this->stateRepository->setCooldownUntil($resetTime);
         }
 
         Log::warning('GitHub rate limit hit, backing off', [
@@ -50,7 +50,7 @@ final readonly class GitHubRateLimitRetryHandler
             'error' => $exception->getMessage(),
         ]);
 
-        $this->stateStore->incrementRateLimitHitsThisHour();
+        $this->stateRepository->incrementRateLimitHitsThisHour();
 
         Sleep::for((int) ceil($delay))->seconds();
     }
