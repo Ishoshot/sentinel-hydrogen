@@ -12,7 +12,7 @@ use Throwable;
 /**
  * Fetches the first available repository documentation file from a candidate list.
  */
-final readonly class RepositoryDocumentFetcher
+final readonly class FetchRepositoryDocument
 {
     /**
      * Maximum content length for each file (in characters).
@@ -20,7 +20,7 @@ final readonly class RepositoryDocumentFetcher
     private const int MAX_CONTENT_LENGTH = 16000;
 
     /**
-     * Create a new RepositoryDocumentFetcher instance.
+     * Create a new FetchRepositoryDocument instance.
      */
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,

@@ -6,7 +6,6 @@ namespace App\Services\Context\Collectors;
 
 use App\Models\Repository;
 use App\Models\Run;
-use App\Services\Context\Collectors\RepositoryDocumentFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\Resolvers\RepositoryCoordinatesResolver;
@@ -50,7 +49,7 @@ final readonly class RepositoryContextCollector implements ContextCollector
      * Create a new RepositoryContextCollector instance.
      */
     public function __construct(
-        private RepositoryDocumentFetcher $documentFetcher,
+        private FetchRepositoryDocument $documentFetcher,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
     ) {}
 

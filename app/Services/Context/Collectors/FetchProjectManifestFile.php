@@ -12,7 +12,7 @@ use Throwable;
 /**
  * Fetches and decodes project manifest files from GitHub.
  */
-final readonly class ProjectManifestFileFetcher
+final readonly class FetchProjectManifestFile
 {
     /**
      * Create a new instance.
