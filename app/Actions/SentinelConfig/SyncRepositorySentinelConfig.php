@@ -7,9 +7,9 @@ namespace App\Actions\SentinelConfig;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigGuidelineHandler;
 use App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigSettingsHandler;
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Services\SentinelConfig\ParseSentinelConfig;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -85,23 +85,24 @@ final readonly class SyncRepositorySentinelConfig
         $parseResult = $this->parser->tryParse($fetchResult['content'] ?? '');
 
         if (! $parseResult['success']) {
+            $parseError = $parseResult['error'];
+
             // Store the error but keep any existing valid config
-            $this->settingsHandler->markParseError($settings, (string) $parseResult['error']);
+            $this->settingsHandler->markParseError($settings, $parseError);
 
             Log::warning('Sentinel config parse error', [
                 'repository' => $repository->full_name,
-                'error' => $parseResult['error'],
+                'error' => $parseError,
             ]);
 
             return [
                 'synced' => false,
                 'config' => null,
-                'error' => $parseResult['error'],
+                'error' => $parseError,
             ];
         }
 
         // Successfully parsed - store the config
-        /** @var SentinelConfig $config */
         $config = $parseResult['config'];
 
         $guidelineResult = $this->guidelineHandler->apply($repository, $config);

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\SentinelConfig\Handlers;
 
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\RepositorySettings;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 
 final class RepositorySentinelConfigSettingsHandler
 {

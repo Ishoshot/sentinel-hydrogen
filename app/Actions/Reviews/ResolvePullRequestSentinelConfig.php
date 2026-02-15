@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Actions\Reviews;
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Services\SentinelConfig\ParseSentinelConfig;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 use Illuminate\Support\Facades\Log;
 
 final readonly class ResolvePullRequestSentinelConfig
@@ -44,15 +44,17 @@ final readonly class ResolvePullRequestSentinelConfig
 
             $parseResult = $this->configParser->tryParse($fetchResult['content']);
 
-            if ($parseResult['success'] && $parseResult['config'] !== null) {
-                Log::debug('ProcessPullRequestWebhook: Found sentinel config', [
-                    'repository' => $repository->full_name,
-                    'branch' => $branch,
-                    'tried_branches' => $branches,
-                ]);
-
-                return $parseResult['config'];
+            if (! $parseResult['success']) {
+                continue;
             }
+
+            Log::debug('ProcessPullRequestWebhook: Found sentinel config', [
+                'repository' => $repository->full_name,
+                'branch' => $branch,
+                'tried_branches' => $branches,
+            ]);
+
+            return $parseResult['config'];
         }
 
         Log::debug('ProcessPullRequestWebhook: No sentinel config found, using defaults', [
