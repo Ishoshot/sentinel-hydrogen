@@ -7,7 +7,6 @@ namespace App\Services\SentinelConfig;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Exceptions\SentinelConfig\ConfigParseException;
 use App\Exceptions\SentinelConfig\ConfigValidationException;
-use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -16,18 +15,15 @@ use Symfony\Component\Yaml\Yaml;
 /**
  * Parses and validates .sentinel/config.yaml files.
  */
-final readonly class SentinelConfigParserService implements SentinelConfigParser
+final readonly class ParseSentinelConfig
 {
     /**
-     * Create a new SentinelConfigParserService instance.
+     * Create a new ParseSentinelConfig instance.
      */
     public function __construct(
         private SentinelConfigSchema $schema,
     ) {}
 
-    /**
-     * {@inheritdoc}
-     */
     public function parse(string $yamlContent): SentinelConfig
     {
         $data = $this->parseYaml($yamlContent);
@@ -36,9 +32,6 @@ final readonly class SentinelConfigParserService implements SentinelConfigParser
         return SentinelConfig::fromArray($data);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function tryParse(string $yamlContent): array
     {
         try {

@@ -9,7 +9,7 @@ use App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigGuidelineHandler
 use App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigSettingsHandler;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
-use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
+use App\Services\SentinelConfig\ParseSentinelConfig;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -25,7 +25,7 @@ final readonly class SyncRepositorySentinelConfig
      */
     public function __construct(
         private FetchesSentinelConfig $fetchConfig,
-        private SentinelConfigParser $parser,
+        private ParseSentinelConfig $parser,
         private RepositorySentinelConfigSettingsHandler $settingsHandler,
         private RepositorySentinelConfigGuidelineHandler $guidelineHandler,
     ) {}

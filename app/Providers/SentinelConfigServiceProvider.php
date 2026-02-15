@@ -6,8 +6,6 @@ namespace App\Providers;
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\FetchSentinelConfig;
-use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
-use App\Services\SentinelConfig\SentinelConfigParserService;
 use Illuminate\Support\ServiceProvider;
 use Override;
 
@@ -26,6 +24,5 @@ final class SentinelConfigServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(FetchesSentinelConfig::class, FetchSentinelConfig::class);
-        $this->app->bind(SentinelConfigParser::class, SentinelConfigParserService::class);
     }
 }
