@@ -8,8 +8,8 @@ use App\Models\Installation;
 use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Context\Collectors\FetchGuidelineContent;
 use App\Services\Context\Collectors\GuidelinesCollector;
-use App\Services\Context\Collectors\GuidelineContentFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
@@ -83,7 +83,7 @@ it('should not collect when run is missing', function (): void {
 });
 
 it('validates allowed file extensions', function (string $path, bool $expected): void {
-    $fetcher = app(GuidelineContentFetcher::class);
+    $fetcher = app(FetchGuidelineContent::class);
 
     $result = $fetcher->isAllowedFileType($path);
 
@@ -124,7 +124,7 @@ it('collects guidelines from sentinel config', function (): void {
         ->andReturn($guidelineContent);
 
     /** @var GitHubApiServiceContract $mockGitHubService */
-    $collector = new GuidelinesCollector(new GuidelineContentFetcher($mockGitHubService));
+    $collector = new GuidelinesCollector(new FetchGuidelineContent($mockGitHubService));
 
     $bag = new ContextBag();
     $bag->metadata = [
@@ -165,7 +165,7 @@ it('skips non-allowed file types', function (): void {
     $mockGitHubService->shouldNotReceive('getFileContents');
 
     /** @var GitHubApiServiceContract $mockGitHubService */
-    $collector = new GuidelinesCollector(new GuidelineContentFetcher($mockGitHubService));
+    $collector = new GuidelinesCollector(new FetchGuidelineContent($mockGitHubService));
 
     $bag = new ContextBag();
     $bag->metadata = [
@@ -216,7 +216,7 @@ it('limits guidelines to maximum count', function (): void {
     }
 
     /** @var GitHubApiServiceContract $mockGitHubService */
-    $collector = new GuidelinesCollector(new GuidelineContentFetcher($mockGitHubService));
+    $collector = new GuidelinesCollector(new FetchGuidelineContent($mockGitHubService));
 
     $bag = new ContextBag();
     $bag->metadata = [
@@ -259,7 +259,7 @@ it('handles missing guideline files gracefully', function (): void {
         ->andReturn('Existing content');
 
     /** @var GitHubApiServiceContract $mockGitHubService */
-    $collector = new GuidelinesCollector(new GuidelineContentFetcher($mockGitHubService));
+    $collector = new GuidelinesCollector(new FetchGuidelineContent($mockGitHubService));
 
     $bag = new ContextBag();
     $bag->metadata = [
@@ -308,7 +308,7 @@ it('handles base64 encoded response from GitHub', function (): void {
         ]);
 
     /** @var GitHubApiServiceContract $mockGitHubService */
-    $collector = new GuidelinesCollector(new GuidelineContentFetcher($mockGitHubService));
+    $collector = new GuidelinesCollector(new FetchGuidelineContent($mockGitHubService));
 
     $bag = new ContextBag();
     $bag->metadata = [
@@ -343,7 +343,7 @@ it('does nothing when no guidelines configured', function (): void {
     $mockGitHubService->shouldNotReceive('getFileContents');
 
     /** @var GitHubApiServiceContract $mockGitHubService */
-    $collector = new GuidelinesCollector(new GuidelineContentFetcher($mockGitHubService));
+    $collector = new GuidelinesCollector(new FetchGuidelineContent($mockGitHubService));
 
     $bag = new ContextBag();
     $bag->metadata = [
@@ -375,7 +375,7 @@ it('does nothing when sentinel config is not in metadata', function (): void {
     $mockGitHubService->shouldNotReceive('getFileContents');
 
     /** @var GitHubApiServiceContract $mockGitHubService */
-    $collector = new GuidelinesCollector(new GuidelineContentFetcher($mockGitHubService));
+    $collector = new GuidelinesCollector(new FetchGuidelineContent($mockGitHubService));
 
     $bag = new ContextBag();
     $bag->metadata = [];
@@ -412,7 +412,7 @@ it('truncates oversized content', function (): void {
         ->andReturn($largeContent);
 
     /** @var GitHubApiServiceContract $mockGitHubService */
-    $collector = new GuidelinesCollector(new GuidelineContentFetcher($mockGitHubService));
+    $collector = new GuidelinesCollector(new FetchGuidelineContent($mockGitHubService));
 
     $bag = new ContextBag();
     $bag->metadata = [

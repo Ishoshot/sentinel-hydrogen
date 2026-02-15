@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Collectors\Support;
 
+use App\Services\Context\Collectors\FetchProjectManifestFile;
+
 /**
  * Builds normalized project context from repository manifest files.
  */
@@ -32,7 +34,7 @@ final readonly class ProjectManifestContextBuilder
      * Create a new context builder instance.
      */
     public function __construct(
-        private ProjectManifestFileFetcher $manifestFileFetcher,
+        private FetchProjectManifestFile $manifestFileFetcher,
         private ProjectManifestParser $manifestParser = new ProjectManifestParser,
         private ProjectDependencyPrioritizer $dependencyPrioritizer = new ProjectDependencyPrioritizer,
     ) {}
