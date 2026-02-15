@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews\Strategies;
 
-use App\DataTransferObjects\SentinelConfig\ProviderConfig;
 use App\Enums\AI\AiProvider;
 use App\Exceptions\NoProviderKeyException;
 use App\Services\Reviews\ValueObjects\ReviewResult;
+use App\Services\SentinelConfig\ValueObjects\ProviderConfig;
 use Closure;
 use Illuminate\Support\Facades\Log;
 use Throwable;

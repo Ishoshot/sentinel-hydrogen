@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews\Resolvers;
 
-use App\DataTransferObjects\SentinelConfig\ProviderConfig;
 use App\Enums\AI\AiProvider;
 use App\Models\AiOption;
 use App\Models\ProviderKey;
 use App\Models\Repository;
 use App\Services\Reviews\Contracts\ProviderKeyResolver;
+use App\Services\SentinelConfig\ValueObjects\ProviderConfig;
 use Prism\Prism\Enums\Provider;
 
 final readonly class PrismReviewProviderResolver

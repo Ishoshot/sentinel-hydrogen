@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Filters\Support;
 
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\Services\Context\ContextBag;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
 
 /**
  * Applies configured path rules to all path-keyed sections of a ContextBag.

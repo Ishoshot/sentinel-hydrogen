@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews;
 
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Services\Reviews\Contracts\ReviewPolicyResolverContract;
 use App\Services\Reviews\Strategies\SentinelConfigPolicyMergeStrategy;
 use App\Services\Reviews\ValueObjects\ReviewPolicy;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 
 final readonly class ReviewPolicyResolver implements ReviewPolicyResolverContract
 {

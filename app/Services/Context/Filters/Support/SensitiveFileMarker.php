@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Filters\Support;
 
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\Services\Context\ContextBag;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
 
 /**
  * Marks files matching sensitive path patterns and records them in bag metadata.
