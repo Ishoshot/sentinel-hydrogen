@@ -6,7 +6,7 @@ namespace App\Actions\Commands;
 
 use App\Actions\Commands\Handlers\IssueCommentMessageHandler;
 use App\Actions\Commands\Resolvers\IssueCommentRepositoryContextResolver;
-use App\Services\Commands\Parsers\IssueCommentBodyParser;
+use App\Services\Commands\Formatters\IssueCommentBodyFormatter;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -17,7 +17,7 @@ final readonly class PostIssueCommentMessage
      */
     public function __construct(
         private IssueCommentRepositoryContextResolver $repositoryContextResolver,
-        private IssueCommentBodyParser $bodyParser,
+        private IssueCommentBodyFormatter $bodyFormatter,
         private IssueCommentMessageHandler $messageHandler,
     ) {}
 
@@ -81,7 +81,7 @@ final readonly class PostIssueCommentMessage
                 owner: $parsedRepository['owner'],
                 repo: $parsedRepository['repo'],
                 number: $number,
-                body: $this->bodyParser->format($message),
+                body: $this->bodyFormatter->format($message),
             );
         } catch (Throwable $throwable) {
             Log::warning($failureLogMessage, [
