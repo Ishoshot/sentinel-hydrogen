@@ -23,7 +23,7 @@ final readonly class ImpactedFileSearcher
         private GitHubApiServiceContract $gitHubApiService,
         private ?ImpactSearchPatternFactory $searchPatternFactory = null,
         private ?ImpactedFileCandidateCollector $candidateCollector = null,
-        private ?ImpactedFileBatchFetcher $batchFetcher = null,
+        private ?FetchImpactedFileBatch $batchFetcher = null,
     ) {}
 
     /**
@@ -114,8 +114,8 @@ final readonly class ImpactedFileSearcher
     /**
      * Resolve the batch fetcher dependency.
      */
-    private function batchFetcher(): ImpactedFileBatchFetcher
+    private function batchFetcher(): FetchImpactedFileBatch
     {
-        return $this->batchFetcher ?? new ImpactedFileBatchFetcher($this->gitHubApiService);
+        return $this->batchFetcher ?? new FetchImpactedFileBatch($this->gitHubApiService);
     }
 }

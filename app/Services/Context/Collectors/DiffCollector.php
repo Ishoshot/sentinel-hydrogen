@@ -8,7 +8,7 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Collectors\Support\DiffFileNormalizer;
 use App\Services\Context\Collectors\Support\DiffPullRequestDataExtractor;
-use App\Services\Context\Collectors\Support\SentinelConfigBranchFetcher;
+use App\Services\Context\Collectors\Support\FetchSentinelConfigBranch;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
@@ -28,7 +28,7 @@ final readonly class DiffCollector implements ContextCollector
      */
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,
-        private SentinelConfigBranchFetcher $configFetcher,
+        private FetchSentinelConfigBranch $configFetcher,
         private DiffFileNormalizer $fileNormalizer = new DiffFileNormalizer,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
         private DiffPullRequestDataExtractor $prDataExtractor = new DiffPullRequestDataExtractor,

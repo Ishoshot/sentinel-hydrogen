@@ -6,7 +6,7 @@ namespace App\Services\Context\Collectors;
 
 use App\Models\Repository;
 use App\Models\Run;
-use App\Services\Context\Collectors\Support\LinkedIssueFetchOrchestrator;
+use App\Services\Context\Collectors\Support\FetchLinkedIssues;
 use App\Services\Context\Collectors\Support\LinkedIssueReferenceExtractor;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
@@ -30,7 +30,7 @@ final readonly class LinkedIssueCollector implements ContextCollector
         private GitHubApiServiceContract $gitHubApiService,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
         private LinkedIssueReferenceExtractor $issueReferenceExtractor = new LinkedIssueReferenceExtractor,
-        private LinkedIssueFetchOrchestrator $fetchOrchestrator = new LinkedIssueFetchOrchestrator,
+        private FetchLinkedIssues $fetchOrchestrator = new FetchLinkedIssues,
     ) {}
 
     /**

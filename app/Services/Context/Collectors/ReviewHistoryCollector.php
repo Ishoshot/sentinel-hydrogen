@@ -7,8 +7,8 @@ namespace App\Services\Context\Collectors;
 use App\Enums\Reviews\RunStatus;
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\Context\Collectors\Support\FetchReviewHistoryRun;
 use App\Services\Context\Collectors\Support\ReviewHistoryEntryBuilder;
-use App\Services\Context\Collectors\Support\ReviewHistoryRunFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use Illuminate\Support\Facades\Log;
@@ -35,7 +35,7 @@ final readonly class ReviewHistoryCollector implements ContextCollector
      * Create a new instance.
      */
     public function __construct(
-        private ReviewHistoryRunFetcher $runFetcher = new ReviewHistoryRunFetcher,
+        private FetchReviewHistoryRun $runFetcher = new FetchReviewHistoryRun,
         private ReviewHistoryEntryBuilder $entryBuilder = new ReviewHistoryEntryBuilder,
     ) {}
 
