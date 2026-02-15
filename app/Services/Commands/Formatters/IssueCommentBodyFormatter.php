@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Commands\Parsers;
+namespace App\Services\Commands\Formatters;
 
-final class IssueCommentBodyParser
+final class IssueCommentBodyFormatter
 {
     /**
-     * Parse/format a Sentinel issue comment body.
+     * Format a Sentinel issue comment body.
      */
     public function format(string $message): string
     {
