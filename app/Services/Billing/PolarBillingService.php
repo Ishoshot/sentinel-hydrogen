@@ -9,16 +9,15 @@ use App\Models\Plan;
 use App\Models\Promotion;
 use App\Models\Workspace;
 use App\Services\Billing\Clients\PolarApiClient;
-use App\Services\Billing\Clients\PolarProductClient;
-use App\Services\Billing\Clients\PolarSessionUrlClient;
+use App\Services\Billing\Clients\PolarWebhookVerificationClient;
 use App\Services\Billing\Contracts\PolarBillingServiceContract;
 use App\Services\Billing\Factories\CheckoutPayloadFactory;
 use App\Services\Billing\Factories\CustomerPortalPayloadFactory;
 use App\Services\Billing\Policies\PolarProductIdPolicy;
-use App\Services\Billing\Policies\PolarWebhookVerificationClient;
 use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
 use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 /**
  * Service for integrating with Polar billing.
@@ -29,13 +28,11 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
      * Create a new Polar billing service instance.
      */
     public function __construct(
-        private PolarProductClient $productResolver,
         private PolarApiClient $apiClient,
         private PolarWebhookVerificationClient $webhookVerifier,
-        private PolarProductIdPolicy $productIdGuard,
+        private PolarProductIdPolicy $productPolicy,
         private CheckoutPayloadFactory $checkoutPayloadBuilder,
         private CustomerPortalPayloadFactory $customerPortalPayloadBuilder,
-        private PolarSessionUrlClient $sessionUrlResolver,
     ) {}
 
     /**
@@ -43,7 +40,7 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
      */
     public function isConfigured(): bool
     {
-        return $this->productResolver->hasConfiguredProducts() && $this->apiClient->isAccessTokenConfigured();
+        return $this->productPolicy->hasConfiguredProducts() && $this->apiClient->isAccessTokenConfigured();
     }
 
     /**
@@ -61,7 +58,7 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
         ?string $customerEmail = null,
     ): string {
 
-        $productId = $this->productIdGuard->resolve($workspace, $plan, $interval);
+        $productId = $this->productPolicy->resolve($workspace, $plan, $interval);
 
         $payload = $this->checkoutPayloadBuilder->build(
             $productId,
@@ -75,7 +72,7 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
 
         /** @var array{url?: string} $data */
         $data = $this->apiClient->createCheckoutSession($workspace, $payload);
-        $checkoutUrl = $this->sessionUrlResolver->checkout($workspace, $data);
+        $checkoutUrl = $this->resolveCheckoutUrl($workspace, $data);
 
         Log::info('Polar checkout session created', LogContext::merge(
             LogContext::fromWorkspace($workspace),
@@ -97,7 +94,7 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
         BillingInterval $interval = BillingInterval::Monthly,
     ): void {
 
-        $productId = $this->productIdGuard->resolve($workspace, $plan, $interval);
+        $productId = $this->productPolicy->resolve($workspace, $plan, $interval);
 
         $this->apiClient->updateSubscription($workspace, $polarSubscriptionId, [
             'product_id' => $productId,
@@ -137,7 +134,7 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
 
         /** @var array{customer_portal_url?: string} $data */
         $data = $this->apiClient->createCustomerPortalSession($workspace, $payload);
-        $portalUrl = $this->sessionUrlResolver->customerPortal($workspace, $data);
+        $portalUrl = $this->resolveCustomerPortalUrl($workspace, $data);
 
         Log::info('Polar customer portal session created', LogContext::fromWorkspace($workspace));
 
@@ -157,5 +154,37 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
     public function verifyWebhook(string $payload, array $headers): VerifiedPolarWebhook
     {
         return $this->webhookVerifier->verify($payload, $headers);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveCheckoutUrl(Workspace $workspace, array $data): string
+    {
+        $checkoutUrl = $data['url'] ?? null;
+
+        if (! is_string($checkoutUrl) || $checkoutUrl === '') {
+            Log::error('Polar API returned no checkout URL', LogContext::fromWorkspace($workspace));
+
+            throw new RuntimeException('Polar API did not return a checkout URL.');
+        }
+
+        return $checkoutUrl;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveCustomerPortalUrl(Workspace $workspace, array $data): string
+    {
+        $portalUrl = $data['customer_portal_url'] ?? null;
+
+        if (! is_string($portalUrl) || $portalUrl === '') {
+            Log::error('Polar API returned no portal URL', LogContext::fromWorkspace($workspace));
+
+            throw new RuntimeException('Polar API did not return a customer portal URL.');
+        }
+
+        return $portalUrl;
     }
 }
