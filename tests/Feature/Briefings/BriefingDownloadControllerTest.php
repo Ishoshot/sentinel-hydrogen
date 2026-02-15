@@ -143,7 +143,7 @@ it('tracks download when successful', function (): void {
         ]))
         ->assertSuccessful();
 
-    $this->assertDatabaseHas('briefing_downloads', [
+    \Pest\Laravel\assertDatabaseHas('briefing_downloads', [
         'briefing_generation_id' => $this->generation->id,
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,

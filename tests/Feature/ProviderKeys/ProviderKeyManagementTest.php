@@ -90,7 +90,7 @@ it('owner can create provider key', function (): void {
         ->assertJsonPath('message', 'Provider key configured successfully.')
         ->assertJsonMissingPath('data.encrypted_key');
 
-    $this->assertDatabaseHas('provider_keys', [
+    \Pest\Laravel\assertDatabaseHas('provider_keys', [
         'repository_id' => $repository->id,
         'provider' => 'anthropic',
     ]);
@@ -153,7 +153,7 @@ it('owner can delete provider key', function (): void {
     $response->assertOk()
         ->assertJsonPath('message', 'Provider key deleted successfully.');
 
-    $this->assertDatabaseMissing('provider_keys', [
+    \Pest\Laravel\assertDatabaseMissing('provider_keys', [
         'id' => $providerKey->id,
     ]);
 });
@@ -179,7 +179,7 @@ it('admin can delete provider key', function (): void {
         ->deleteJson(route('provider-keys.destroy', [$workspace, $repository, $providerKey]));
 
     $response->assertOk();
-    $this->assertDatabaseMissing('provider_keys', ['id' => $providerKey->id]);
+    \Pest\Laravel\assertDatabaseMissing('provider_keys', ['id' => $providerKey->id]);
 });
 
 it('member cannot delete provider key', function (): void {
@@ -217,7 +217,7 @@ it('creating key for same provider updates existing key (upsert)', function (): 
         'encrypted_key' => 'old-key-value',
     ]);
 
-    $this->assertDatabaseCount('provider_keys', 1);
+    \Pest\Laravel\assertDatabaseCount('provider_keys', 1);
 
     // Store new key for same provider
     $response = $this->actingAs($user, 'sanctum')
@@ -229,7 +229,7 @@ it('creating key for same provider updates existing key (upsert)', function (): 
     $response->assertCreated();
 
     // Should still only have 1 key (upsert)
-    $this->assertDatabaseCount('provider_keys', 1);
+    \Pest\Laravel\assertDatabaseCount('provider_keys', 1);
 });
 
 it('can have multiple keys for different providers', function (): void {
@@ -250,7 +250,7 @@ it('can have multiple keys for different providers', function (): void {
             'key' => 'sk-openai-test-key-12345',
         ]);
 
-    $this->assertDatabaseCount('provider_keys', 2);
+    \Pest\Laravel\assertDatabaseCount('provider_keys', 2);
 
     $response = $this->actingAs($user, 'sanctum')
         ->getJson(route('provider-keys.index', [$workspace, $repository]));
@@ -382,7 +382,7 @@ it('logs activity when provider key is created', function (): void {
             'key' => 'sk-ant-api03-test-key-for-testing',
         ]);
 
-    $this->assertDatabaseHas('activities', [
+    \Pest\Laravel\assertDatabaseHas('activities', [
         'workspace_id' => $workspace->id,
         'type' => 'provider_key.updated',
         'actor_id' => $user->id,
@@ -402,7 +402,7 @@ it('logs activity when provider key is deleted', function (): void {
     $this->actingAs($user, 'sanctum')
         ->deleteJson(route('provider-keys.destroy', [$workspace, $repository, $providerKey]));
 
-    $this->assertDatabaseHas('activities', [
+    \Pest\Laravel\assertDatabaseHas('activities', [
         'workspace_id' => $workspace->id,
         'type' => 'provider_key.deleted',
         'actor_id' => $user->id,

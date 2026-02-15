@@ -76,7 +76,7 @@ describe('store', function (): void {
             ->assertJsonPath('data.slug', 'weekly-sprint-review')
             ->assertJsonPath('message', 'Briefing created successfully.');
 
-        $this->assertDatabaseHas('briefings', [
+        \Pest\Laravel\assertDatabaseHas('briefings', [
             'title' => 'Weekly Sprint Review',
             'slug' => 'weekly-sprint-review',
         ]);
@@ -165,7 +165,7 @@ describe('update', function (): void {
             ->assertJsonPath('data.title', 'Updated')
             ->assertJsonPath('message', 'Briefing updated successfully.');
 
-        $this->assertDatabaseHas('briefings', [
+        \Pest\Laravel\assertDatabaseHas('briefings', [
             'id' => $briefing->id,
             'title' => 'Updated',
         ]);
@@ -232,7 +232,7 @@ describe('destroy', function (): void {
             ->assertOk()
             ->assertJsonPath('message', 'Briefing deleted successfully.');
 
-        $this->assertDatabaseMissing('briefings', ['id' => $briefing->id]);
+        \Pest\Laravel\assertDatabaseMissing('briefings', ['id' => $briefing->id]);
     });
 
     it('prevents deletion when generations exist', function (): void {
@@ -244,7 +244,7 @@ describe('destroy', function (): void {
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Cannot delete this briefing as it has 1 generation(s).');
 
-        $this->assertDatabaseHas('briefings', ['id' => $briefing->id]);
+        \Pest\Laravel\assertDatabaseHas('briefings', ['id' => $briefing->id]);
     });
 
     it('prevents deletion when active subscriptions exist', function (): void {
@@ -259,6 +259,6 @@ describe('destroy', function (): void {
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Cannot delete this briefing as it has 1 active subscription(s).');
 
-        $this->assertDatabaseHas('briefings', ['id' => $briefing->id]);
+        \Pest\Laravel\assertDatabaseHas('briefings', ['id' => $briefing->id]);
     });
 });

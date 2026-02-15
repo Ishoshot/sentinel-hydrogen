@@ -57,7 +57,7 @@ describe('store', function (): void {
             ->assertJsonPath('data.code', 'TEST123')
             ->assertJsonPath('message', 'Promotion created successfully.');
 
-        $this->assertDatabaseHas('promotions', [
+        \Pest\Laravel\assertDatabaseHas('promotions', [
             'name' => 'Test Promo',
             'code' => 'TEST123',
         ]);
@@ -114,7 +114,7 @@ describe('update', function (): void {
             ->assertJsonPath('data.name', 'Updated')
             ->assertJsonPath('message', 'Promotion updated successfully.');
 
-        $this->assertDatabaseHas('promotions', [
+        \Pest\Laravel\assertDatabaseHas('promotions', [
             'id' => $promotion->id,
             'name' => 'Updated',
         ]);
@@ -141,6 +141,6 @@ describe('destroy', function (): void {
             ->assertOk()
             ->assertJsonPath('message', 'Promotion deleted successfully.');
 
-        $this->assertDatabaseMissing('promotions', ['id' => $promotion->id]);
+        \Pest\Laravel\assertDatabaseMissing('promotions', ['id' => $promotion->id]);
     });
 });

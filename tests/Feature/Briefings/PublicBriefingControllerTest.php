@@ -51,7 +51,7 @@ it('tracks download as share_link source', function (): void {
     $this->getJson(route('briefings.share.show', $this->share->token))
         ->assertSuccessful();
 
-    $this->assertDatabaseHas('briefing_downloads', [
+    \Pest\Laravel\assertDatabaseHas('briefing_downloads', [
         'briefing_generation_id' => $this->generation->id,
         'source' => 'share_link',
         'format' => 'html',

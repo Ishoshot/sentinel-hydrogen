@@ -84,7 +84,7 @@ it('initiates oauth and returns oauth url', function (): void {
         ->toContain('client_id=')
         ->toContain('state=');
 
-    $this->assertDatabaseHas('slack_integrations', [
+    \Pest\Laravel\assertDatabaseHas('slack_integrations', [
         'workspace_id' => $this->workspace->id,
         'is_active' => false,
     ]);
@@ -257,7 +257,7 @@ it('disconnects slack with token revocation', function (): void {
     $response->assertOk()
         ->assertJsonPath('message', 'Slack disconnected successfully.');
 
-    $this->assertDatabaseMissing('slack_integrations', [
+    \Pest\Laravel\assertDatabaseMissing('slack_integrations', [
         'workspace_id' => $this->workspace->id,
     ]);
 });

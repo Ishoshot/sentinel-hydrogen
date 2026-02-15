@@ -114,7 +114,7 @@ describe('Provider Key with Model Selection', function (): void {
         $response->assertCreated()
             ->assertJsonPath('data.provider', 'anthropic');
 
-        $this->assertDatabaseHas('provider_keys', [
+        \Pest\Laravel\assertDatabaseHas('provider_keys', [
             'repository_id' => $repository->id,
             'provider' => 'anthropic',
             'provider_model_id' => $aiOption->id,
@@ -133,7 +133,7 @@ describe('Provider Key with Model Selection', function (): void {
 
         $response->assertCreated();
 
-        $this->assertDatabaseHas('provider_keys', [
+        \Pest\Laravel\assertDatabaseHas('provider_keys', [
             'repository_id' => $repository->id,
             'provider' => 'anthropic',
             'provider_model_id' => null,

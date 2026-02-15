@@ -51,7 +51,7 @@ it('creates a share link for a completed generation', function (): void {
             'message',
         ]);
 
-    $this->assertDatabaseHas('briefing_shares', [
+    \Pest\Laravel\assertDatabaseHas('briefing_shares', [
         'briefing_generation_id' => $this->generation->id,
         'workspace_id' => $this->workspace->id,
         'is_active' => true,

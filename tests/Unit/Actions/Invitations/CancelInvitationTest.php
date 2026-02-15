@@ -21,7 +21,7 @@ it('cancels a pending invitation', function (): void {
     $action = new CancelInvitation;
     $action->handle($invitation);
 
-    $this->assertDatabaseMissing('invitations', ['id' => $invitation->id]);
+    \Pest\Laravel\assertDatabaseMissing('invitations', ['id' => $invitation->id]);
 });
 
 it('throws exception when cancelling an accepted invitation', function (): void {

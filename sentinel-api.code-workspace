@@ -6,5 +6,12 @@
 		{
 			"path": "../frontend/sentinel"
 		}
-	]
+	],
+	"settings": {
+		"php.version": "8.4",
+		"php.problems.exclude": {
+			"**": ["PHP0413", "PHP6601", "PHP6616", "PHP0418", "PHP7103", "PHP0406", "PHP0419", "PHP6602", "PHP0416", "PHP1416"],
+			"**/vendor/**": true
+		}
+	}
 }

@@ -76,7 +76,7 @@ describe('store', function (): void {
             ->assertJsonPath('data.max_output_tokens', 64000)
             ->assertJsonPath('message', 'AI model created successfully.');
 
-        $this->assertDatabaseHas('provider_models', [
+        \Pest\Laravel\assertDatabaseHas('provider_models', [
             'identifier' => 'claude-test-model',
             'name' => 'Claude Test Model',
             'context_window_tokens' => 200000,
@@ -182,7 +182,7 @@ describe('update', function (): void {
             ->assertJsonPath('data.name', 'Updated')
             ->assertJsonPath('message', 'AI model updated successfully.');
 
-        $this->assertDatabaseHas('provider_models', [
+        \Pest\Laravel\assertDatabaseHas('provider_models', [
             'id' => $aiOption->id,
             'name' => 'Updated',
         ]);
@@ -234,7 +234,7 @@ describe('update', function (): void {
             ->assertJsonPath('data.context_window_tokens', 200000)
             ->assertJsonPath('data.max_output_tokens', 64000);
 
-        $this->assertDatabaseHas('provider_models', [
+        \Pest\Laravel\assertDatabaseHas('provider_models', [
             'id' => $aiOption->id,
             'context_window_tokens' => 200000,
             'max_output_tokens' => 64000,
@@ -267,7 +267,7 @@ describe('destroy', function (): void {
             ->assertOk()
             ->assertJsonPath('message', 'AI model deleted successfully.');
 
-        $this->assertDatabaseMissing('provider_models', ['id' => $aiOption->id]);
+        \Pest\Laravel\assertDatabaseMissing('provider_models', ['id' => $aiOption->id]);
     });
 
     it('prevents deletion when in use by provider keys', function (): void {
@@ -284,6 +284,6 @@ describe('destroy', function (): void {
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Cannot delete this AI model as it is currently in use by 1 provider key(s).');
 
-        $this->assertDatabaseHas('provider_models', ['id' => $aiOption->id]);
+        \Pest\Laravel\assertDatabaseHas('provider_models', ['id' => $aiOption->id]);
     });
 });
