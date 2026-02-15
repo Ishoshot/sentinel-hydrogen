@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\DataTransferObjects\SentinelConfig;
+namespace App\Services\SentinelConfig\ValueObjects;
 
 /**
  * Strongly-typed value object representing a parsed .sentinel/config.yaml file.
