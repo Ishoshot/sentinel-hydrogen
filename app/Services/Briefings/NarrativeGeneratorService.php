@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Briefings;
 
+use App\Services\Briefings\Builders\BriefingPromptBuilder;
 use App\Services\Briefings\Clients\BriefingNarrativeClient;
 use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
 use App\Services\Briefings\Factories\BriefingExcerptsFactory;
-use App\Services\Briefings\Support\BriefingPromptRenderer;
 use App\Services\Briefings\ValueObjects\BriefingAchievements;
 use App\Services\Briefings\ValueObjects\BriefingAiConfiguration;
 use App\Services\Briefings\ValueObjects\BriefingExcerpts;
@@ -26,7 +26,7 @@ final readonly class NarrativeGeneratorService implements BriefingNarrativeGener
      * Create a new narrative generator.
      */
     public function __construct(
-        private BriefingPromptRenderer $promptRenderer,
+        private BriefingPromptBuilder $promptBuilder,
         private BriefingNarrativeClient $narrativeClient,
         private BriefingExcerptsFactory $excerptsGenerator,
     ) {}
@@ -42,7 +42,7 @@ final readonly class NarrativeGeneratorService implements BriefingNarrativeGener
      */
     public function generate(string $promptPath, BriefingStructuredData $structuredData, BriefingAchievements $achievements, BriefingAiConfiguration $aiConfig): NarrativeGenerationResult
     {
-        $prompt = $this->promptRenderer->render($promptPath, $structuredData, $achievements);
+        $prompt = $this->promptBuilder->render($promptPath, $structuredData, $achievements);
 
         try {
             return $this->narrativeClient->generate($this->systemPrompt(), $prompt, $aiConfig);

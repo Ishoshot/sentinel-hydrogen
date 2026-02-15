@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings\Support;
+namespace App\Services\Briefings\Resolvers;
 
 use App\Services\Briefings\Contracts\BriefingTemplateDataCollector;
 use RuntimeException;
 
 /**
- * Registry for resolving briefing template collectors by slug.
+ * Resolve briefing template collectors by slug.
  */
-final class BriefingTemplateCollectorRegistry
+final class BriefingTemplateCollectorResolver
 {
     /**
      * @var array<string, BriefingTemplateDataCollector>
@@ -18,7 +18,7 @@ final class BriefingTemplateCollectorRegistry
     private array $collectorsBySlug = [];
 
     /**
-     * Create a new registry instance.
+     * Create a new resolver instance.
      *
      * @param  iterable<int, BriefingTemplateDataCollector>  $templateCollectors
      */

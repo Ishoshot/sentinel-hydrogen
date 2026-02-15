@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings\Support;
+namespace App\Services\Briefings\Builders;
 
 use App\Services\Briefings\ValueObjects\BriefingAchievements;
 use App\Services\Briefings\ValueObjects\BriefingStructuredData;
@@ -12,7 +12,7 @@ use RuntimeException;
 /**
  * Renders briefing AI prompts from Blade templates.
  */
-final class BriefingPromptRenderer
+final class BriefingPromptBuilder
 {
     /**
      * Render the prompt for narrative generation.
