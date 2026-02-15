@@ -6,7 +6,6 @@ namespace App\Services\CodeIndexing;
 
 use App\Models\CodeIndex;
 use App\Models\Repository;
-use App\Services\CodeIndexing\Builders\CodeIndexingChangeSetBuilder;
 use App\Services\CodeIndexing\Builders\IncrementalChangeSetBuilder;
 use App\Services\CodeIndexing\Clients\RepositoryTreeClient;
 use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;
@@ -29,9 +28,8 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
         private IndexableFilePolicy $filePolicy,
         private RepositoryTreeClient $treeClient,
         private IncrementalChangeSetBuilder $changeSetBuilder,
-        private ?CodeIndexingChangeSetBuilder $changeSetPlanner,
-        private ?CodeIndexingPayloadFactory $payloadFactory,
-        private ?CodeIndexingTelemetryLogger $telemetryLogger,
+        private CodeIndexingPayloadFactory $payloadFactory,
+        private CodeIndexingTelemetryLogger $telemetryLogger,
         private IndexBatchDispatchStrategy $batchDispatchStrategy,
     ) {}
 
@@ -40,11 +38,11 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
      */
     public function indexRepository(Repository $repository, string $commitSha): void
     {
-        $this->telemetryLogger()->logFullIndexStarted($repository->id, $commitSha);
+        $this->telemetryLogger->logFullIndexStarted($repository->id, $commitSha);
 
         $installation = $repository->installation;
         if ($installation === null) {
-            $this->telemetryLogger()->logMissingInstallation($repository->id);
+            $this->telemetryLogger->logMissingInstallation($repository->id);
 
             return;
         }
@@ -53,7 +51,7 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
 
         $indexableFiles = $this->filePolicy->filterTree($tree);
 
-        $this->telemetryLogger()->logIndexableFilesDiscovered(
+        $this->telemetryLogger->logIndexableFilesDiscovered(
             repositoryId: $repository->id,
             totalFiles: count($tree),
             indexableFiles: count($indexableFiles),
@@ -69,9 +67,9 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
      */
     public function indexChangedFiles(Repository $repository, string $commitSha, array $changedFiles): void
     {
-        $changeSetPlan = $this->changeSetPlanner()->plan($changedFiles);
+        $changeSetPlan = $this->changeSetBuilder->plan($changedFiles);
 
-        $this->telemetryLogger()->logIncrementalIndexStarted(
+        $this->telemetryLogger->logIncrementalIndexStarted(
             repositoryId: $repository->id,
             commitSha: $commitSha,
             added: count($changeSetPlan['added']),
@@ -86,13 +84,13 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
         $indexableFiles = $changeSetPlan['indexable_files'];
 
         if ($indexableFiles === []) {
-            $this->telemetryLogger()->logNoIndexableFilesInChangeSet($repository->id);
+            $this->telemetryLogger->logNoIndexableFilesInChangeSet($repository->id);
 
             return;
         }
 
         if ($changeSetPlan['requires_full_reindex']) {
-            $this->telemetryLogger()->logLargeChangeSet($repository->id, count($indexableFiles));
+            $this->telemetryLogger->logLargeChangeSet($repository->id, count($indexableFiles));
 
             $this->indexRepository($repository, $commitSha);
 
@@ -114,7 +112,7 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
         }
 
         $structure = $this->semanticAnalyzer->analyzeFile($content, $filePath);
-        $indexPayload = $this->payloadFactory()->build($commitSha, $filePath, $content, $structure);
+        $indexPayload = $this->payloadFactory->build($commitSha, $filePath, $content, $structure);
 
         CodeIndex::updateOrCreate(
             [
@@ -142,7 +140,7 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
             ->whereIn('file_path', $filePaths)
             ->delete();
 
-        $this->telemetryLogger()->logRemovedFiles($repository->id, count($filePaths), $deleted);
+        $this->telemetryLogger->logRemovedFiles($repository->id, count($filePaths), $deleted);
     }
 
     /**
@@ -151,29 +149,5 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
     public function shouldIndexFile(string $filePath): bool
     {
         return $this->filePolicy->shouldIndex($filePath);
-    }
-
-    /**
-     * ChangeSetPlanner.
-     */
-    private function changeSetPlanner(): CodeIndexingChangeSetBuilder
-    {
-        return $this->changeSetPlanner ?? new CodeIndexingChangeSetBuilder($this->changeSetBuilder);
-    }
-
-    /**
-     * PayloadFactory.
-     */
-    private function payloadFactory(): CodeIndexingPayloadFactory
-    {
-        return $this->payloadFactory ?? new CodeIndexingPayloadFactory;
-    }
-
-    /**
-     * TelemetryLogger.
-     */
-    private function telemetryLogger(): CodeIndexingTelemetryLogger
-    {
-        return $this->telemetryLogger ?? new CodeIndexingTelemetryLogger;
     }
 }

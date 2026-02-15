@@ -6,7 +6,6 @@ namespace App\Services\CodeIndexing;
 
 use App\Models\Repository;
 use App\Services\CodeIndexing\Contracts\CodeSearchServiceContract;
-use App\Services\CodeIndexing\Factories\CodeSearchCacheKeyFactory;
 use App\Services\CodeIndexing\Strategies\HybridSearchResultMergeStrategy;
 use App\Services\CodeIndexing\Strategies\KeywordCodeSearchStrategy;
 use App\Services\CodeIndexing\Strategies\SemanticCodeSearchStrategy;
@@ -29,7 +28,6 @@ final readonly class CodeSearchService implements CodeSearchServiceContract
         private SemanticCodeSearchStrategy $semanticSearchStrategy,
         private SymbolCodeSearchStrategy $symbolSearchStrategy,
         private HybridSearchResultMergeStrategy $resultMergeStrategy,
-        private CodeSearchCacheKeyFactory $cacheKeyFactory,
     ) {}
 
     /**
@@ -40,7 +38,7 @@ final readonly class CodeSearchService implements CodeSearchServiceContract
      */
     public function search(Repository $repository, string $query, int $limit = 10, ?array $fileTypes = null): array
     {
-        $cacheKey = $this->cacheKeyFactory->build('hybrid', $repository->id, $query, $limit, $fileTypes);
+        $cacheKey = $this->buildCacheKey('hybrid', $repository->id, $query, $limit, $fileTypes);
 
         /** @var array<int, array{file_path: string, content: string, score: float, match_type: string, metadata: array<string, mixed>}> */
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($repository, $query, $limit, $fileTypes): array {
@@ -74,7 +72,7 @@ final readonly class CodeSearchService implements CodeSearchServiceContract
      */
     public function keywordSearch(Repository $repository, string $query, int $limit = 10, ?array $fileTypes = null): array
     {
-        $cacheKey = $this->cacheKeyFactory->build('keyword', $repository->id, $query, $limit, $fileTypes);
+        $cacheKey = $this->buildCacheKey('keyword', $repository->id, $query, $limit, $fileTypes);
 
         /** @var array<int, array{file_path: string, content: string, score: float, metadata: array<string, mixed>}> */
         return Cache::remember($cacheKey, self::CACHE_TTL, fn (): array => $this->keywordSearchStrategy->execute($repository, $query, $limit, $fileTypes));
@@ -88,7 +86,7 @@ final readonly class CodeSearchService implements CodeSearchServiceContract
      */
     public function semanticSearch(Repository $repository, string $query, int $limit = 10, ?array $fileTypes = null): array
     {
-        $cacheKey = $this->cacheKeyFactory->build('semantic', $repository->id, $query, $limit, $fileTypes);
+        $cacheKey = $this->buildCacheKey('semantic', $repository->id, $query, $limit, $fileTypes);
 
         /** @var array<int, array{file_path: string, content: string, score: float, metadata: array<string, mixed>}> */
         return Cache::remember($cacheKey, self::CACHE_TTL, fn (): array => $this->semanticSearchStrategy->execute($repository, $query, $limit, $fileTypes));
@@ -101,9 +99,26 @@ final readonly class CodeSearchService implements CodeSearchServiceContract
      */
     public function findSymbol(Repository $repository, string $symbolName, int $limit = 5): array
     {
-        $cacheKey = $this->cacheKeyFactory->build('symbol', $repository->id, $symbolName, $limit, null);
+        $cacheKey = $this->buildCacheKey('symbol', $repository->id, $symbolName, $limit, null);
 
         /** @var array<int, array{file_path: string, symbol_name: string, chunk_type: string, content: string, metadata: array<string, mixed>}> */
         return Cache::remember($cacheKey, self::CACHE_TTL, fn (): array => $this->symbolSearchStrategy->execute($repository, $symbolName, $limit));
+    }
+
+    /**
+     * @param  array<string>|null  $fileTypes
+     */
+    private function buildCacheKey(string $type, int $repositoryId, string $query, int $limit, ?array $fileTypes): string
+    {
+        $fileTypesHash = $fileTypes !== null ? hash('xxh128', implode(',', $fileTypes)) : 'all';
+
+        return sprintf(
+            'code_search:%s:%d:%s:%d:%s',
+            $type,
+            $repositoryId,
+            hash('xxh128', $query),
+            $limit,
+            $fileTypesHash
+        );
     }
 }
