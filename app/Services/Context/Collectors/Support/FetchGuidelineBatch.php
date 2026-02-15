@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace App\Services\Context\Collectors\Support;
 
 use App\DataTransferObjects\SentinelConfig\GuidelineConfig;
+use App\Services\Context\Collectors\FetchGuidelineContent;
 use App\Services\GitHub\ValueObjects\RepositoryCoordinates;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Fetches guideline file contents in batch with limit and type enforcement.
  */
-final readonly class GuidelineBatchFetcher
+final readonly class FetchGuidelineBatch
 {
     /**
      * Create a new instance.
      */
     public function __construct(
-        private GuidelineContentFetcher $contentFetcher,
+        private FetchGuidelineContent $contentFetcher,
     ) {}
 
     /**

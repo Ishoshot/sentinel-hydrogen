@@ -14,7 +14,7 @@ use Throwable;
 /**
  * Resolves repository coordinates and fetches content for ranked impacted file candidates.
  */
-final readonly class ImpactedFileBatchFetcher
+final readonly class FetchImpactedFileBatch
 {
     /**
      * Create a new instance.
@@ -22,7 +22,7 @@ final readonly class ImpactedFileBatchFetcher
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,
         private ImpactedFileRepositoryCoordinatesResolver $coordinatesResolver = new ImpactedFileRepositoryCoordinatesResolver,
-        private ?ImpactedFileContentFetcher $contentFetcher = null,
+        private ?FetchImpactedFileContent $contentFetcher = null,
     ) {}
 
     /**
@@ -88,8 +88,8 @@ final readonly class ImpactedFileBatchFetcher
     /**
      * Resolve the impacted-file content fetcher dependency.
      */
-    private function contentFetcher(): ImpactedFileContentFetcher
+    private function contentFetcher(): FetchImpactedFileContent
     {
-        return $this->contentFetcher ?? new ImpactedFileContentFetcher($this->gitHubApiService);
+        return $this->contentFetcher ?? new FetchImpactedFileContent($this->gitHubApiService);
     }
 }
