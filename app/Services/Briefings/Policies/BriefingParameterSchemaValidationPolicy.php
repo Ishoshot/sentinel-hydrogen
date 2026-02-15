@@ -6,7 +6,6 @@ namespace App\Services\Briefings\Policies;
 
 use App\Services\Briefings\Builders\BriefingParameterSchemaMessageBuilder;
 use App\Services\Briefings\Builders\BriefingParameterSchemaRuleBuilder;
-use App\Services\Briefings\Strategies\BriefingParameterSchemaPropertyStrategy;
 use RuntimeException;
 
 final readonly class BriefingParameterSchemaValidationPolicy
@@ -15,7 +14,6 @@ final readonly class BriefingParameterSchemaValidationPolicy
      * Create a new schema validator instance.
      */
     public function __construct(
-        private BriefingParameterSchemaPropertyStrategy $propertyResolver = new BriefingParameterSchemaPropertyStrategy,
         private BriefingParameterSchemaRuleBuilder $ruleBuilder = new BriefingParameterSchemaRuleBuilder,
         private BriefingParameterSchemaMessageBuilder $messageBuilder = new BriefingParameterSchemaMessageBuilder,
     ) {}
@@ -30,8 +28,8 @@ final readonly class BriefingParameterSchemaValidationPolicy
     {
         /** @var array<string, array<int, string>> $rules */
         $rules = [];
-        $properties = $this->propertyResolver->resolve($schema);
-        $required = $this->propertyResolver->required($schema);
+        $properties = $this->resolveProperties($schema);
+        $required = $this->resolveRequired($schema);
 
         foreach ($properties as $field => $definition) {
             if (! is_string($field)) {
@@ -60,7 +58,7 @@ final readonly class BriefingParameterSchemaValidationPolicy
     public function messages(array $schema): array
     {
         $messages = [];
-        $properties = $this->propertyResolver->resolve($schema);
+        $properties = $this->resolveProperties($schema);
 
         foreach ($properties as $field => $definition) {
             if (! is_string($field)) {
@@ -78,5 +76,32 @@ final readonly class BriefingParameterSchemaValidationPolicy
         }
 
         return $messages;
+    }
+
+    /**
+     * @param  array<string, mixed>  $schema
+     * @return array<mixed, mixed>
+     */
+    private function resolveProperties(array $schema): array
+    {
+        $properties = $schema['properties'] ?? null;
+
+        if (! is_array($properties) || $properties === []) {
+            throw new RuntimeException('Briefing parameter schema must define properties.');
+        }
+
+        return $properties;
+    }
+
+    /**
+     * @param  array<string, mixed>  $schema
+     * @return array<int, string>
+     */
+    private function resolveRequired(array $schema): array
+    {
+        /** @var array<int, string> $required */
+        $required = is_array($schema['required'] ?? null) ? $schema['required'] : [];
+
+        return $required;
     }
 }

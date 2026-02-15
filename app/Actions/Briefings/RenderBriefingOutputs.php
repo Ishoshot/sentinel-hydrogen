@@ -6,9 +6,7 @@ namespace App\Actions\Briefings;
 
 use App\Enums\Briefings\BriefingOutputFormat;
 use App\Models\BriefingGeneration;
-use App\Services\Briefings\Strategies\BriefingOutputFormatStrategy;
-use App\Services\Briefings\Strategies\BriefingOutputRenderStrategy;
-use App\Services\Briefings\Strategies\BriefingOutputStoragePathStrategy;
+use App\Services\Briefings\BriefingOutputRenderer;
 use App\Services\Briefings\ValueObjects\BriefingOutputFormats;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -19,9 +17,7 @@ final readonly class RenderBriefingOutputs
      * Create a new action instance.
      */
     public function __construct(
-        private BriefingOutputFormatStrategy $formatResolver = new BriefingOutputFormatStrategy,
-        private BriefingOutputRenderStrategy $outputRenderer = new BriefingOutputRenderStrategy,
-        private BriefingOutputStoragePathStrategy $storagePathResolver = new BriefingOutputStoragePathStrategy,
+        private BriefingOutputRenderer $outputRenderer = new BriefingOutputRenderer,
     ) {}
 
     /**
@@ -31,7 +27,7 @@ final readonly class RenderBriefingOutputs
     {
         $generation->loadMissing('briefing');
 
-        $disk = $this->storagePathResolver->disk();
+        $disk = $this->outputRenderer->storageDisk();
         $outputPaths = [];
         $requestedFormats = $this->resolveOutputFormats($generation);
 
@@ -82,7 +78,7 @@ final readonly class RenderBriefingOutputs
         string $filename,
         string $contents,
     ): string {
-        $path = $this->storagePathResolver->resolve($generation, $filename);
+        $path = $this->outputRenderer->resolveStoragePath($generation, $filename);
         Storage::disk($disk)->put($path, $contents);
 
         return $path;
@@ -93,6 +89,6 @@ final readonly class RenderBriefingOutputs
      */
     private function resolveOutputFormats(BriefingGeneration $generation): BriefingOutputFormats
     {
-        return $this->formatResolver->resolve($generation);
+        return $this->outputRenderer->resolveFormats($generation);
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Briefings;
 
 use App\Services\Briefings\Contracts\BriefingDataCollector;
-use App\Services\Briefings\Support\BriefingTemplateCollectorRegistry;
+use App\Services\Briefings\Resolvers\BriefingTemplateCollectorResolver;
 use App\Services\Briefings\ValueObjects\BriefingAchievements;
 use App\Services\Briefings\ValueObjects\BriefingDateRange;
 use App\Services\Briefings\ValueObjects\BriefingParameters;
@@ -20,7 +20,7 @@ final readonly class BriefingDataCollectorService implements BriefingDataCollect
      * Create a new data collector orchestrator.
      */
     public function __construct(
-        private BriefingTemplateCollectorRegistry $templateCollectorRegistry,
+        private BriefingTemplateCollectorResolver $templateCollectorResolver,
         private BriefingAchievementDetector $achievementDetector,
     ) {}
 
@@ -30,7 +30,7 @@ final readonly class BriefingDataCollectorService implements BriefingDataCollect
     public function collect(int $workspaceId, string $briefingSlug, BriefingParameters $parameters): BriefingStructuredData
     {
         $parameterValues = $parameters->toArray();
-        $collector = $this->templateCollectorRegistry->resolve($briefingSlug);
+        $collector = $this->templateCollectorResolver->resolve($briefingSlug);
 
         return BriefingStructuredData::fromArray(
             $collector->collect(
