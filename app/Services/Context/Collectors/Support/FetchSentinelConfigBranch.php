@@ -71,11 +71,11 @@ final readonly class FetchSentinelConfigBranch
 
         $parseResult = $this->configParser->tryParse($fetchResult['content']);
 
-        if (! $parseResult['success'] || $parseResult['config'] === null) {
+        if (! $parseResult['success']) {
             Log::warning('DiffCollector: Failed to parse sentinel config', [
                 'repository' => $repository->full_name,
                 'branch' => $branch,
-                'error' => $parseResult['error'] ?? 'Unknown error',
+                'error' => $parseResult['error'],
             ]);
 
             return null;

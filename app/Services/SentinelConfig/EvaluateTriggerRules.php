@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\SentinelConfig;
 
-use App\DataTransferObjects\SentinelConfig\TriggersConfig;
+use App\Services\SentinelConfig\ValueObjects\TriggersConfig;
 
 /**
  * Evaluates trigger rules to determine if a review should run.

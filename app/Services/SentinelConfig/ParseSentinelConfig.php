@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\SentinelConfig;
 
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Exceptions\SentinelConfig\ConfigParseException;
 use App\Exceptions\SentinelConfig\ConfigValidationException;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -24,6 +24,12 @@ final readonly class ParseSentinelConfig
         private SentinelConfigSchema $schema,
     ) {}
 
+    /**
+     * Parse and validate YAML content into a typed Sentinel config.
+     *
+     * @throws ConfigParseException
+     * @throws ConfigValidationException
+     */
     public function parse(string $yamlContent): SentinelConfig
     {
         $data = $this->parseYaml($yamlContent);
@@ -32,6 +38,9 @@ final readonly class ParseSentinelConfig
         return SentinelConfig::fromArray($data);
     }
 
+    /**
+     * @return array{success: true, config: SentinelConfig, error: null}|array{success: false, config: null, error: string}
+     */
     public function tryParse(string $yamlContent): array
     {
         try {

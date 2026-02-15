@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 use Carbon\Carbon;
 use Database\Factories\RepositorySettingsFactory;
 use Illuminate\Database\Eloquent\Builder;
