@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Services\Semantic\SemanticAnalyzerService;
+use App\Services\Semantic\AnalyzeSemantics;
 
 beforeEach(function (): void {
-    $this->service = new SemanticAnalyzerService();
+    $this->service = new AnalyzeSemantics();
 
     // Ensure binary exists (should be built by composer or CI)
     $binaryPath = base_path('bin/semantic-analyzer');
@@ -15,7 +15,7 @@ beforeEach(function (): void {
 });
 
 it('returns null for unsupported file extensions', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     $result = $service->analyzeFile('content', 'file.txt');
 
@@ -23,7 +23,7 @@ it('returns null for unsupported file extensions', function (): void {
 });
 
 it('returns null for files without extension', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     $result = $service->analyzeFile('content', 'Makefile');
 
@@ -31,7 +31,7 @@ it('returns null for files without extension', function (): void {
 });
 
 it('analyzes multiple files and filters null results', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     $files = [
         'file.txt' => 'text content',
@@ -44,7 +44,7 @@ it('analyzes multiple files and filters null results', function (): void {
 });
 
 it('accepts supported php extension', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     $result = $service->analyzeFile('<?php echo "test";', 'test.php');
 
@@ -52,7 +52,7 @@ it('accepts supported php extension', function (): void {
 });
 
 it('accepts supported javascript extensions', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('const a = 1;', 'test.js'))->toBeArray();
     expect($service->analyzeFile('const a = 1;', 'test.mjs'))->toBeArray();
@@ -61,63 +61,63 @@ it('accepts supported javascript extensions', function (): void {
 });
 
 it('accepts supported typescript extensions', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('const a: number = 1;', 'test.ts'))->toBeArray();
     expect($service->analyzeFile('const a: number = 1;', 'test.tsx'))->toBeArray();
 });
 
 it('accepts supported python extension', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('print("test")', 'test.py'))->toBeArray();
 });
 
 it('accepts supported go extension', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('package main', 'test.go'))->toBeArray();
 });
 
 it('accepts supported rust extension', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('fn main() {}', 'test.rs'))->toBeArray();
 });
 
 it('accepts supported java extension', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('class Test {}', 'Test.java'))->toBeArray();
 });
 
 it('accepts supported kotlin extensions', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('fun main() {}', 'test.kt'))->toBeArray();
     expect($service->analyzeFile('fun main() {}', 'test.kts'))->toBeArray();
 });
 
 it('accepts supported csharp extension', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('class Test {}', 'Test.cs'))->toBeArray();
 });
 
 it('accepts supported ruby extension', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('puts "test"', 'test.rb'))->toBeArray();
 });
 
 it('accepts supported swift extension', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('print("test")', 'test.swift'))->toBeArray();
 });
 
 it('accepts supported c and cpp extensions', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('#include <stdio.h>', 'test.c'))->toBeArray();
     expect($service->analyzeFile('#include <stdio.h>', 'test.h'))->toBeArray();
@@ -129,7 +129,7 @@ it('accepts supported c and cpp extensions', function (): void {
 });
 
 it('accepts supported web extensions', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('<html></html>', 'test.html'))->toBeArray();
     expect($service->analyzeFile('<html></html>', 'test.htm'))->toBeArray();
@@ -139,7 +139,7 @@ it('accepts supported web extensions', function (): void {
 });
 
 it('accepts supported frontend framework extensions', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('<template></template>', 'test.vue'))->toBeArray();
     expect($service->analyzeFile('<script></script>', 'test.svelte'))->toBeArray();
@@ -147,7 +147,7 @@ it('accepts supported frontend framework extensions', function (): void {
 });
 
 it('accepts supported shell extensions', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('echo "test"', 'test.sh'))->toBeArray();
     expect($service->analyzeFile('echo "test"', 'test.bash'))->toBeArray();
@@ -155,7 +155,7 @@ it('accepts supported shell extensions', function (): void {
 });
 
 it('accepts supported config extensions', function (): void {
-    $service = new SemanticAnalyzerService;
+    $service = new AnalyzeSemantics;
 
     expect($service->analyzeFile('SELECT * FROM users', 'test.sql'))->toBeArray();
     expect($service->analyzeFile('key: value', 'test.yaml'))->toBeArray();

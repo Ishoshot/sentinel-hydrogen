@@ -8,7 +8,7 @@ use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 
-final class SemanticAnalyzerService implements SemanticAnalyzerInterface
+final class AnalyzeSemantics implements SemanticAnalyzerInterface
 {
     private const string BINARY_PATH = 'bin/semantic-analyzer';
 
