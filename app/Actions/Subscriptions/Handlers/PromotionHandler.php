@@ -9,7 +9,7 @@ use App\Actions\Subscriptions\Support\TransitionDirection;
 use App\Models\Promotion;
 use App\Models\Subscription;
 use App\Models\Workspace;
-use App\Services\Promotions\Contracts\PromotionValidatorContract;
+use App\Services\Promotions\PromotionValidator;
 use InvalidArgumentException;
 
 /**
@@ -21,7 +21,7 @@ final readonly class PromotionHandler
      * Create a new PromotionHandler instance.
      */
     public function __construct(
-        private PromotionValidatorContract $promotionValidator,
+        private PromotionValidator $promotionValidator,
         private RecordPromotionUsage $recordPromotionUsage,
     ) {}
 

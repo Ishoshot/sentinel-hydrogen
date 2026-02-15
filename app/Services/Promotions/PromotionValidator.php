@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Promotions;
 
 use App\Models\Promotion;
-use App\Services\Promotions\Contracts\PromotionValidatorContract;
 use App\Services\Promotions\ValueObjects\PromotionValidationResult;
 
 /**
  * Validates promotion codes and returns validation results.
  */
-final readonly class PromotionValidator implements PromotionValidatorContract
+final readonly class PromotionValidator
 {
     /**
      * Validate a promotion code.
