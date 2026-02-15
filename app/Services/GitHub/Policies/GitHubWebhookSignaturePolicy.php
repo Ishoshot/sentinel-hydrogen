@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Services\GitHub\Support;
+namespace App\Services\GitHub\Policies;
 
-final class GitHubWebhookSignatureVerifier
+final class GitHubWebhookSignaturePolicy
 {
     /**
      * Verify a GitHub webhook payload signature.

@@ -8,8 +8,7 @@ use App\Enums\GitHub\GitHubWebhookEvent;
 use App\Services\GitHub\Contracts\GitHubWebhookServiceContract;
 use App\Services\GitHub\Parsers\GitHubWebhookPayloadParser;
 use App\Services\GitHub\Policies\GitHubPullRequestActionPolicy;
-use App\Services\GitHub\Support\GitHubWebhookPayloadFieldExtractor;
-use App\Services\GitHub\Support\GitHubWebhookSignatureVerifier;
+use App\Services\GitHub\Policies\GitHubWebhookSignaturePolicy;
 
 final readonly class GitHubWebhookService implements GitHubWebhookServiceContract
 {
@@ -18,8 +17,7 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      */
     public function __construct(
         private GitHubWebhookPayloadParser $payloadParser = new GitHubWebhookPayloadParser,
-        private GitHubWebhookSignatureVerifier $signatureVerifier = new GitHubWebhookSignatureVerifier,
-        private GitHubWebhookPayloadFieldExtractor $payloadFieldExtractor = new GitHubWebhookPayloadFieldExtractor,
+        private GitHubWebhookSignaturePolicy $signatureVerifier = new GitHubWebhookSignaturePolicy,
         private GitHubPullRequestActionPolicy $pullRequestActionPolicy = new GitHubPullRequestActionPolicy,
     ) {}
 
@@ -52,7 +50,7 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      */
     public function extractInstallationId(array $payload): ?int
     {
-        return $this->payloadFieldExtractor->installationId($payload);
+        return $this->payloadParser->extractInstallationId($payload);
     }
 
     /**
@@ -62,7 +60,7 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      */
     public function extractAction(array $payload): ?string
     {
-        return $this->payloadFieldExtractor->action($payload);
+        return $this->payloadParser->extractAction($payload);
     }
 
     /**

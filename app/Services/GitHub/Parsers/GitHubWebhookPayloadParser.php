@@ -101,6 +101,32 @@ final readonly class GitHubWebhookPayloadParser
     }
 
     /**
+     * Extract installation ID from a GitHub webhook payload.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function extractInstallationId(array $payload): ?int
+    {
+        /** @var array{id: int}|null $installation */
+        $installation = $payload['installation'] ?? null;
+
+        return $installation['id'] ?? null;
+    }
+
+    /**
+     * Extract action from a GitHub webhook payload.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function extractAction(array $payload): ?string
+    {
+        /** @var string|null $action */
+        $action = $payload['action'] ?? null;
+
+        return $action;
+    }
+
+    /**
      * @param  array<int, array{login: string, avatar_url?: string|null}>  $users
      * @return array<int, array{login: string, avatar_url: string|null}>
      */
