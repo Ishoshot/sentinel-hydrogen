@@ -12,7 +12,7 @@ use Throwable;
 /**
  * Fetches, validates, and truncates guideline files from GitHub.
  */
-final readonly class GuidelineContentFetcher
+final readonly class FetchGuidelineContent
 {
     /**
      * Maximum content length per file (in bytes).
@@ -27,7 +27,7 @@ final readonly class GuidelineContentFetcher
     private const array ALLOWED_EXTENSIONS = ['md', 'mdx', 'blade.php'];
 
     /**
-     * Create a new GuidelineContentFetcher instance.
+     * Create a new FetchGuidelineContent instance.
      */
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,

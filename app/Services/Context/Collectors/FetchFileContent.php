@@ -10,7 +10,7 @@ use App\Services\GitHub\Parsers\GitHubContentParser;
 /**
  * Fetches individual file contents from GitHub with size enforcement.
  */
-final readonly class FileContentFetcher
+final readonly class FetchFileContent
 {
     /**
      * Maximum file size in bytes (skip large files).

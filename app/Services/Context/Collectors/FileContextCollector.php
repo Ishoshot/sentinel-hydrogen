@@ -6,7 +6,6 @@ namespace App\Services\Context\Collectors;
 
 use App\Models\Repository;
 use App\Models\Run;
-use App\Services\Context\Collectors\FileContentFetcher;
 use App\Services\Context\Collectors\Support\FileSelectionPolicy;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
@@ -31,7 +30,7 @@ final readonly class FileContextCollector implements ContextCollector
         private GitHubApiServiceContract $gitHubApiService,
         private FileSelectionPolicy $selectionPolicy = new FileSelectionPolicy,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
-        private ?FileContentFetcher $fileContentFetcher = null,
+        private ?FetchFileContent $fileContentFetcher = null,
     ) {}
 
     /**
@@ -99,7 +98,7 @@ final readonly class FileContextCollector implements ContextCollector
             return;
         }
 
-        $fetcher = $this->fileContentFetcher ?? new FileContentFetcher($this->gitHubApiService);
+        $fetcher = $this->fileContentFetcher ?? new FetchFileContent($this->gitHubApiService);
 
         $fileContents = [];
         $fetchedCount = 0;
@@ -108,7 +107,7 @@ final readonly class FileContextCollector implements ContextCollector
             $filename = $file['filename'];
 
             try {
-                $content = $fetcher->resolve(
+                $content = $fetcher->fetch(
                     $coordinates->installationId,
                     $coordinates->owner,
                     $coordinates->repo,
