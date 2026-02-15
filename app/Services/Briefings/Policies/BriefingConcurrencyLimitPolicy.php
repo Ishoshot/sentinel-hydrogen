@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings;
+namespace App\Services\Briefings\Policies;
 
 use App\Enums\Briefings\BriefingGenerationStatus;
 use App\Enums\Briefings\BriefingLimitReasonCode;
@@ -11,7 +11,7 @@ use App\Models\Workspace;
 use App\Services\Briefings\ValueObjects\BriefingLimitResult;
 use Illuminate\Support\Facades\DB;
 
-final class BriefingConcurrencyLimitChecker
+final class BriefingConcurrencyLimitPolicy
 {
     /**
      * Check the concurrent generation limit using pessimistic locking.

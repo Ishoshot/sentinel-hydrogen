@@ -7,6 +7,10 @@ namespace App\Services\Briefings;
 use App\Enums\Briefings\BriefingLimitReasonCode;
 use App\Models\Briefing;
 use App\Models\Workspace;
+use App\Services\Briefings\Policies\BriefingConcurrencyLimitPolicy;
+use App\Services\Briefings\Policies\BriefingFreeAllowancePolicy;
+use App\Services\Briefings\Policies\BriefingPlanEligibilityPolicy;
+use App\Services\Briefings\Policies\BriefingRateLimitPolicy;
 use App\Services\Briefings\ValueObjects\BriefingLimitResult;
 use App\Services\Briefings\ValueObjects\BriefingParameters;
 
@@ -18,10 +22,10 @@ final readonly class BriefingLimitEnforcer
     public function __construct(
         private BriefingDataGuard $dataGuard,
         private BriefingProviderKeyResolver $providerKeyResolver,
-        private BriefingPlanEligibilityChecker $planEligibilityChecker,
-        private BriefingFreeAllowanceChecker $freeAllowanceChecker,
-        private BriefingRateLimitChecker $rateLimitChecker,
-        private BriefingConcurrencyLimitChecker $concurrencyLimitChecker,
+        private BriefingPlanEligibilityPolicy $planEligibilityChecker,
+        private BriefingFreeAllowancePolicy $freeAllowanceChecker,
+        private BriefingRateLimitPolicy $rateLimitChecker,
+        private BriefingConcurrencyLimitPolicy $concurrencyLimitChecker,
     ) {}
 
     /**

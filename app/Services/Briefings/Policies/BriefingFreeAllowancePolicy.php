@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings;
+namespace App\Services\Briefings\Policies;
 
 use App\Enums\Briefings\BriefingGenerationStatus;
 use App\Enums\Briefings\BriefingLimitReasonCode;
@@ -10,7 +10,7 @@ use App\Models\BriefingGeneration;
 use App\Models\Workspace;
 use App\Services\Briefings\ValueObjects\BriefingLimitResult;
 
-final class BriefingFreeAllowanceChecker
+final class BriefingFreeAllowancePolicy
 {
     /**
      * Check the lifetime free allowance for workspaces without BYOK keys.
