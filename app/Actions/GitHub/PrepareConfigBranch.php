@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
-use App\Actions\GitHub\Builders\GitHubConfigCompareUrlBuilder;
-use App\Actions\GitHub\Support\GitHubConfigBranchOperations;
-use App\Actions\GitHub\Support\GitHubDefaultConfigContentReader;
+use App\Actions\GitHub\Handlers\GitHubConfigBranchHandler;
+use App\Actions\GitHub\Resolvers\GitHubConfigCompareUrlResolver;
+use App\Actions\GitHub\Resolvers\GitHubDefaultConfigContentResolver;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\GitHub\ValueObjects\ConfigPullRequestResult;
 use Github\Exception\RuntimeException;
@@ -22,20 +22,20 @@ final readonly class PrepareConfigBranch
     /**
      * Branch operations for Sentinel config bootstrap.
      */
-    private GitHubConfigBranchOperations $operations;
+    private GitHubConfigBranchHandler $operations;
 
     /**
      * Create a new action instance.
      */
     public function __construct(
         GitHubApiServiceContract $gitHubApiService,
-        ?GitHubConfigBranchOperations $operations = null,
+        ?GitHubConfigBranchHandler $operations = null,
         /** Builds GitHub compare URLs for follow-up pull request links. */
-        private GitHubConfigCompareUrlBuilder $compareUrlBuilder = new GitHubConfigCompareUrlBuilder,
+        private GitHubConfigCompareUrlResolver $compareUrlBuilder = new GitHubConfigCompareUrlResolver,
         /** Loads the default Sentinel config file content. */
-        private GitHubDefaultConfigContentReader $defaultConfigContentReader = new GitHubDefaultConfigContentReader,
+        private GitHubDefaultConfigContentResolver $defaultConfigContentReader = new GitHubDefaultConfigContentResolver,
     ) {
-        $this->operations = $operations ?? new GitHubConfigBranchOperations($gitHubApiService);
+        $this->operations = $operations ?? new GitHubConfigBranchHandler($gitHubApiService);
     }
 
     /**

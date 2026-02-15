@@ -6,7 +6,7 @@ namespace App\Services\Context\Collectors;
 
 use App\Models\Repository;
 use App\Models\Run;
-use App\Services\Context\Collectors\Support\RepositoryDocumentFetcher;
+use App\Services\Context\Collectors\RepositoryDocumentFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\Resolvers\RepositoryCoordinatesResolver;

@@ -7,7 +7,7 @@ namespace App\Actions\Reviews;
 use App\Actions\GitHub\Contracts\PostsAutoReviewDisabledComment;
 use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
-use App\Actions\Reviews\Checkers\PullRequestWebhookPreflightChecker;
+use App\Actions\Reviews\Guards\PullRequestWebhookPreflightGuard;
 use App\Actions\Reviews\Resolvers\PullRequestWebhookRepositoryResolver;
 use App\Services\GitHub\GitHubWebhookService;
 use App\Services\Logging\LogContext;
@@ -30,7 +30,7 @@ final readonly class HandlePullRequestWebhook
         private PostsAutoReviewDisabledComment $postAutoReviewDisabled,
         private DispatchReviewRun $dispatchReviewRun,
         private PullRequestWebhookRepositoryResolver $repositoryResolver,
-        private PullRequestWebhookPreflightChecker $preflightChecker,
+        private PullRequestWebhookPreflightGuard $preflightGuard,
     ) {}
 
     /**
@@ -74,7 +74,7 @@ final readonly class HandlePullRequestWebhook
         $ctx = LogContext::fromRepository($repository);
         $ctx['pr_number'] = $data['pull_request_number'];
 
-        $preflight = $this->preflightChecker->evaluate($repository, $data, $ctx);
+        $preflight = $this->preflightGuard->evaluate($repository, $data, $ctx);
         if ($preflight->shouldPostAutoReviewDisabledComment) {
             $this->postAutoReviewDisabled->handle($repository, $data['pull_request_number']);
 

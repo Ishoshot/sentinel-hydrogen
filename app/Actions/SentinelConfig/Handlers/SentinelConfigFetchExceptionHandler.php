@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\SentinelConfig\Handlers;
 
-use App\Actions\SentinelConfig\Factories\SentinelConfigFetchResultFactory;
+use App\Actions\SentinelConfig\Resolvers\SentinelConfigFetchResultResolver;
 use App\Models\Repository;
 use Github\Exception\RuntimeException;
 use Illuminate\Support\Facades\Log;
@@ -14,7 +14,7 @@ final readonly class SentinelConfigFetchExceptionHandler
     /**
      * Create a new handler instance.
      */
-    public function __construct(private SentinelConfigFetchResultFactory $resultFactory) {}
+    public function __construct(private SentinelConfigFetchResultResolver $resultResolver) {}
 
     /**
      * Map a GitHub API exception to a sentinel config fetch result.
@@ -24,7 +24,7 @@ final readonly class SentinelConfigFetchExceptionHandler
     public function handle(Repository $repository, RuntimeException $runtimeException): array
     {
         if ($runtimeException->getCode() === 404) {
-            return $this->resultFactory->notFound();
+            return $this->resultResolver->notFound();
         }
 
         Log::warning('Failed to fetch sentinel config', [
@@ -33,7 +33,7 @@ final readonly class SentinelConfigFetchExceptionHandler
             'code' => $runtimeException->getCode(),
         ]);
 
-        return $this->resultFactory->failed(
+        return $this->resultResolver->failed(
             sprintf('GitHub API error: %s', $runtimeException->getMessage())
         );
     }

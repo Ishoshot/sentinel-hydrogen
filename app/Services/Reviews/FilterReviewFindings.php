@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews;
 
-use App\Services\Reviews\Support\FindingPathMatcher;
-use App\Services\Reviews\Support\FindingSorter;
+use App\Services\Reviews\Strategies\FindingPathMatchStrategy;
+use App\Services\Reviews\Strategies\FindingSortStrategy;
 use App\Services\Reviews\ValueObjects\ReviewFinding;
 use App\Services\Reviews\ValueObjects\ReviewPolicy;
 
@@ -17,8 +17,8 @@ final readonly class FilterReviewFindings
      * Create a new FilterReviewFindings instance.
      */
     public function __construct(
-        private FindingPathMatcher $pathMatcher = new FindingPathMatcher,
-        private FindingSorter $sorter = new FindingSorter,
+        private FindingPathMatchStrategy $pathMatcher = new FindingPathMatchStrategy,
+        private FindingSortStrategy $sorter = new FindingSortStrategy,
     ) {}
 
     /**

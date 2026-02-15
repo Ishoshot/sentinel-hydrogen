@@ -6,7 +6,6 @@ namespace App\Actions\Reviews\Handlers;
 
 use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Actions\Reviews\Loggers\ReviewRunActivityLogger;
-use App\Actions\Reviews\Support\ReviewRunFinalizer;
 use App\Enums\Reviews\SkipReason;
 use App\Exceptions\NoProviderKeyException;
 use App\Models\Run;
@@ -20,7 +19,7 @@ final readonly class ReviewRunFailureHandler
      * Create a new failure handler instance.
      */
     public function __construct(
-        private ReviewRunFinalizer $finalizer,
+        private ReviewRunFinalizationHandler $finalizer,
         private ReviewRunActivityLogger $activityLogger,
         private PostsSkipReasonComment $postSkipReasonComment,
     ) {}

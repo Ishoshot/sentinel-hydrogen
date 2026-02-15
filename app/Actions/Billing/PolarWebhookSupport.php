@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Billing;
 
-use App\Actions\Billing\Parsers\PolarWebhookTimestampParser;
+use App\Actions\Billing\Handlers\PolarPromotionUsageHandler;
+use App\Actions\Billing\Resolvers\PolarBillingIntervalResolver;
 use App\Actions\Billing\Resolvers\PolarWebhookPlanResolver;
-use App\Actions\Billing\Support\PolarBillingIntervalExtractor;
-use App\Actions\Billing\Support\PolarPromotionUsageConfirmer;
+use App\Actions\Billing\Resolvers\PolarWebhookTimestampResolver;
 use App\Enums\Billing\BillingInterval;
 use App\Enums\Billing\SubscriptionStatus;
 use App\Models\Plan;
@@ -21,10 +21,10 @@ final readonly class PolarWebhookSupport
      * Create a new helper instance.
      */
     public function __construct(
-        private ?PolarBillingIntervalExtractor $billingIntervalExtractor = null,
-        private ?PolarPromotionUsageConfirmer $promotionUsageConfirmer = null,
+        private ?PolarBillingIntervalResolver $billingIntervalExtractor = null,
+        private ?PolarPromotionUsageHandler $promotionUsageConfirmer = null,
         private ?PolarWebhookPlanResolver $planResolver = null,
-        private ?PolarWebhookTimestampParser $timestampParser = null,
+        private ?PolarWebhookTimestampResolver $timestampParser = null,
     ) {}
 
     /**
@@ -77,17 +77,17 @@ final readonly class PolarWebhookSupport
     /**
      * BillingIntervalExtractor.
      */
-    private function billingIntervalExtractor(): PolarBillingIntervalExtractor
+    private function billingIntervalExtractor(): PolarBillingIntervalResolver
     {
-        return $this->billingIntervalExtractor ?? new PolarBillingIntervalExtractor;
+        return $this->billingIntervalExtractor ?? new PolarBillingIntervalResolver;
     }
 
     /**
      * PromotionUsageConfirmer.
      */
-    private function promotionUsageConfirmer(): PolarPromotionUsageConfirmer
+    private function promotionUsageConfirmer(): PolarPromotionUsageHandler
     {
-        return $this->promotionUsageConfirmer ?? new PolarPromotionUsageConfirmer;
+        return $this->promotionUsageConfirmer ?? new PolarPromotionUsageHandler;
     }
 
     /**
@@ -101,8 +101,8 @@ final readonly class PolarWebhookSupport
     /**
      * TimestampParser.
      */
-    private function timestampParser(): PolarWebhookTimestampParser
+    private function timestampParser(): PolarWebhookTimestampResolver
     {
-        return $this->timestampParser ?? new PolarWebhookTimestampParser;
+        return $this->timestampParser ?? new PolarWebhookTimestampResolver;
     }
 }

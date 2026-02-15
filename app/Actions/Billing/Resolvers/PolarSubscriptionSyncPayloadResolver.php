@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Billing\Resolvers;
 
 use App\Actions\Billing\PolarWebhookSupport;
-use App\Actions\Billing\Support\PolarSubscriptionSyncPayload;
+use App\Actions\Billing\ValueObjects\PolarSubscriptionSyncPayload;
 use App\Enums\Billing\BillingInterval;
 use App\Enums\Billing\SubscriptionStatus;
 use App\Models\Plan;

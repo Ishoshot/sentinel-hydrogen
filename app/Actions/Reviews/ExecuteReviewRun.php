@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews;
 
-use App\Actions\Reviews\Checkers\ReviewRunPreflightChecker;
-use App\Actions\Reviews\Dispatchers\ReviewRunAnnotationDispatcher;
+use App\Actions\Reviews\Guards\ReviewRunPreflightGuard;
+use App\Actions\Reviews\Handlers\ReviewRunAnnotationHandler;
+use App\Actions\Reviews\Handlers\ReviewRunCompletionHandler;
 use App\Actions\Reviews\Handlers\ReviewRunFailureHandler;
 use App\Actions\Reviews\Loggers\ReviewRunActivityLogger;
 use App\Actions\Reviews\Resolvers\ReviewRunContextPolicyResolver;
-use App\Actions\Reviews\Support\ReviewRunCompletionPersister;
 use App\Enums\Reviews\RunStatus;
 use App\Enums\Reviews\SkipReason;
 use App\Exceptions\NoProviderKeyException;
@@ -24,14 +24,14 @@ final readonly class ExecuteReviewRun
      * Create a new action instance.
      */
     public function __construct(
-        private ReviewRunPreflightChecker $preflightChecker,
+        private ReviewRunPreflightGuard $preflightGuard,
         private ReviewRunContextPolicyResolver $contextPolicyResolver,
         private ReviewEngine $reviewEngine,
         private FilterReviewFindings $filterReviewFindings,
-        private ReviewRunCompletionPersister $completionPersister,
+        private ReviewRunCompletionHandler $completionPersister,
         private ReviewRunActivityLogger $activityLogger,
         private ReviewRunFailureHandler $failureHandler,
-        private ReviewRunAnnotationDispatcher $annotationDispatcher,
+        private ReviewRunAnnotationHandler $annotationHandler,
     ) {}
 
     /**
@@ -39,7 +39,7 @@ final readonly class ExecuteReviewRun
      */
     public function handle(Run $run): Run
     {
-        $preflightResult = $this->preflightChecker->check($run);
+        $preflightResult = $this->preflightGuard->check($run);
         if (! $preflightResult->shouldProceed()) {
             if (
                 $preflightResult->shouldSkip()
@@ -97,7 +97,7 @@ final readonly class ExecuteReviewRun
         );
 
         $this->activityLogger->logCompleted($run, $reviewResult, $filteredFindings);
-        $this->annotationDispatcher->dispatchIfNeeded($run);
+        $this->annotationHandler->dispatchIfNeeded($run);
 
         return $run;
     }

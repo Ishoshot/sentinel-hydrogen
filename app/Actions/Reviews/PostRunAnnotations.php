@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews;
 
-use App\Actions\Reviews\Loggers\RunAnnotationActivityRecorder;
+use App\Actions\Reviews\Loggers\RunAnnotationActivityLogger;
 use App\Actions\Reviews\Resolvers\RunAnnotationContextResolver;
-use App\Actions\Reviews\Support\RunAnnotationContext;
+use App\Actions\Reviews\ValueObjects\RunAnnotationContext;
 use App\Models\Run;
 use App\Services\Reviews\FormatRunAnnotations;
 use App\Services\Reviews\PublishRunAnnotations;
@@ -20,7 +20,7 @@ final readonly class PostRunAnnotations
      */
     public function __construct(
         private RunAnnotationContextResolver $contextResolver,
-        private RunAnnotationActivityRecorder $activityRecorder,
+        private RunAnnotationActivityLogger $activityLogger,
         private FormatRunAnnotations $formatRunAnnotations,
         private PublishRunAnnotations $publishRunAnnotations,
         private StoreRunAnnotations $storeRunAnnotations,
@@ -81,7 +81,7 @@ final readonly class PostRunAnnotations
             $this->storeRunAnnotations->handle($run, $eligibleFindings, $reviewResponse);
         });
 
-        $this->activityRecorder->record($run, $eligibleFindings->count(), $context);
+        $this->activityLogger->record($run, $eligibleFindings->count(), $context);
 
         return $eligibleFindings->count();
     }

@@ -6,9 +6,9 @@ namespace App\Actions\SentinelConfig;
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\Handlers\SentinelConfigFetchExceptionHandler;
-use App\Actions\SentinelConfig\Parsers\SentinelConfigGitHubResponseParser;
 use App\Actions\SentinelConfig\Resolvers\SentinelConfigFetchTargetResolver;
-use App\Actions\SentinelConfig\Support\SentinelConfigFetchTarget;
+use App\Actions\SentinelConfig\Resolvers\SentinelConfigGitHubResponseResolver;
+use App\Actions\SentinelConfig\ValueObjects\SentinelConfigFetchTarget;
 use App\Models\Repository;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Github\Exception\RuntimeException;
@@ -26,7 +26,7 @@ final readonly class FetchSentinelConfig implements FetchesSentinelConfig
     public function __construct(
         private GitHubApiServiceContract $github,
         private SentinelConfigFetchTargetResolver $targetResolver,
-        private SentinelConfigGitHubResponseParser $responseParser,
+        private SentinelConfigGitHubResponseResolver $responseResolver,
         private SentinelConfigFetchExceptionHandler $exceptionHandler,
     ) {}
 
@@ -57,7 +57,7 @@ final readonly class FetchSentinelConfig implements FetchesSentinelConfig
                 $target->branch
             );
 
-            return $this->responseParser->parse($response);
+            return $this->responseResolver->parse($response);
         } catch (RuntimeException $runtimeException) {
             return $this->exceptionHandler->handle($repository, $runtimeException);
         }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Context;
 
 use App\Services\Context\Contracts\TokenCounter;
-use App\Services\Context\Support\ContextBagTokenEstimator;
+use App\Services\Context\Strategies\ContextBagTokenEstimationStrategy;
 use App\Services\Context\TokenCounting\HeuristicTokenCounter;
 use App\Services\Context\TokenCounting\TokenCounterContext;
 
@@ -52,7 +52,7 @@ final class ContextBag
      */
     public function estimateTokens(?TokenCounter $tokenCounter = null, ?TokenCounterContext $context = null): int
     {
-        return (new ContextBagTokenEstimator)->estimate(
+        return (new ContextBagTokenEstimationStrategy)->estimate(
             $this,
             $tokenCounter ?? new HeuristicTokenCounter(),
             $context ?? new TokenCounterContext(),

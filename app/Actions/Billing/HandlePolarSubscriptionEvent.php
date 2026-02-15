@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Billing;
 
-use App\Actions\Billing\Orchestrators\PolarSubscriptionLifecycleOrchestrator;
-use App\Actions\Billing\Orchestrators\PolarSubscriptionSyncOrchestrator;
-use App\Actions\Billing\Support\PolarSubscriptionSyncContext;
+use App\Actions\Billing\Handlers\PolarSubscriptionLifecycleHandler;
+use App\Actions\Billing\Handlers\PolarSubscriptionSyncHandler;
+use App\Actions\Billing\ValueObjects\PolarSubscriptionSyncContext;
 use App\Enums\Billing\SubscriptionStatus;
 use App\Models\Subscription;
 use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
@@ -18,8 +18,8 @@ final readonly class HandlePolarSubscriptionEvent
      * Create a new action instance.
      */
     public function __construct(
-        private PolarSubscriptionLifecycleOrchestrator $lifecycleOrchestrator,
-        private PolarSubscriptionSyncOrchestrator $syncOrchestrator,
+        private PolarSubscriptionLifecycleHandler $lifecycleOrchestrator,
+        private PolarSubscriptionSyncHandler $syncOrchestrator,
     ) {}
 
     /**

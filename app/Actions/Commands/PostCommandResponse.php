@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Commands;
 
 use App\Actions\Commands\Resolvers\PostingContextResolver;
-use App\Actions\Commands\Support\ResponseMarkdownFormatter;
 use App\Models\CommandRun;
+use App\Services\Commands\Parsers\ResponseMarkdownParser;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -22,7 +22,7 @@ final readonly class PostCommandResponse
     public function __construct(
         private GitHubApiServiceContract $githubApi,
         private PostingContextResolver $contextResolver,
-        private ResponseMarkdownFormatter $formatter,
+        private ResponseMarkdownParser $markdownParser,
     ) {}
 
     /**
@@ -40,7 +40,7 @@ final readonly class PostCommandResponse
             return;
         }
 
-        $body = $this->formatter->formatSuccess($commandRun, $answer);
+        $body = $this->markdownParser->formatSuccess($commandRun, $answer);
 
         try {
             $this->postComment($context, $body);
@@ -69,7 +69,7 @@ final readonly class PostCommandResponse
             return;
         }
 
-        $body = $this->formatter->formatError($commandRun, $exception);
+        $body = $this->markdownParser->formatError($commandRun, $exception);
 
         try {
             $this->postComment($context, $body);

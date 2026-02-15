@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub\Resolvers;
 
-use App\Actions\GitHub\Support\PushWebhookPayloadContext;
+use App\Actions\GitHub\ValueObjects\PushWebhookPayloadContext;
 use App\Services\Logging\LogContext;
 
 final class PushWebhookPayloadContextResolver

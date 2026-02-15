@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\Billing;
 
+use App\Actions\Billing\Handlers\PolarOrderPaidStateHandler;
 use App\Actions\Billing\Resolvers\PolarOrderPaidPayloadResolver;
 use App\Actions\Billing\Resolvers\PolarOrderPaidPlanResolver;
 use App\Actions\Billing\Resolvers\PolarOrderPaidWorkspaceResolver;
-use App\Actions\Billing\Support\PolarOrderPaidStateUpdater;
+use App\Actions\Billing\ValueObjects\PolarOrderPaidPayload;
 use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
 use Illuminate\Support\Facades\Log;
 
@@ -20,7 +21,7 @@ final readonly class HandlePolarOrderPaid
         private PolarOrderPaidPayloadResolver $payloadResolver,
         private PolarOrderPaidWorkspaceResolver $workspaceResolver,
         private PolarOrderPaidPlanResolver $planResolver,
-        private PolarOrderPaidStateUpdater $stateUpdater,
+        private PolarOrderPaidStateHandler $stateUpdater,
     ) {}
 
     /**
@@ -30,7 +31,7 @@ final readonly class HandlePolarOrderPaid
     {
         $payload = $this->payloadResolver->resolve($webhook);
 
-        if (! $payload instanceof Support\PolarOrderPaidPayload) {
+        if (! $payload instanceof PolarOrderPaidPayload) {
             Log::warning('order.paid webhook missing data payload');
 
             return;

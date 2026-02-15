@@ -9,7 +9,7 @@ use App\Models\Run;
 use App\Services\Reviews\Builders\RunInlineCommentBuilder;
 use App\Services\Reviews\Builders\RunReviewSummaryBuilder;
 use App\Services\Reviews\Resolvers\RunAnnotationsConfigResolver;
-use App\Services\Reviews\Support\RunEligibleFindingSelector;
+use App\Services\Reviews\Strategies\EligibleFindingSelectionStrategy;
 use Illuminate\Support\Collection;
 
 final readonly class FormatRunAnnotations
@@ -19,7 +19,7 @@ final readonly class FormatRunAnnotations
      */
     public function __construct(
         private RunAnnotationsConfigResolver $configResolver,
-        private RunEligibleFindingSelector $eligibleFindingSelector,
+        private EligibleFindingSelectionStrategy $eligibleFindingSelector,
         private RunReviewSummaryBuilder $summaryBuilder,
         private RunInlineCommentBuilder $inlineCommentBuilder,
     ) {}

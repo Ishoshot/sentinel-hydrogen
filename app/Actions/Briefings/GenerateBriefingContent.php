@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Briefings;
 
-use App\Actions\Briefings\Support\BriefingGenerationProgressTracker;
+use App\Actions\Briefings\Handlers\BriefingGenerationProgressHandler;
 use App\Enums\Briefings\BriefingGenerationStatus;
 use App\Events\Briefings\BriefingGenerationCompleted;
 use App\Events\Briefings\BriefingGenerationStarted;
@@ -28,7 +28,7 @@ final readonly class GenerateBriefingContent
         private BriefingNarrativeGenerator $narrativeGenerator,
         private BriefingSlidesBuilder $slidesBuilder,
         private BriefingProviderKeyResolver $providerKeyResolver,
-        private BriefingGenerationProgressTracker $progressTracker = new BriefingGenerationProgressTracker,
+        private BriefingGenerationProgressHandler $progressTracker = new BriefingGenerationProgressHandler,
     ) {}
 
     /**

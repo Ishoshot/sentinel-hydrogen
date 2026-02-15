@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Services\Briefings\Support\BriefingParameterSchemaValidator;
+use App\Services\Briefings\Policies\BriefingParameterSchemaValidationPolicy;
 
 it('builds validation rules and messages from schema definitions', function (): void {
-    $validator = app(BriefingParameterSchemaValidator::class);
+    $validator = app(BriefingParameterSchemaValidationPolicy::class);
 
     $schema = [
         'properties' => [
@@ -44,7 +44,7 @@ it('builds validation rules and messages from schema definitions', function (): 
 });
 
 it('throws when the schema uses an unsupported field type', function (): void {
-    $validator = app(BriefingParameterSchemaValidator::class);
+    $validator = app(BriefingParameterSchemaValidationPolicy::class);
 
     $schema = [
         'properties' => [
@@ -59,14 +59,14 @@ it('throws when the schema uses an unsupported field type', function (): void {
 });
 
 it('throws when schema properties are missing', function (): void {
-    $validator = app(BriefingParameterSchemaValidator::class);
+    $validator = app(BriefingParameterSchemaValidationPolicy::class);
 
     expect(fn () => $validator->rules([]))
         ->toThrow(RuntimeException::class, 'must define properties');
 });
 
 it('maps string formats and length constraints into laravel rules', function (): void {
-    $validator = app(BriefingParameterSchemaValidator::class);
+    $validator = app(BriefingParameterSchemaValidationPolicy::class);
 
     $schema = [
         'properties' => [

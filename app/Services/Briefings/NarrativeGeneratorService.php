@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Briefings;
 
+use App\Services\Briefings\Clients\BriefingNarrativeClient;
 use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
-use App\Services\Briefings\Support\BriefingExcerptsGenerator;
-use App\Services\Briefings\Support\BriefingNarrativeClient;
+use App\Services\Briefings\Factories\BriefingExcerptsFactory;
 use App\Services\Briefings\Support\BriefingPromptRenderer;
 use App\Services\Briefings\ValueObjects\BriefingAchievements;
 use App\Services\Briefings\ValueObjects\BriefingAiConfiguration;
@@ -28,7 +28,7 @@ final readonly class NarrativeGeneratorService implements BriefingNarrativeGener
     public function __construct(
         private BriefingPromptRenderer $promptRenderer,
         private BriefingNarrativeClient $narrativeClient,
-        private BriefingExcerptsGenerator $excerptsGenerator,
+        private BriefingExcerptsFactory $excerptsGenerator,
     ) {}
 
     /**

@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Commands;
 
 use App\Models\CommandRun;
+use App\Services\Commands\Builders\CommandAgentExecutionContextBuilder;
+use App\Services\Commands\Clients\CommandAgentPrismClient;
 use App\Services\Commands\Contracts\CommandAgentServiceContract;
 use App\Services\Commands\Contracts\CommandToolBuilder;
 use App\Services\Commands\Loggers\CommandAgentTelemetryLogger;
 use App\Services\Commands\Mappers\CommandAgentResponseMapper;
-use App\Services\Commands\Support\CommandAgentExecutionContextPreparer;
-use App\Services\Commands\Support\CommandAgentPrismClient;
 use App\Services\Commands\ValueObjects\CommandExecutionResult;
 use App\Services\Commands\ValueObjects\ExecutionMetrics;
 use App\Services\Commands\ValueObjects\PullRequestMetadata;
@@ -33,7 +33,7 @@ final readonly class CommandAgentService implements CommandAgentServiceContract
      * @param  iterable<int, CommandToolBuilder>  $toolBuilders
      */
     public function __construct(
-        private CommandAgentExecutionContextPreparer $executionContextPreparer,
+        private CommandAgentExecutionContextBuilder $executionContextBuilder,
         private CommandAgentPrismClient $prismClient,
         private CommandAgentResponseMapper $responseMapper,
         private CommandAgentTelemetryLogger $telemetryLogger,
@@ -52,7 +52,7 @@ final readonly class CommandAgentService implements CommandAgentServiceContract
             throw new RuntimeException('CommandRun has no associated repository');
         }
 
-        $executionContext = $this->executionContextPreparer->prepare($commandRun, $this->toolBuilders);
+        $executionContext = $this->executionContextBuilder->prepare($commandRun, $this->toolBuilders);
         $this->telemetryLogger->logStarted($commandRun, $executionContext);
 
         $toolCallVOs = [];

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Services\Briefings\Support\BriefingParameterLimitEnforcer;
+use App\Services\Briefings\Policies\BriefingParameterLimitPolicy;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 it('throws when repository count exceeds configured maximum', function (): void {
     config()->set('briefings.limits.max_repositories', 1);
 
-    $enforcer = app(BriefingParameterLimitEnforcer::class);
+    $enforcer = app(BriefingParameterLimitPolicy::class);
 
     try {
         $enforcer->enforce(['repository_ids' => [1, 2]]);
@@ -23,7 +23,7 @@ it('throws when repository count exceeds configured maximum', function (): void 
 it('throws when start date is after end date', function (): void {
     config()->set('briefings.limits.max_date_range_days', 90);
 
-    $enforcer = app(BriefingParameterLimitEnforcer::class);
+    $enforcer = app(BriefingParameterLimitPolicy::class);
 
     try {
         $enforcer->enforce([
@@ -40,7 +40,7 @@ it('throws when start date is after end date', function (): void {
 it('throws when date range exceeds configured maximum', function (): void {
     config()->set('briefings.limits.max_date_range_days', 7);
 
-    $enforcer = app(BriefingParameterLimitEnforcer::class);
+    $enforcer = app(BriefingParameterLimitPolicy::class);
 
     try {
         $enforcer->enforce([
@@ -59,7 +59,7 @@ it('passes for valid parameters within configured limits', function (): void {
     config()->set('briefings.limits.max_repositories', 3);
     config()->set('briefings.limits.max_date_range_days', 14);
 
-    $enforcer = app(BriefingParameterLimitEnforcer::class);
+    $enforcer = app(BriefingParameterLimitPolicy::class);
 
     expect(fn () => $enforcer->enforce([
         'repository_ids' => [1, 2],

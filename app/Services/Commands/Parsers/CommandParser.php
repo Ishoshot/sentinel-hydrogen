@@ -6,7 +6,6 @@ namespace App\Services\Commands\Parsers;
 
 use App\Enums\Commands\CommandType;
 use App\Services\Commands\Resolvers\CommandParserAliasResolver;
-use App\Services\Commands\Support\CommandParserContextHintsExtractor;
 use App\Services\Commands\ValueObjects\ContextHints;
 use App\Services\Commands\ValueObjects\ParsedCommand;
 
@@ -27,7 +26,7 @@ final readonly class CommandParser
      */
     public function __construct(
         private CommandParserAliasResolver $aliasResolver = new CommandParserAliasResolver(),
-        private CommandParserContextHintsExtractor $contextHintsExtractor = new CommandParserContextHintsExtractor(),
+        private CommandQueryContextHintsParser $contextHintsExtractor = new CommandQueryContextHintsParser(),
     ) {}
 
     /**

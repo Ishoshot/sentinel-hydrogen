@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
+use App\Actions\GitHub\Dispatchers\PushWebhookCodeIndexingDispatcher;
 use App\Actions\GitHub\Resolvers\PushWebhookPayloadContextResolver;
 use App\Actions\GitHub\Resolvers\PushWebhookRepositoryResolver;
-use App\Actions\GitHub\Support\PushWebhookCodeIndexingTrigger;
 use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
 use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +21,7 @@ final readonly class HandlePushWebhook
         private ExtractPushChanges $extractPushChanges,
         private PushWebhookPayloadContextResolver $payloadContextResolver,
         private PushWebhookRepositoryResolver $repositoryResolver,
-        private PushWebhookCodeIndexingTrigger $codeIndexingTrigger,
+        private PushWebhookCodeIndexingDispatcher $codeIndexingTrigger,
     ) {}
 
     /**

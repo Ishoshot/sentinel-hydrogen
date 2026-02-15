@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews\Resolvers;
 
-use App\Actions\Reviews\Support\ReviewRunContextResolution;
+use App\Actions\Reviews\ValueObjects\ReviewRunContextResolution;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Contracts\ContextEngineContract;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews\Builders;
 
-use App\Actions\Reviews\Support\PullRequestRunSkipResolution;
+use App\Actions\Reviews\ValueObjects\PullRequestRunSkipResolution;
 
 final readonly class PullRequestRunMetadataBuilder
 {

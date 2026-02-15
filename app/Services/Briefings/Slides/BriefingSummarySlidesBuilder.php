@@ -6,7 +6,7 @@ namespace App\Services\Briefings\Slides;
 
 use App\Models\Briefing;
 use App\Services\Briefings\Slides\Factories\SlideMetricsFactory;
-use App\Services\Briefings\Slides\Resolvers\SlideSummaryTextResolver;
+use App\Services\Briefings\Slides\Strategies\SlideSummaryTextStrategy;
 use App\Services\Briefings\ValueObjects\BriefingSlide;
 use App\Services\Briefings\ValueObjects\BriefingSlideBlock;
 use App\Services\Briefings\ValueObjects\BriefingStructuredData;
@@ -21,7 +21,7 @@ final readonly class BriefingSummarySlidesBuilder
      * Create a new slides builder instance.
      */
     public function __construct(
-        private SlideSummaryTextResolver $textResolver = new SlideSummaryTextResolver,
+        private SlideSummaryTextStrategy $textResolver = new SlideSummaryTextStrategy,
         private SlideMetricsFactory $metricsFactory = new SlideMetricsFactory,
     ) {}
 

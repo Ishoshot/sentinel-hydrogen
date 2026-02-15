@@ -7,7 +7,7 @@ namespace App\Services\Reviews;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Services\Reviews\Contracts\ReviewPolicyResolverContract;
-use App\Services\Reviews\Support\SentinelConfigPolicyMerger;
+use App\Services\Reviews\Strategies\SentinelConfigPolicyMergeStrategy;
 use App\Services\Reviews\ValueObjects\ReviewPolicy;
 
 final readonly class ReviewPolicyResolver implements ReviewPolicyResolverContract
@@ -16,7 +16,7 @@ final readonly class ReviewPolicyResolver implements ReviewPolicyResolverContrac
      * Create a new ReviewPolicyResolver instance.
      */
     public function __construct(
-        private SentinelConfigPolicyMerger $configMerger = new SentinelConfigPolicyMerger,
+        private SentinelConfigPolicyMergeStrategy $configMerger = new SentinelConfigPolicyMergeStrategy,
     ) {}
 
     /**

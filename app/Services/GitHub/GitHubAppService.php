@@ -6,7 +6,7 @@ namespace App\Services\GitHub;
 
 use App\Services\GitHub\Builders\GitHubInstallationUrlBuilder;
 use App\Services\GitHub\Contracts\GitHubAppServiceContract;
-use App\Services\GitHub\Support\GitHubJwtGenerator;
+use App\Services\GitHub\Factories\GitHubJwtFactory;
 use GrahamCampbell\GitHub\GitHubManager;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
@@ -18,7 +18,7 @@ final readonly class GitHubAppService implements GitHubAppServiceContract
      */
     public function __construct(
         private GitHubManager $github,
-        private GitHubJwtGenerator $jwtGenerator = new GitHubJwtGenerator,
+        private GitHubJwtFactory $jwtGenerator = new GitHubJwtFactory,
         private GitHubInstallationUrlBuilder $urlBuilder = new GitHubInstallationUrlBuilder,
     ) {}
 

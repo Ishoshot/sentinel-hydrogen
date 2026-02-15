@@ -8,14 +8,14 @@ use App\Enums\Billing\BillingInterval;
 use App\Models\Plan;
 use App\Models\Promotion;
 use App\Models\Workspace;
-use App\Services\Billing\Builders\CheckoutPayloadBuilder;
-use App\Services\Billing\Builders\CustomerPortalPayloadBuilder;
+use App\Services\Billing\Clients\PolarApiClient;
+use App\Services\Billing\Clients\PolarProductClient;
+use App\Services\Billing\Clients\PolarSessionUrlClient;
 use App\Services\Billing\Contracts\PolarBillingServiceContract;
-use App\Services\Billing\Resolvers\PolarProductResolver;
-use App\Services\Billing\Resolvers\PolarSessionUrlResolver;
-use App\Services\Billing\Support\PolarApiClient;
-use App\Services\Billing\Support\PolarProductIdGuard;
-use App\Services\Billing\Support\PolarWebhookVerifier;
+use App\Services\Billing\Factories\CheckoutPayloadFactory;
+use App\Services\Billing\Factories\CustomerPortalPayloadFactory;
+use App\Services\Billing\Policies\PolarProductIdPolicy;
+use App\Services\Billing\Policies\PolarWebhookVerificationClient;
 use App\Services\Billing\ValueObjects\VerifiedPolarWebhook;
 use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Log;
@@ -29,13 +29,13 @@ final readonly class PolarBillingService implements PolarBillingServiceContract
      * Create a new Polar billing service instance.
      */
     public function __construct(
-        private PolarProductResolver $productResolver,
+        private PolarProductClient $productResolver,
         private PolarApiClient $apiClient,
-        private PolarWebhookVerifier $webhookVerifier,
-        private PolarProductIdGuard $productIdGuard,
-        private CheckoutPayloadBuilder $checkoutPayloadBuilder,
-        private CustomerPortalPayloadBuilder $customerPortalPayloadBuilder,
-        private PolarSessionUrlResolver $sessionUrlResolver,
+        private PolarWebhookVerificationClient $webhookVerifier,
+        private PolarProductIdPolicy $productIdGuard,
+        private CheckoutPayloadFactory $checkoutPayloadBuilder,
+        private CustomerPortalPayloadFactory $customerPortalPayloadBuilder,
+        private PolarSessionUrlClient $sessionUrlResolver,
     ) {}
 
     /**

@@ -7,7 +7,7 @@ namespace App\Services\Context;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\Context\Contracts\ContextEngineContract;
 use App\Services\Context\Contracts\ContextFilter;
-use App\Services\Context\Support\ContextPipelineRunner;
+use App\Services\Context\Strategies\ContextPipelineStrategy;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -25,7 +25,7 @@ final class ContextEngine implements ContextEngineContract
      * Create a new context engine instance.
      */
     public function __construct(
-        private readonly ContextPipelineRunner $pipelineRunner = new ContextPipelineRunner,
+        private readonly ContextPipelineStrategy $pipelineRunner = new ContextPipelineStrategy,
     ) {}
 
     /**

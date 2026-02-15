@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Commands;
 
-use App\Actions\Commands\Checkers\IssueCommentReviewCommandChecker;
+use App\Actions\Commands\Guards\IssueCommentReviewCommandGuard;
 use App\Actions\Commands\Resolvers\IssueCommentCommandPayloadResolver;
 use App\Enums\Commands\CommandType;
 use App\Jobs\Commands\ExecuteCommandRunJob;
@@ -25,7 +25,7 @@ final readonly class HandleIssueCommentCommand
      */
     public function __construct(
         private IssueCommentCommandPayloadResolver $payloadResolver,
-        private IssueCommentReviewCommandChecker $reviewCommandChecker,
+        private IssueCommentReviewCommandGuard $reviewCommandGuard,
         private CommandParser $commandParser,
         private CommandPermissionService $permissionService,
         private CreateCommandRun $createCommandRun,
@@ -106,7 +106,7 @@ final readonly class HandleIssueCommentCommand
         }
 
         // Handle @sentinel review command on PRs - triggers full automated review flow
-        if ($this->reviewCommandChecker->shouldTriggerManualReview($commandType, $isPullRequest, $issueNumber)) {
+        if ($this->reviewCommandGuard->shouldTriggerManualReview($commandType, $isPullRequest, $issueNumber)) {
             $this->triggerReviewFromIssueComment->handle(
                 repository: $permissionResult->repository,
                 pullRequestNumber: $issueNumber,
@@ -118,7 +118,7 @@ final readonly class HandleIssueCommentCommand
             return;
         }
 
-        if ($this->reviewCommandChecker->shouldPostIssueReviewGuidance($commandType, $isPullRequest, $issueNumber)) {
+        if ($this->reviewCommandGuard->shouldPostIssueReviewGuidance($commandType, $isPullRequest, $issueNumber)) {
             $this->postIssueCommentMessage->postReviewError(
                 installationId: $installationId,
                 repositoryFullName: $repositoryFullName,

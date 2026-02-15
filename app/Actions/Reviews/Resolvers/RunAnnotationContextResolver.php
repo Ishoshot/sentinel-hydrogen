@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews\Resolvers;
 
-use App\Actions\Reviews\Support\RunAnnotationContext;
+use App\Actions\Reviews\ValueObjects\RunAnnotationContext;
 use App\Models\Run;
 
 final readonly class RunAnnotationContextResolver

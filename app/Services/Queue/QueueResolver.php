@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Queue;
 
 use App\Services\Queue\Contracts\QueueRule;
-use App\Services\Queue\Support\QueueRuleEvaluationRunner;
+use App\Services\Queue\Strategies\QueueRuleEvaluationStrategy;
 use App\Services\Queue\ValueObjects\JobContext;
 use App\Services\Queue\ValueObjects\QueueResolution;
 
@@ -27,7 +27,7 @@ final class QueueResolver
     /**
      * Applies queue rules and returns accumulated scoring context.
      */
-    private readonly QueueRuleEvaluationRunner $ruleEvaluationRunner;
+    private readonly QueueRuleEvaluationStrategy $ruleEvaluationRunner;
 
     /**
      * @param  iterable<QueueRule>  $rules
@@ -38,9 +38,9 @@ final class QueueResolver
         private readonly QueueScorer $scorer = new QueueScorer(),
         /** Logger used to emit queue resolution traces. */
         private readonly ResolutionLogger $logger = new ResolutionLogger(),
-        ?QueueRuleEvaluationRunner $ruleEvaluationRunner = null,
+        ?QueueRuleEvaluationStrategy $ruleEvaluationRunner = null,
     ) {
-        $this->ruleEvaluationRunner = $ruleEvaluationRunner ?? new QueueRuleEvaluationRunner($this->scorer);
+        $this->ruleEvaluationRunner = $ruleEvaluationRunner ?? new QueueRuleEvaluationStrategy($this->scorer);
 
         foreach ($rules as $rule) {
             $this->addRule($rule);

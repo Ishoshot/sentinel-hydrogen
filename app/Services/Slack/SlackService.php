@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Slack;
 
 use App\Models\SlackIntegration;
+use App\Services\Slack\Clients\SlackChannelClient;
+use App\Services\Slack\Clients\SlackMessageClient;
+use App\Services\Slack\Clients\SlackOAuthClient;
 use App\Services\Slack\Contracts\SlackServiceContract;
-use App\Services\Slack\Support\SlackChannelLister;
-use App\Services\Slack\Support\SlackMessageSender;
-use App\Services\Slack\Support\SlackOAuthClient;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -20,8 +20,8 @@ final readonly class SlackService implements SlackServiceContract
      */
     public function __construct(
         private SlackOAuthClient $oauthClient = new SlackOAuthClient,
-        private SlackMessageSender $messageSender = new SlackMessageSender,
-        private SlackChannelLister $channelLister = new SlackChannelLister,
+        private SlackMessageClient $messageSender = new SlackMessageClient,
+        private SlackChannelClient $channelLister = new SlackChannelClient,
     ) {}
 
     /**

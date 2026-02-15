@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Runs;
 
-use App\Actions\Runs\Support\RunGroupPaginator;
+use App\Actions\Runs\Resolvers\RunGroupPaginationResolver;
 use App\Models\Run;
 use App\Models\Workspace;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -21,7 +21,7 @@ final readonly class ListWorkspaceRuns
      */
     public function __construct(
         private ApplyRunFilters $runFilters = new ApplyRunFilters,
-        private ?RunGroupPaginator $runGroupPaginator = null,
+        private ?RunGroupPaginationResolver $runGroupPaginator = null,
         private ?HydrateRunGroups $runGroupHydrator = null,
     ) {}
 
@@ -107,9 +107,9 @@ final readonly class ListWorkspaceRuns
     /**
      * Resolve the run group paginator action from the container.
      */
-    private function runGroupPaginator(): RunGroupPaginator
+    private function runGroupPaginator(): RunGroupPaginationResolver
     {
-        return $this->runGroupPaginator ?? app(RunGroupPaginator::class);
+        return $this->runGroupPaginator ?? app(RunGroupPaginationResolver::class);
     }
 
     /**

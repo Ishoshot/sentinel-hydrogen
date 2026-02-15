@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Billing;
 
 use App\Models\Promotion;
-use App\Services\Billing\Builders\PolarDiscountPayloadBuilder;
-use App\Services\Billing\Support\PolarDiscountApiClient;
+use App\Services\Billing\Clients\PolarDiscountApiClient;
+use App\Services\Billing\Factories\PolarDiscountPayloadFactory;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -20,7 +20,7 @@ final readonly class PolarDiscountService
      */
     public function __construct(
         private PolarDiscountApiClient $apiClient = new PolarDiscountApiClient,
-        private PolarDiscountPayloadBuilder $payloadBuilder = new PolarDiscountPayloadBuilder,
+        private PolarDiscountPayloadFactory $payloadBuilder = new PolarDiscountPayloadFactory,
     ) {}
 
     /**

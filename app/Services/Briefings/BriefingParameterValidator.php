@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Briefings;
 
 use App\Models\Briefing;
-use App\Services\Briefings\Support\BriefingParameterLimitEnforcer;
-use App\Services\Briefings\Support\BriefingParameterSchemaValidator;
+use App\Services\Briefings\Policies\BriefingParameterLimitPolicy;
+use App\Services\Briefings\Policies\BriefingParameterSchemaValidationPolicy;
 use App\Services\Briefings\ValueObjects\BriefingParameters;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -17,8 +17,8 @@ final readonly class BriefingParameterValidator
      * Create a new briefing parameter validator instance.
      */
     public function __construct(
-        private BriefingParameterSchemaValidator $schemaValidator,
-        private BriefingParameterLimitEnforcer $limitEnforcer,
+        private BriefingParameterSchemaValidationPolicy $schemaValidator,
+        private BriefingParameterLimitPolicy $limitEnforcer,
     ) {}
 
     /**

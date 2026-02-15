@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\SentinelConfig;
 
-use App\Actions\SentinelConfig\Checkers\RepositorySentinelConfigGuidelineChecker;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
-use App\Actions\SentinelConfig\Support\RepositorySentinelConfigSettingsUpdater;
+use App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigGuidelineHandler;
+use App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigSettingsHandler;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
@@ -26,8 +26,8 @@ final readonly class SyncRepositorySentinelConfig
     public function __construct(
         private FetchesSentinelConfig $fetchConfig,
         private SentinelConfigParser $parser,
-        private RepositorySentinelConfigSettingsUpdater $settingsUpdater,
-        private RepositorySentinelConfigGuidelineChecker $guidelineChecker,
+        private RepositorySentinelConfigSettingsHandler $settingsHandler,
+        private RepositorySentinelConfigGuidelineHandler $guidelineHandler,
     ) {}
 
     /**
@@ -57,7 +57,7 @@ final readonly class SyncRepositorySentinelConfig
 
         // If there was a fetch error (not just "not found"), record it
         if ($fetchResult['error'] !== null && $fetchResult['found'] === false) {
-            $this->settingsUpdater->markFetchError($settings, $fetchResult['error']);
+            $this->settingsHandler->markFetchError($settings, $fetchResult['error']);
 
             return [
                 'synced' => false,
@@ -68,7 +68,7 @@ final readonly class SyncRepositorySentinelConfig
 
         // If config file doesn't exist, clear any existing config
         if (! $fetchResult['found']) {
-            $this->settingsUpdater->clearConfig($settings);
+            $this->settingsHandler->clearConfig($settings);
 
             Log::debug('No sentinel config found, cleared existing config', [
                 'repository' => $repository->full_name,
@@ -86,7 +86,7 @@ final readonly class SyncRepositorySentinelConfig
 
         if (! $parseResult['success']) {
             // Store the error but keep any existing valid config
-            $this->settingsUpdater->markParseError($settings, (string) $parseResult['error']);
+            $this->settingsHandler->markParseError($settings, (string) $parseResult['error']);
 
             Log::warning('Sentinel config parse error', [
                 'repository' => $repository->full_name,
@@ -104,11 +104,11 @@ final readonly class SyncRepositorySentinelConfig
         /** @var SentinelConfig $config */
         $config = $parseResult['config'];
 
-        $guidelineResult = $this->guidelineChecker->apply($repository, $config);
+        $guidelineResult = $this->guidelineHandler->apply($repository, $config);
         $config = $guidelineResult['config'];
         $configError = $guidelineResult['error'];
 
-        $this->settingsUpdater->saveConfig($settings, $config, $configError);
+        $this->settingsHandler->saveConfig($settings, $config, $configError);
 
         Log::info('Sentinel config synced successfully', [
             'repository' => $repository->full_name,

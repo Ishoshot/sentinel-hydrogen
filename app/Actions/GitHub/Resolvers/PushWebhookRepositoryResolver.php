@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub\Resolvers;
 
-use App\Actions\GitHub\Support\PushWebhookRepositoryResolution;
+use App\Actions\GitHub\ValueObjects\PushWebhookRepositoryResolution;
 use App\Models\Installation;
 use App\Models\Repository;
 

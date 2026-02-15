@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
+use App\Actions\GitHub\Handlers\InstallationWebhookLifecycleHandler;
 use App\Actions\GitHub\Resolvers\InstallationWebhookInstallationResolver;
-use App\Actions\GitHub\Support\InstallationWebhookLifecycleUpdater;
 use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use App\Services\GitHub\GitHubWebhookService;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +19,7 @@ final readonly class HandleInstallationWebhook
         private GitHubWebhookService $webhookService,
         private GitHubAppServiceContract $appService,
         private InstallationWebhookInstallationResolver $installationResolver,
-        private InstallationWebhookLifecycleUpdater $lifecycleUpdater,
+        private InstallationWebhookLifecycleHandler $lifecycleUpdater,
     ) {}
 
     /**

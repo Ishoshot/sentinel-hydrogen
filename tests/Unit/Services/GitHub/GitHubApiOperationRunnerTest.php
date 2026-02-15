@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Services\GitHub\Clients\GitHubApiOperationClient;
 use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use App\Services\GitHub\Contracts\GitHubRateLimiterContract;
-use App\Services\GitHub\Support\GitHubApiOperationRunner;
 use GrahamCampbell\GitHub\GitHubManager;
 
 it('runs app-authenticated operations through the rate limiter', function (): void {
@@ -34,7 +34,7 @@ it('runs app-authenticated operations through the rate limiter', function (): vo
             return $callback();
         });
 
-    $runner = new GitHubApiOperationRunner($github, $appService, $rateLimiter);
+    $runner = new GitHubApiOperationClient($github, $appService, $rateLimiter);
 
     $result = $runner->runWithAppAuthentication('app-operation', function (GitHubManager $resolved) use ($github): array {
         return [
@@ -77,7 +77,7 @@ it('runs installation-authenticated operations through the rate limiter', functi
             return $callback();
         });
 
-    $runner = new GitHubApiOperationRunner($github, $appService, $rateLimiter);
+    $runner = new GitHubApiOperationClient($github, $appService, $rateLimiter);
 
     $result = $runner->runWithInstallationAuthentication(
         42,
@@ -109,7 +109,7 @@ it('authenticates installation and returns the shared github manager', function 
             return $args[0] === 'installation-token' && $args[count($args) - 1] === 'access_token_header';
         });
 
-    $runner = new GitHubApiOperationRunner($github, $appService, $rateLimiter);
+    $runner = new GitHubApiOperationClient($github, $appService, $rateLimiter);
 
     $result = $runner->authenticateInstallation(9);
 

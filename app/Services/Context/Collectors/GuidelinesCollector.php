@@ -8,7 +8,7 @@ use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Collectors\Support\GuidelineBatchFetcher;
-use App\Services\Context\Collectors\Support\GuidelineContentFetcher;
+use App\Services\Context\Collectors\GuidelineContentFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\Resolvers\RepositoryCoordinatesResolver;

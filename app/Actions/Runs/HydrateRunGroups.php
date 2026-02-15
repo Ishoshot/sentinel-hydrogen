@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Actions\Runs;
 
-use App\Actions\Runs\Support\LatestRunPerPullRequestLookup;
-use App\Actions\Runs\Support\PullRequestGroupHydrator;
-use App\Actions\Runs\Support\RepositoryGroupHydrator;
-use App\Actions\Runs\Support\RepositoryPullRequestGroupsLookup;
-use App\Actions\Runs\Support\RepositorySummaryLookup;
-use App\Actions\Runs\Support\RunsPerPullRequestLookup;
+use App\Actions\Runs\Resolvers\LatestRunPerPullRequestResolver;
+use App\Actions\Runs\Resolvers\PullRequestGroupResolver;
+use App\Actions\Runs\Resolvers\RepositoryGroupResolver;
+use App\Actions\Runs\Resolvers\RepositoryPullRequestGroupsResolver;
+use App\Actions\Runs\Resolvers\RepositorySummaryResolver;
+use App\Actions\Runs\Resolvers\RunsPerPullRequestResolver;
 use App\Models\Workspace;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -23,12 +23,12 @@ final readonly class HydrateRunGroups
      * Create a new action instance.
      */
     public function __construct(
-        private RepositoryPullRequestGroupsLookup $repositoryPullRequestGroupsLookup,
-        private LatestRunPerPullRequestLookup $latestRunPerPullRequestLookup,
-        private RunsPerPullRequestLookup $runsPerPullRequestLookup,
-        private RepositorySummaryLookup $repositorySummaryLookup,
-        private PullRequestGroupHydrator $pullRequestGroupHydrator,
-        private RepositoryGroupHydrator $repositoryGroupHydrator,
+        private RepositoryPullRequestGroupsResolver $repositoryPullRequestGroupsLookup,
+        private LatestRunPerPullRequestResolver $latestRunPerPullRequestLookup,
+        private RunsPerPullRequestResolver $runsPerPullRequestLookup,
+        private RepositorySummaryResolver $repositorySummaryLookup,
+        private PullRequestGroupResolver $pullRequestGroupHydrator,
+        private RepositoryGroupResolver $repositoryGroupHydrator,
     ) {}
 
     /**

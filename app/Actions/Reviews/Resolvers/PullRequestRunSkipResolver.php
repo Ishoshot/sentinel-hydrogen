@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews\Resolvers;
 
-use App\Actions\Reviews\Support\PullRequestRunSkipResolution;
+use App\Actions\Reviews\ValueObjects\PullRequestRunSkipResolution;
 use App\Models\Repository;
 use App\Services\Plans\PlanLimitEnforcer;
 

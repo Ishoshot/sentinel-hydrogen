@@ -6,9 +6,9 @@ namespace App\Actions\Briefings;
 
 use App\Enums\Briefings\BriefingOutputFormat;
 use App\Models\BriefingGeneration;
-use App\Services\Briefings\Resolvers\BriefingOutputFormatResolver;
-use App\Services\Briefings\Resolvers\BriefingOutputStoragePathResolver;
-use App\Services\Briefings\Support\BriefingOutputRenderer;
+use App\Services\Briefings\Strategies\BriefingOutputFormatStrategy;
+use App\Services\Briefings\Strategies\BriefingOutputRenderStrategy;
+use App\Services\Briefings\Strategies\BriefingOutputStoragePathStrategy;
 use App\Services\Briefings\ValueObjects\BriefingOutputFormats;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -19,9 +19,9 @@ final readonly class RenderBriefingOutputs
      * Create a new action instance.
      */
     public function __construct(
-        private BriefingOutputFormatResolver $formatResolver = new BriefingOutputFormatResolver,
-        private BriefingOutputRenderer $outputRenderer = new BriefingOutputRenderer,
-        private BriefingOutputStoragePathResolver $storagePathResolver = new BriefingOutputStoragePathResolver,
+        private BriefingOutputFormatStrategy $formatResolver = new BriefingOutputFormatStrategy,
+        private BriefingOutputRenderStrategy $outputRenderer = new BriefingOutputRenderStrategy,
+        private BriefingOutputStoragePathStrategy $storagePathResolver = new BriefingOutputStoragePathStrategy,
     ) {}
 
     /**

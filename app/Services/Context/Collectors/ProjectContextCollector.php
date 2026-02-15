@@ -8,7 +8,7 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Collectors\Support\ProjectDependencyPrioritizer;
 use App\Services\Context\Collectors\Support\ProjectManifestContextBuilder;
-use App\Services\Context\Collectors\Support\ProjectManifestFileFetcher;
+use App\Services\Context\Collectors\ProjectManifestFileFetcher;
 use App\Services\Context\Collectors\Support\ProjectManifestParser;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;

@@ -9,7 +9,7 @@ use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Collectors\GuidelinesCollector;
-use App\Services\Context\Collectors\Support\GuidelineContentFetcher;
+use App\Services\Context\Collectors\GuidelineContentFetcher;
 use App\Services\Context\ContextBag;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 

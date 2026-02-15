@@ -9,9 +9,9 @@ use App\Exceptions\NoProviderKeyException;
 use App\Models\Repository;
 use App\Services\Context\ContextBag;
 use App\Services\Reviews\Contracts\ReviewEngine;
-use App\Services\Reviews\Executors\PrismProviderFallbackExecutor;
-use App\Services\Reviews\Executors\PrismProviderReviewExecutor;
 use App\Services\Reviews\Resolvers\PrismReviewProviderResolver;
+use App\Services\Reviews\Strategies\PrismProviderFallbackStrategy;
+use App\Services\Reviews\Strategies\PrismProviderReviewStrategy;
 use App\Services\Reviews\ValueObjects\ReviewResult;
 
 /**
@@ -27,8 +27,8 @@ final readonly class PrismReviewEngine implements ReviewEngine
      */
     public function __construct(
         private PrismReviewProviderResolver $providerResolver,
-        private PrismProviderReviewExecutor $providerReviewExecutor,
-        private PrismProviderFallbackExecutor $fallbackLoop,
+        private PrismProviderReviewStrategy $providerReviewStrategy,
+        private PrismProviderFallbackStrategy $fallbackStrategy,
     ) {}
 
     /**
@@ -56,10 +56,10 @@ final readonly class PrismReviewEngine implements ReviewEngine
             throw NoProviderKeyException::noProvidersConfigured();
         }
 
-        return $this->fallbackLoop->execute(
+        return $this->fallbackStrategy->execute(
             $providersToTry,
             $providerConfig,
-            fn (AiProvider $aiProvider): ReviewResult => $this->providerReviewExecutor->execute($context, $aiProvider, $providerConfig),
+            fn (AiProvider $aiProvider): ReviewResult => $this->providerReviewStrategy->execute($context, $aiProvider, $providerConfig),
         );
     }
 }

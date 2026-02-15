@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews;
 
-use App\Actions\Reviews\Checkers\ManualReviewEligibilityChecker;
-use App\Actions\Reviews\Posters\ManualReviewAcknowledgmentCommentPoster;
-use App\Actions\Reviews\Support\ManualReviewPullRequestFetcher;
+use App\Actions\Reviews\Guards\ManualReviewEligibilityGuard;
+use App\Actions\Reviews\Publishers\ManualReviewAcknowledgmentCommentPublisher;
+use App\Actions\Reviews\Resolvers\ManualReviewPullRequestResolver;
 use App\Enums\Reviews\RunStatus;
 use App\Models\Repository;
 use App\Models\Run;
@@ -25,9 +25,9 @@ final readonly class TriggerManualReview
      * Create a new action instance.
      */
     public function __construct(
-        private ManualReviewEligibilityChecker $eligibilityChecker,
-        private ManualReviewPullRequestFetcher $pullRequestFetcher,
-        private ManualReviewAcknowledgmentCommentPoster $acknowledgmentCommentPoster,
+        private ManualReviewEligibilityGuard $eligibilityGuard,
+        private ManualReviewPullRequestResolver $pullRequestFetcher,
+        private ManualReviewAcknowledgmentCommentPublisher $acknowledgmentCommentPublisher,
         private CreatePullRequestRun $createPullRequestRun,
         private DispatchReviewRun $dispatchReviewRun,
         private ManualPullRequestPayloadFactory $payloadFactory,
@@ -51,7 +51,7 @@ final readonly class TriggerManualReview
 
         Log::info('Triggering manual review', $ctx);
 
-        $eligibility = $this->eligibilityChecker->check($repository, $ctx);
+        $eligibility = $this->eligibilityGuard->check($repository, $ctx);
         if (! $eligibility->allowed) {
             return [
                 'success' => false,
@@ -69,7 +69,7 @@ final readonly class TriggerManualReview
             ];
         }
 
-        $pullRequest = $this->pullRequestFetcher->fetch(
+        $pullRequest = $this->pullRequestFetcher->resolve(
             installationId: $installation->installation_id,
             owner: $repository->owner,
             repo: $repository->name,
@@ -93,7 +93,7 @@ final readonly class TriggerManualReview
         );
 
         // Post acknowledgment comment
-        $greetingCommentId = $this->acknowledgmentCommentPoster->post(
+        $greetingCommentId = $this->acknowledgmentCommentPublisher->post(
             $installation->installation_id,
             $repository->owner,
             $repository->name,

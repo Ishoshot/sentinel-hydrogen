@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Briefings;
 
-use App\Actions\Briefings\Support\EmailBriefingDeliverer;
-use App\Actions\Briefings\Support\SlackBriefingDeliverer;
+use App\Actions\Briefings\Handlers\EmailBriefingDeliveryHandler;
+use App\Actions\Briefings\Handlers\SlackBriefingDeliveryHandler;
 use App\Enums\Briefings\BriefingDeliveryChannel;
 use App\Models\BriefingGeneration;
 use App\Models\BriefingSubscription;
@@ -18,8 +18,8 @@ final readonly class DeliverGeneratedBriefing
      * Create a new action instance.
      */
     public function __construct(
-        private EmailBriefingDeliverer $emailDeliverer = new EmailBriefingDeliverer,
-        private SlackBriefingDeliverer $slackDeliverer = new SlackBriefingDeliverer,
+        private EmailBriefingDeliveryHandler $emailDeliverer = new EmailBriefingDeliveryHandler,
+        private SlackBriefingDeliveryHandler $slackDeliverer = new SlackBriefingDeliveryHandler,
     ) {}
 
     /**

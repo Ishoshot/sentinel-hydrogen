@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Commands;
 
-use App\Actions\Commands\Publishers\IssueCommentMessagePublisher;
+use App\Actions\Commands\Handlers\IssueCommentMessageHandler;
 use App\Actions\Commands\Resolvers\IssueCommentRepositoryContextResolver;
-use App\Actions\Commands\Support\IssueCommentBodyFormatter;
+use App\Services\Commands\Parsers\IssueCommentBodyParser;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -17,8 +17,8 @@ final readonly class PostIssueCommentMessage
      */
     public function __construct(
         private IssueCommentRepositoryContextResolver $repositoryContextResolver,
-        private IssueCommentBodyFormatter $bodyFormatter,
-        private IssueCommentMessagePublisher $messagePublisher,
+        private IssueCommentBodyParser $bodyParser,
+        private IssueCommentMessageHandler $messageHandler,
     ) {}
 
     /**
@@ -76,12 +76,12 @@ final readonly class PostIssueCommentMessage
         }
 
         try {
-            $this->messagePublisher->publish(
+            $this->messageHandler->publish(
                 installationId: $installationId,
                 owner: $parsedRepository['owner'],
                 repo: $parsedRepository['repo'],
                 number: $number,
-                body: $this->bodyFormatter->format($message),
+                body: $this->bodyParser->format($message),
             );
         } catch (Throwable $throwable) {
             Log::warning($failureLogMessage, [

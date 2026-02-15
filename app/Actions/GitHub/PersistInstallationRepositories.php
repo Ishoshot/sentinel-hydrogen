@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\GitHub;
 
-use App\Actions\GitHub\Support\InstallationRepositoryRecordPersister;
-use App\Actions\GitHub\Support\InstallationRepositoryRemover;
+use App\Actions\GitHub\Handlers\InstallationRepositoryRecordHandler;
+use App\Actions\GitHub\Handlers\InstallationRepositoryRemovalHandler;
 use App\Models\Installation;
 use Illuminate\Support\Facades\DB;
 
@@ -15,8 +15,8 @@ final readonly class PersistInstallationRepositories
      * Create a new action instance.
      */
     public function __construct(
-        private InstallationRepositoryRecordPersister $recordPersister,
-        private InstallationRepositoryRemover $repositoryRemover,
+        private InstallationRepositoryRecordHandler $recordPersister,
+        private InstallationRepositoryRemovalHandler $repositoryRemover,
     ) {}
 
     /**

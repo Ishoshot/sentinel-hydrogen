@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Services\GitHub;
 
 use App\Models\Installation;
+use App\Services\GitHub\Clients\GitHubApiRequestClient;
+use App\Services\GitHub\Clients\GitHubIssueCommentClient;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
-use App\Services\GitHub\Executors\GitHubApiRequestExecutor;
-use App\Services\GitHub\Support\GitHubAppOperationInvoker;
-use App\Services\GitHub\Support\GitHubInstallationRepositoriesPaginator;
-use App\Services\GitHub\Support\GitHubIssueCommentOperations;
-use App\Services\GitHub\Support\GitHubPullRequestCommitOperations;
-use App\Services\GitHub\Support\GitHubRepositoryContentOperations;
+use App\Services\GitHub\Clients\GitHubAppOperationClient;
+use App\Services\GitHub\Clients\GitHubInstallationRepositoriesClient;
+use App\Services\GitHub\Clients\GitHubPullRequestCommitClient;
+use App\Services\GitHub\Clients\GitHubRepositoryContentClient;
 use GrahamCampbell\GitHub\GitHubManager;
 
 final readonly class GitHubApiService implements GitHubApiServiceContract
@@ -20,12 +20,12 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      * Create a new service instance.
      */
     public function __construct(
-        private GitHubAppOperationInvoker $appOperationInvoker,
-        private GitHubApiRequestExecutor $requestExecutor,
-        private GitHubInstallationRepositoriesPaginator $repositoriesPaginator,
-        private GitHubRepositoryContentOperations $repositoryContentOperations,
-        private GitHubPullRequestCommitOperations $pullRequestCommitOperations,
-        private GitHubIssueCommentOperations $issueCommentOperations,
+        private GitHubAppOperationClient $appOperationInvoker,
+        private GitHubApiRequestClient $requestExecutor,
+        private GitHubInstallationRepositoriesClient $repositoriesPaginator,
+        private GitHubRepositoryContentClient $repositoryContentOperations,
+        private GitHubPullRequestCommitClient $pullRequestCommitOperations,
+        private GitHubIssueCommentClient $issueCommentOperations,
     ) {}
 
     /**
@@ -50,7 +50,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getInstallationRepositories(int $installationId): array
     {
-        return $this->repositoriesPaginator->fetch($installationId);
+        return $this->repositoriesPaginator->resolve($installationId);
     }
 
     /**

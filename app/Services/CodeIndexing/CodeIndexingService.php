@@ -6,14 +6,14 @@ namespace App\Services\CodeIndexing;
 
 use App\Models\CodeIndex;
 use App\Models\Repository;
+use App\Services\CodeIndexing\Builders\CodeIndexingChangeSetBuilder;
+use App\Services\CodeIndexing\Builders\IncrementalChangeSetBuilder;
+use App\Services\CodeIndexing\Clients\RepositoryTreeClient;
 use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;
-use App\Services\CodeIndexing\Dispatchers\IndexBatchDispatcher;
 use App\Services\CodeIndexing\Factories\CodeIndexingPayloadFactory;
 use App\Services\CodeIndexing\Loggers\CodeIndexingTelemetryLogger;
-use App\Services\CodeIndexing\Support\CodeIndexingChangeSetPlanner;
-use App\Services\CodeIndexing\Support\IncrementalChangeSetPreparer;
-use App\Services\CodeIndexing\Support\IndexableFilePolicy;
-use App\Services\CodeIndexing\Support\RepositoryTreeFetcher;
+use App\Services\CodeIndexing\Policies\IndexableFilePolicy;
+use App\Services\CodeIndexing\Strategies\IndexBatchDispatchStrategy;
 use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
 
 /**
@@ -27,12 +27,12 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
     public function __construct(
         private SemanticAnalyzerInterface $semanticAnalyzer,
         private IndexableFilePolicy $filePolicy,
-        private RepositoryTreeFetcher $treeFetcher,
-        private IncrementalChangeSetPreparer $changeSetPreparer,
-        private ?CodeIndexingChangeSetPlanner $changeSetPlanner,
+        private RepositoryTreeClient $treeClient,
+        private IncrementalChangeSetBuilder $changeSetBuilder,
+        private ?CodeIndexingChangeSetBuilder $changeSetPlanner,
         private ?CodeIndexingPayloadFactory $payloadFactory,
         private ?CodeIndexingTelemetryLogger $telemetryLogger,
-        private IndexBatchDispatcher $batchDispatcher,
+        private IndexBatchDispatchStrategy $batchDispatchStrategy,
     ) {}
 
     /**
@@ -49,7 +49,7 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
             return;
         }
 
-        $tree = $this->treeFetcher->fetch($installation->installation_id, $repository->owner, $repository->name, $commitSha);
+        $tree = $this->treeClient->resolve($installation->installation_id, $repository->owner, $repository->name, $commitSha);
 
         $indexableFiles = $this->filePolicy->filterTree($tree);
 
@@ -59,7 +59,7 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
             indexableFiles: count($indexableFiles),
         );
 
-        $this->batchDispatcher->dispatch($repository, $commitSha, $indexableFiles);
+        $this->batchDispatchStrategy->dispatch($repository, $commitSha, $indexableFiles);
     }
 
     /**
@@ -99,7 +99,7 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
             return;
         }
 
-        $this->batchDispatcher->dispatch($repository, $commitSha, $indexableFiles);
+        $this->batchDispatchStrategy->dispatch($repository, $commitSha, $indexableFiles);
     }
 
     /**
@@ -156,9 +156,9 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
     /**
      * ChangeSetPlanner.
      */
-    private function changeSetPlanner(): CodeIndexingChangeSetPlanner
+    private function changeSetPlanner(): CodeIndexingChangeSetBuilder
     {
-        return $this->changeSetPlanner ?? new CodeIndexingChangeSetPlanner($this->changeSetPreparer);
+        return $this->changeSetPlanner ?? new CodeIndexingChangeSetBuilder($this->changeSetBuilder);
     }
 
     /**

@@ -7,12 +7,12 @@ namespace App\Services\Plans;
 use App\Enums\Billing\PlanFeature;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Plans\Checkers\PlanSubscriptionEligibilityChecker;
-use App\Services\Plans\Checkers\PlanTeamInviteEligibilityChecker;
-use App\Services\Plans\Checkers\WorkspaceCreationEligibilityChecker;
-use App\Services\Plans\Loggers\PlanLimitEventLogger;
+use App\Services\Plans\Loggers\PlanLimitActivityLogger;
+use App\Services\Plans\Policies\PlanMeteredUsagePolicy;
+use App\Services\Plans\Policies\PlanSubscriptionEligibilityPolicy;
+use App\Services\Plans\Policies\PlanTeamInviteEligibilityPolicy;
+use App\Services\Plans\Policies\WorkspaceCreationEligibilityPolicy;
 use App\Services\Plans\Resolvers\PlanResolver;
-use App\Services\Plans\Support\PlanMeteredUsageEnforcer;
 use App\Services\Plans\ValueObjects\BillingPeriod;
 use App\Services\Plans\ValueObjects\PlanLimitResult;
 
@@ -23,11 +23,11 @@ final readonly class PlanLimitEnforcer
      */
     public function __construct(
         private PlanResolver $planResolver,
-        private PlanSubscriptionEligibilityChecker $subscriptionEligibilityChecker,
-        private WorkspaceCreationEligibilityChecker $workspaceCreationEligibilityChecker,
-        private PlanLimitEventLogger $eventLogger,
-        private PlanMeteredUsageEnforcer $meteredUsageEnforcer,
-        private PlanTeamInviteEligibilityChecker $teamInviteEligibilityChecker,
+        private PlanSubscriptionEligibilityPolicy $subscriptionEligibilityPolicy,
+        private WorkspaceCreationEligibilityPolicy $workspaceCreationEligibilityPolicy,
+        private PlanLimitActivityLogger $activityLogger,
+        private PlanMeteredUsagePolicy $meteredUsagePolicy,
+        private PlanTeamInviteEligibilityPolicy $teamInviteEligibilityPolicy,
     ) {}
 
     /**
@@ -39,7 +39,7 @@ final readonly class PlanLimitEnforcer
      */
     public function ensureActiveSubscription(Workspace $workspace): PlanLimitResult
     {
-        return $this->subscriptionEligibilityChecker->ensureActiveSubscription($workspace);
+        return $this->subscriptionEligibilityPolicy->ensureActiveSubscription($workspace);
     }
 
     /**
@@ -53,7 +53,7 @@ final readonly class PlanLimitEnforcer
             return $activeCheck;
         }
 
-        return $this->meteredUsageEnforcer->ensureRunAllowed($workspace);
+        return $this->meteredUsagePolicy->ensureRunAllowed($workspace);
     }
 
     /**
@@ -67,7 +67,7 @@ final readonly class PlanLimitEnforcer
             return $activeCheck;
         }
 
-        return $this->meteredUsageEnforcer->ensureCommandAllowed($workspace);
+        return $this->meteredUsagePolicy->ensureCommandAllowed($workspace);
     }
 
     /**
@@ -75,7 +75,7 @@ final readonly class PlanLimitEnforcer
      */
     public function ensureCanInviteMember(Workspace $workspace): PlanLimitResult
     {
-        return $this->teamInviteEligibilityChecker->ensureCanInviteMember($workspace);
+        return $this->teamInviteEligibilityPolicy->ensureCanInviteMember($workspace);
     }
 
     /**
@@ -87,7 +87,7 @@ final readonly class PlanLimitEnforcer
      */
     public function ensureCanCreateWorkspace(User $user): PlanLimitResult
     {
-        return $this->workspaceCreationEligibilityChecker->ensureCanCreate($user);
+        return $this->workspaceCreationEligibilityPolicy->ensureCanCreate($user);
     }
 
     /**
@@ -101,7 +101,7 @@ final readonly class PlanLimitEnforcer
             return PlanLimitResult::allow();
         }
 
-        $this->eventLogger->log($workspace, $feature, $message);
+        $this->activityLogger->log($workspace, $feature, $message);
 
         return PlanLimitResult::deny($message, $feature->value);
     }
