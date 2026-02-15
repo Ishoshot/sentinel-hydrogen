@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\DataTransferObjects\Briefings;
+namespace App\Enums\Briefings;
 
 /**
  * Defines the allowed format values for string properties in briefing schemas.

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\DataTransferObjects\Briefings;
+namespace App\Enums\Briefings;
 
 /**
  * Defines the allowed property types for briefing parameter schemas.
