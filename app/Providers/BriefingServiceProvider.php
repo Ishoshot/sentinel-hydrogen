@@ -10,7 +10,7 @@ use App\Services\Briefings\Contracts\BriefingDataCollector;
 use App\Services\Briefings\Contracts\BriefingNarrativeGenerator;
 use App\Services\Briefings\Contracts\BriefingSlidesBuilder;
 use App\Services\Briefings\NarrativeGeneratorService;
-use App\Services\Briefings\Support\BriefingTemplateCollectorRegistry;
+use App\Services\Briefings\Resolvers\BriefingTemplateCollectorResolver;
 use App\Services\Briefings\Templates\CodeHealthTemplateCollector;
 use App\Services\Briefings\Templates\CompanyUpdateTemplateCollector;
 use App\Services\Briefings\Templates\DeliveryVelocityTemplateCollector;
@@ -48,7 +48,7 @@ final class BriefingServiceProvider extends ServiceProvider
         $this->app->tag($templateCollectors, 'briefing.template-collectors');
 
         $this->app
-            ->when(BriefingTemplateCollectorRegistry::class)
+            ->when(BriefingTemplateCollectorResolver::class)
             ->needs('$templateCollectors')
             ->giveTagged('briefing.template-collectors');
 

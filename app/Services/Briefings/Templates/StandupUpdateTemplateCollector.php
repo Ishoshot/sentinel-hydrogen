@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Briefings\Templates;
 
 use App\Models\Run;
-use App\Services\Briefings\BriefingPayloadSupport;
 use App\Services\Briefings\BriefingRunMetricsService;
 use App\Services\Briefings\Contracts\BriefingTemplateDataCollector;
+use App\Services\Briefings\Factories\BriefingPayloadFactory;
 use App\Services\Briefings\ValueObjects\BriefingDateRange;
 use App\Services\Briefings\ValueObjects\BriefingSummary;
 use Illuminate\Support\Collection;
@@ -24,7 +24,7 @@ final readonly class StandupUpdateTemplateCollector implements BriefingTemplateD
      */
     public function __construct(
         private BriefingRunMetricsService $runMetricsService,
-        private BriefingPayloadSupport $payloadSupport,
+        private BriefingPayloadFactory $payloadFactory,
     ) {}
 
     /**
@@ -59,7 +59,7 @@ final readonly class StandupUpdateTemplateCollector implements BriefingTemplateD
             ->limit(self::RUN_ACTIVITY_LIMIT)
             ->get();
 
-        $dataQuality = $this->payloadSupport->buildDataQuality(
+        $dataQuality = $this->payloadFactory->buildDataQuality(
             totalRuns: $totalRuns,
             activeDays: $activeDays,
             periodDays: $dateRange->days(),
@@ -72,7 +72,7 @@ final readonly class StandupUpdateTemplateCollector implements BriefingTemplateD
             ->values()
             ->all();
 
-        $evidence = $this->payloadSupport->buildEvidence(runIds: $runIds);
+        $evidence = $this->payloadFactory->buildEvidence(runIds: $runIds);
 
         $summary = BriefingSummary::fromArray([
             'total_runs' => $totalRuns,

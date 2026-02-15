@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Briefings\Templates;
 
 use App\Models\Repository;
-use App\Services\Briefings\BriefingPayloadSupport;
 use App\Services\Briefings\Contracts\BriefingTemplateDataCollector;
+use App\Services\Briefings\Factories\BriefingPayloadFactory;
 use App\Services\Briefings\ValueObjects\BriefingDateRange;
 use App\Services\Briefings\ValueObjects\BriefingEvidence;
 use App\Services\Briefings\ValueObjects\BriefingSummary;
@@ -23,7 +23,7 @@ final readonly class WeeklyTeamSummaryTemplateCollector implements BriefingTempl
      */
     public function __construct(
         private StandupUpdateTemplateCollector $standupCollector,
-        private BriefingPayloadSupport $payloadSupport,
+        private BriefingPayloadFactory $payloadFactory,
     ) {}
 
     /**
@@ -67,7 +67,7 @@ final readonly class WeeklyTeamSummaryTemplateCollector implements BriefingTempl
         $summaryPayload['repository_count'] = $repositoryCount;
         $summary = BriefingSummary::fromArray($summaryPayload);
 
-        $dataQuality = $this->payloadSupport->buildDataQuality(
+        $dataQuality = $this->payloadFactory->buildDataQuality(
             totalRuns: $summary->totalRuns(),
             activeDays: $summary->activeDays(),
             periodDays: $dateRange->days(),
@@ -79,7 +79,7 @@ final readonly class WeeklyTeamSummaryTemplateCollector implements BriefingTempl
         $evidencePayload = is_array($data['evidence'] ?? null) ? $data['evidence'] : [];
         $existingEvidence = BriefingEvidence::fromArray($evidencePayload);
 
-        $evidence = $this->payloadSupport->buildEvidence(
+        $evidence = $this->payloadFactory->buildEvidence(
             runIds: $existingEvidence->runIds,
             repositoryNames: $repositories->map(
                 fn (Repository $repository): string => (string) ($repository->full_name ?? $repository->name ?? '')
