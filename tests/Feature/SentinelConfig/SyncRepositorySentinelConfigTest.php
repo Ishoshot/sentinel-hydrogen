@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Enums\Auth\ProviderType;
 use App\Enums\Billing\PlanFeature;
 use App\Enums\Billing\SubscriptionStatus;
@@ -14,6 +13,7 @@ use App\Models\Plan;
 use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\RepositorySettings;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 
 beforeEach(function (): void {
     Provider::firstOrCreate(

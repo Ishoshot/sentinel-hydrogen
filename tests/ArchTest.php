@@ -13,8 +13,8 @@ arch()->preset()->laravel()
     ->ignoring('App\Http\Controllers\NotificationController')
     ->ignoring('App\Http\Controllers\Webhooks')
     ->ignoring('App\Http\Controllers\WorkspaceController')
-    ->ignoring('App\DataTransferObjects\Briefings\BriefingPropertyType') // Enum in DTO namespace
-    ->ignoring('App\DataTransferObjects\Briefings\BriefingPropertyFormat') // Enum in DTO namespace
+    ->ignoring('App\Enums\Briefings\BriefingPropertyType') // Enum in DTO namespace
+    ->ignoring('App\Enums\Briefings\BriefingPropertyFormat') // Enum in DTO namespace
     ->ignoring('App\Exceptions\Rendering'); // Exception renderers, not exceptions
 
 arch('strict types')

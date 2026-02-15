@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Enums\Reviews\AnnotationStyle;
 use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Enums\SentinelConfig\SentinelConfigTone;
@@ -10,6 +9,7 @@ use App\Exceptions\SentinelConfig\ConfigParseException;
 use App\Exceptions\SentinelConfig\ConfigValidationException;
 use App\Services\SentinelConfig\ParseSentinelConfig;
 use App\Services\SentinelConfig\SentinelConfigSchema;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 
 beforeEach(function (): void {
     $this->parser = new ParseSentinelConfig(new SentinelConfigSchema());

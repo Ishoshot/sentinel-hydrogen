@@ -2,10 +2,6 @@
 
 declare(strict_types=1);
 
-use App\DataTransferObjects\SentinelConfig\CategoriesConfig;
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
-use App\DataTransferObjects\SentinelConfig\ReviewConfig;
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Enums\Auth\ProviderType;
 use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Enums\SentinelConfig\SentinelConfigTone;
@@ -16,6 +12,10 @@ use App\Models\Repository;
 use App\Models\RepositorySettings;
 use App\Services\Reviews\ReviewPolicyResolver;
 use App\Services\Reviews\ValueObjects\ReviewPolicy;
+use App\Services\SentinelConfig\ValueObjects\CategoriesConfig;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
+use App\Services\SentinelConfig\ValueObjects\ReviewConfig;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 
 /**
  * Helper function to create a repository with proper provider chain.

@@ -15,7 +15,6 @@ arch('enums are used in appropriate locations')
         'App\Actions',
         'App\Casts',
         'App\Console\Commands',
-        'App\DataTransferObjects',
         'App\Events',
         'App\Http',
         'App\Jobs',
