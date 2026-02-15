@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\Briefings\Contracts\BriefingTemplateDataCollector;
-use App\Services\Briefings\Support\BriefingTemplateCollectorRegistry;
+use App\Services\Briefings\Resolvers\BriefingTemplateCollectorResolver;
 
 it('resolves a collector by slug', function (): void {
     $standupCollector = new class implements BriefingTemplateDataCollector
@@ -19,7 +19,7 @@ it('resolves a collector by slug', function (): void {
         }
     };
 
-    $registry = new BriefingTemplateCollectorRegistry([$standupCollector]);
+    $registry = new BriefingTemplateCollectorResolver([$standupCollector]);
 
     expect($registry->resolve('standup-update'))->toBe($standupCollector);
 });
@@ -51,6 +51,6 @@ it('throws when duplicate slugs are registered', function (): void {
         }
     };
 
-    expect(fn () => new BriefingTemplateCollectorRegistry([$first, $second]))
+    expect(fn () => new BriefingTemplateCollectorResolver([$first, $second]))
         ->toThrow(RuntimeException::class, 'Duplicate briefing collector slug');
 });
