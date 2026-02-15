@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\DataTransferObjects\SentinelConfig\TriggersConfig;
 use App\Services\SentinelConfig\EvaluateTriggerRules;
+use App\Services\SentinelConfig\ValueObjects\TriggersConfig;
 
 describe('EvaluateTriggerRules', function (): void {
     beforeEach(function (): void {

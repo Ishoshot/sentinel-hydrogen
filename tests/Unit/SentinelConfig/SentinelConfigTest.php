@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-use App\DataTransferObjects\SentinelConfig\AnnotationsConfig;
-use App\DataTransferObjects\SentinelConfig\CategoriesConfig;
-use App\DataTransferObjects\SentinelConfig\GuidelineConfig;
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
-use App\DataTransferObjects\SentinelConfig\ReviewConfig;
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
-use App\DataTransferObjects\SentinelConfig\TriggersConfig;
 use App\Enums\Reviews\AnnotationStyle;
 use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Enums\SentinelConfig\SentinelConfigTone;
+use App\Services\SentinelConfig\ValueObjects\AnnotationsConfig;
+use App\Services\SentinelConfig\ValueObjects\CategoriesConfig;
+use App\Services\SentinelConfig\ValueObjects\GuidelineConfig;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
+use App\Services\SentinelConfig\ValueObjects\ReviewConfig;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
+use App\Services\SentinelConfig\ValueObjects\TriggersConfig;
 
 describe('SentinelConfig', function (): void {
     it('creates from minimal array with only version', function (): void {

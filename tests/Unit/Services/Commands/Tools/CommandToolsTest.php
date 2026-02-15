@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\Models\CommandRun;
 use App\Models\Repository;
 use App\Services\CodeIndexing\Contracts\CodeSearchServiceContract;
@@ -16,6 +15,7 @@ use App\Services\Commands\Tools\SearchCodeTool;
 use App\Services\Commands\Tools\SearchPatternTool;
 use App\Services\Commands\Tools\ToolResultFormatter;
 use App\Services\Context\SensitiveDataRedactor;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
 use App\Support\PathRuleMatcher;
 use Prism\Prism\Tool as PrismTool;
 

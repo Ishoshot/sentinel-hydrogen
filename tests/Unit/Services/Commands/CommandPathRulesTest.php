@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\Services\Commands\CommandPathRules;
 use App\Services\Context\SensitiveDataRedactor;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
 use App\Support\PathRuleMatcher;
 
 it('respects ignore patterns', function (): void {

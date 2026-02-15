@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Filters\ConfiguredPathFilter;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
 use App\Support\PathRuleMatcher;
 
 it('has correct name', function (): void {
