@@ -29,7 +29,6 @@ use App\Services\Context\TokenCounting\AnthropicTokenCounter;
 use App\Services\Context\TokenCounting\CompositeTokenCounter;
 use App\Services\Context\TokenCounting\HeuristicTokenCounter;
 use App\Services\Context\TokenCounting\OpenAiTokenCounter;
-use App\Services\Contracts\SentinelMessageServiceContract;
 use App\Services\Reviews\Contracts\ModelLimitsResolverContract;
 use App\Services\Reviews\Contracts\ProviderKeyResolver;
 use App\Services\Reviews\Contracts\ReviewEngine;
@@ -38,9 +37,8 @@ use App\Services\Reviews\ModelLimitsResolver;
 use App\Services\Reviews\PrismReviewEngine;
 use App\Services\Reviews\ProviderKeyResolverService;
 use App\Services\Reviews\ReviewPolicyResolver;
+use App\Services\Semantic\AnalyzeSemantics;
 use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
-use App\Services\Semantic\SemanticAnalyzerService;
-use App\Services\SentinelMessageService;
 use Illuminate\Support\ServiceProvider;
 use Override;
 
@@ -129,7 +127,6 @@ final class ReviewServiceProvider extends ServiceProvider
 
             return $engine;
         });
-
         $this->app->bind(ContextEngineContract::class, ContextEngine::class);
     }
 
@@ -144,9 +141,6 @@ final class ReviewServiceProvider extends ServiceProvider
         // Review Engine - uses BYOK keys, no fallback to system keys
         $this->app->bind(ReviewEngine::class, PrismReviewEngine::class);
 
-        // Message service for PR comments
-        $this->app->bind(SentinelMessageServiceContract::class, SentinelMessageService::class);
-
         // Policy and limits resolvers
         $this->app->bind(ReviewPolicyResolverContract::class, ReviewPolicyResolver::class);
         $this->app->bind(ModelLimitsResolverContract::class, ModelLimitsResolver::class);
@@ -157,6 +151,6 @@ final class ReviewServiceProvider extends ServiceProvider
      */
     private function registerSemanticAnalyzer(): void
     {
-        $this->app->bind(SemanticAnalyzerInterface::class, SemanticAnalyzerService::class);
+        $this->app->bind(SemanticAnalyzerInterface::class, AnalyzeSemantics::class);
     }
 }

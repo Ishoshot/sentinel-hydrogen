@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Services\Contracts\SentinelMessageServiceContract;
-
 /**
  * Service for generating Sentinel's fun and friendly PR messages.
  */
-final readonly class SentinelMessageService implements SentinelMessageServiceContract
+final readonly class SentinelMessageService
 {
     /**
      * Create a new service instance.
