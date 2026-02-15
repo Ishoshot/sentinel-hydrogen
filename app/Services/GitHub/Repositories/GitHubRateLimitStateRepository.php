@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Services\GitHub\Support;
+namespace App\Services\GitHub\Repositories;
 
 use Illuminate\Support\Facades\Cache;
 
-final class GitHubRateLimitStateStore
+final class GitHubRateLimitStateRepository
 {
     private const string CACHE_PREFIX = 'github_rate_limit:';
 
     /**
-     * GetCooldownUntil.
+     * Get the cooldown-until timestamp.
      */
     public function getCooldownUntil(): ?int
     {
@@ -21,7 +21,7 @@ final class GitHubRateLimitStateStore
     }
 
     /**
-     * SetCooldownUntil.
+     * Set the cooldown-until timestamp.
      */
     public function setCooldownUntil(int $cooldownUntil): void
     {
@@ -29,7 +29,7 @@ final class GitHubRateLimitStateStore
     }
 
     /**
-     * IsInCooldown.
+     * Determine if the rate limiter is currently in cooldown.
      */
     public function isInCooldown(): bool
     {
@@ -39,7 +39,7 @@ final class GitHubRateLimitStateStore
     }
 
     /**
-     * GetCooldownRemaining.
+     * Get the remaining cooldown time in seconds.
      */
     public function getCooldownRemaining(): int
     {
@@ -53,7 +53,7 @@ final class GitHubRateLimitStateStore
     }
 
     /**
-     * GetRateLimitHitsThisHour.
+     * Get the number of rate limit hits in the current hour.
      */
     public function getRateLimitHitsThisHour(): int
     {
@@ -63,7 +63,7 @@ final class GitHubRateLimitStateStore
     }
 
     /**
-     * IncrementRateLimitHitsThisHour.
+     * Increment the rate limit hit counter for the current hour.
      */
     public function incrementRateLimitHitsThisHour(): void
     {
@@ -73,7 +73,7 @@ final class GitHubRateLimitStateStore
     }
 
     /**
-     * HitsKey.
+     * Get the cache key for hourly hits.
      */
     private function hitsKey(): string
     {

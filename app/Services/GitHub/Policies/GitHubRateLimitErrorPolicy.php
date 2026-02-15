@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Services\GitHub\Support;
+namespace App\Services\GitHub\Policies;
 
 use Github\Exception\RuntimeException;
 
-final class GitHubRateLimitErrorInspector
+final class GitHubRateLimitErrorPolicy
 {
     /**
-     * IsRateLimitError.
+     * Determine if the exception is a rate limit error.
      */
     public function isRateLimitError(RuntimeException $exception): bool
     {
@@ -31,7 +31,7 @@ final class GitHubRateLimitErrorInspector
     }
 
     /**
-     * ExtractResetTime.
+     * Extract the rate limit reset time from the error message.
      */
     public function extractResetTime(string $message): ?int
     {
