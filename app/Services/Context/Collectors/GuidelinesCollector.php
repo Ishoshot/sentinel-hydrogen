@@ -7,8 +7,7 @@ namespace App\Services\Context\Collectors;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Models\Run;
-use App\Services\Context\Collectors\Support\GuidelineBatchFetcher;
-use App\Services\Context\Collectors\GuidelineContentFetcher;
+use App\Services\Context\Collectors\Support\FetchGuidelineBatch;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\Resolvers\RepositoryCoordinatesResolver;
@@ -31,9 +30,9 @@ final readonly class GuidelinesCollector implements ContextCollector
      * Create a new GuidelinesCollector instance.
      */
     public function __construct(
-        private GuidelineContentFetcher $contentFetcher,
+        private FetchGuidelineContent $contentFetcher,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
-        private ?GuidelineBatchFetcher $batchFetcher = null,
+        private ?FetchGuidelineBatch $batchFetcher = null,
     ) {}
 
     /**
@@ -117,8 +116,8 @@ final readonly class GuidelinesCollector implements ContextCollector
     /**
      * Resolve the batch fetcher dependency.
      */
-    private function batchFetcher(): GuidelineBatchFetcher
+    private function batchFetcher(): FetchGuidelineBatch
     {
-        return $this->batchFetcher ?? new GuidelineBatchFetcher($this->contentFetcher);
+        return $this->batchFetcher ?? new FetchGuidelineBatch($this->contentFetcher);
     }
 }

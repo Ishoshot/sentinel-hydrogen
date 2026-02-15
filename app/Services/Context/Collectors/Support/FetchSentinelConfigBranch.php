@@ -6,20 +6,20 @@ namespace App\Services\Context\Collectors\Support;
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Models\Repository;
-use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
+use App\Services\SentinelConfig\ParseSentinelConfig;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Fetches and parses sentinel config with ordered branch fallback.
  */
-final readonly class SentinelConfigBranchFetcher
+final readonly class FetchSentinelConfigBranch
 {
     /**
-     * Create a new SentinelConfigBranchFetcher instance.
+     * Create a new FetchSentinelConfigBranch instance.
      */
     public function __construct(
         private FetchesSentinelConfig $fetchConfig,
-        private SentinelConfigParser $configParser,
+        private ParseSentinelConfig $configParser,
     ) {}
 
     /**

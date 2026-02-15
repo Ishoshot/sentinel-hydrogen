@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 /**
  * Fetches previous runs eligible for review history context.
  */
-final readonly class ReviewHistoryRunFetcher
+final readonly class FetchReviewHistoryRun
 {
     /**
      * @return Collection<int, Run>
