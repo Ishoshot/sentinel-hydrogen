@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Plans\ValueObjects;
 
-use App\Services\Contracts\EnforcementResult;
-
 /**
  * Result object for plan limit enforcement checks.
  */
-final readonly class PlanLimitResult implements EnforcementResult
+final readonly class PlanLimitResult
 {
     /**
      * Create a new plan limit result.

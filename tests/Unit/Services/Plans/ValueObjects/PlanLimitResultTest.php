@@ -69,8 +69,8 @@ it('returns null message for allowed result', function (): void {
     expect($result->getMessage())->toBeNull();
 });
 
-it('implements EnforcementResult interface', function (): void {
+it('is typed as PlanLimitResult', function (): void {
     $result = PlanLimitResult::allow();
 
-    expect($result)->toBeInstanceOf(App\Services\Contracts\EnforcementResult::class);
+    expect($result)->toBeInstanceOf(PlanLimitResult::class);
 });
