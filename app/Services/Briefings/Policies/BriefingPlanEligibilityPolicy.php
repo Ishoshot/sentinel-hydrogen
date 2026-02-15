@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings;
+namespace App\Services\Briefings\Policies;
 
 use App\Enums\Billing\PlanFeature;
 use App\Models\Briefing;
 use App\Models\Plan;
 
-final class BriefingPlanEligibilityChecker
+final class BriefingPlanEligibilityPolicy
 {
     /**
      * Check if the briefings feature is enabled for the plan.

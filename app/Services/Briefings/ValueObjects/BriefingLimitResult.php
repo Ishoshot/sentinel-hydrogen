@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Briefings\ValueObjects;
 
 use App\Enums\Briefings\BriefingLimitReasonCode;
-use App\Services\Contracts\EnforcementResult;
 
 /**
  * Result object for briefing limit enforcement checks.
@@ -13,7 +12,7 @@ use App\Services\Contracts\EnforcementResult;
  * Contains the enforcement decision along with an optional human-readable
  * reason and actionable guidance for the user to resolve the denial.
  */
-final readonly class BriefingLimitResult implements EnforcementResult
+final readonly class BriefingLimitResult
 {
     /**
      * Create a new briefing limit result.

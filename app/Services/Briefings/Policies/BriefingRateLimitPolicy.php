@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings;
+namespace App\Services\Briefings\Policies;
 
 use App\Enums\Briefings\BriefingLimitReasonCode;
 use App\Models\BriefingGeneration;
@@ -11,7 +11,7 @@ use App\Models\Workspace;
 use App\Services\Briefings\ValueObjects\BriefingLimitResult;
 use Carbon\CarbonInterface;
 
-final class BriefingRateLimitChecker
+final class BriefingRateLimitPolicy
 {
     /**
      * Check rate limits (daily, weekly, monthly).
