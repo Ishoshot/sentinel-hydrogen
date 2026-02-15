@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\GitHub\Clients;
 
-use App\Services\GitHub\Clients\GitHubInstallationOperationClient;
 use GrahamCampbell\GitHub\GitHubManager;
 
 final readonly class GitHubIssueCommentClient
