@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 use App\Exceptions\SentinelConfig\ConfigValidationException;
-use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
+use App\Services\SentinelConfig\ParseSentinelConfig;
 
 beforeEach(function (): void {
-    $this->parser = app(SentinelConfigParser::class);
+    $this->parser = app(ParseSentinelConfig::class);
 });
 
 describe('end-to-end validation', function (): void {

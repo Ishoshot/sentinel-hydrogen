@@ -8,12 +8,11 @@ use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Enums\SentinelConfig\SentinelConfigTone;
 use App\Exceptions\SentinelConfig\ConfigParseException;
 use App\Exceptions\SentinelConfig\ConfigValidationException;
-use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
-use App\Services\SentinelConfig\SentinelConfigParserService;
+use App\Services\SentinelConfig\ParseSentinelConfig;
 use App\Services\SentinelConfig\SentinelConfigSchema;
 
 beforeEach(function (): void {
-    $this->parser = new SentinelConfigParserService(new SentinelConfigSchema());
+    $this->parser = new ParseSentinelConfig(new SentinelConfigSchema());
 });
 
 describe('YAML parsing', function (): void {
@@ -158,9 +157,9 @@ describe('tryParse method', function (): void {
 
 describe('container binding', function (): void {
     it('resolves parser from container', function (): void {
-        $parser = app(SentinelConfigParser::class);
+        $parser = app(ParseSentinelConfig::class);
 
-        expect($parser)->toBeInstanceOf(SentinelConfigParserService::class);
+        expect($parser)->toBeInstanceOf(ParseSentinelConfig::class);
     });
 });
 
