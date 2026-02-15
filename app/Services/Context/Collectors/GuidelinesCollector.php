@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Collectors;
 
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Collectors\Support\FetchGuidelineBatch;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
 use App\Services\GitHub\Resolvers\RepositoryCoordinatesResolver;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -97,7 +97,7 @@ final readonly class GuidelinesCollector implements ContextCollector
     /**
      * Get guidelines configuration from the context bag metadata.
      *
-     * @return array<int, \App\DataTransferObjects\SentinelConfig\GuidelineConfig>
+     * @return array<int, \App\Services\SentinelConfig\ValueObjects\GuidelineConfig>
      */
     private function getGuidelinesConfig(ContextBag $bag): array
     {

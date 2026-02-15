@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Filters;
 
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextFilter;
 use App\Services\Context\Filters\Support\ConfiguredPathInclusionDecider;
 use App\Services\Context\Filters\Support\ConfiguredPathRepositoryContextFilter;
 use App\Services\Context\Filters\Support\ContextBagPathFilterer;
 use App\Services\Context\Filters\Support\SensitiveFileMarker;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
 use App\Support\PathRuleMatcher;
 use Illuminate\Support\Facades\Log;
 

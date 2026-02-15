@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Filters\Support;
 
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
 use App\Support\PathRuleMatcher;
 
 /**

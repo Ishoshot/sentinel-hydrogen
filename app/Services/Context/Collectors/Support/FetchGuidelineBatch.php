@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Context\Collectors\Support;
 
-use App\DataTransferObjects\SentinelConfig\GuidelineConfig;
 use App\Services\Context\Collectors\FetchGuidelineContent;
 use App\Services\GitHub\ValueObjects\RepositoryCoordinates;
+use App\Services\SentinelConfig\ValueObjects\GuidelineConfig;
 use Illuminate\Support\Facades\Log;
 
 /**
