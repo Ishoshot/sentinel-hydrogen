@@ -9,7 +9,7 @@ use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Services\Context\SensitiveDataRedactor;
-use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
+use App\Services\SentinelConfig\ParseSentinelConfig;
 use App\Support\PathRuleMatcher;
 use Illuminate\Support\Facades\Log;
 
@@ -23,7 +23,7 @@ final readonly class CommandPathRulesResolver
      */
     public function __construct(
         private FetchesSentinelConfig $fetchConfig,
-        private SentinelConfigParser $configParser,
+        private ParseSentinelConfig $configParser,
         private SensitiveDataRedactor $redactor,
         private PathRuleMatcher $matcher,
     ) {}

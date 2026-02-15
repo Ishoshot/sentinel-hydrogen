@@ -7,12 +7,11 @@ namespace App\Services\Commands\ValueObjects;
 use App\Models\Repository;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Contracts\EnforcementResult;
 
 /**
  * Result object for command permission checks.
  */
-final readonly class CommandPermissionResult implements EnforcementResult
+final readonly class CommandPermissionResult
 {
     /**
      * Create a new permission result.

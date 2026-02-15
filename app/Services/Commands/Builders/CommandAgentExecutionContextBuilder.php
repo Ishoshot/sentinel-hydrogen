@@ -11,7 +11,7 @@ use App\Services\Commands\CommandPathRules;
 use App\Services\Commands\CommandPathRulesResolver;
 use App\Services\Commands\Contracts\CommandToolBuilder;
 use App\Services\Commands\Contracts\PullRequestContextServiceContract;
-use App\Services\Commands\Parsers\CommandContextHintsParser;
+use App\Services\Commands\Normalizers\CommandContextHintsNormalizer;
 use App\Services\Commands\Resolvers\CommandAgentProviderResolver;
 use App\Services\Commands\ValueObjects\CommandAgentExecutionContext;
 use Prism\Prism\Tool as PrismTool;
@@ -24,7 +24,7 @@ final readonly class CommandAgentExecutionContextBuilder
      */
     public function __construct(
         private CommandAgentProviderResolver $providerResolver,
-        private CommandContextHintsParser $contextHintsParser,
+        private CommandContextHintsNormalizer $contextHintsNormalizer,
         private PullRequestContextServiceContract $prContextService,
         private CommandPromptBuilder $promptBuilder,
         private CommandPathRulesResolver $pathRulesResolver,
@@ -67,7 +67,7 @@ final readonly class CommandAgentExecutionContextBuilder
             $commandRun->command_type,
             $commandRun->query,
             $prContext,
-            $this->contextHintsParser->normalize($commandRun->context_snapshot['context_hints'] ?? null)
+            $this->contextHintsNormalizer->normalize($commandRun->context_snapshot['context_hints'] ?? null)
         );
 
         $enableThinking = $aiProvider === AiProvider::Anthropic
