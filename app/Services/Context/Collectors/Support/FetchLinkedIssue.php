@@ -11,7 +11,7 @@ use Throwable;
 /**
  * Fetches and normalizes linked issue data from GitHub.
  */
-final readonly class LinkedIssueFetcher
+final readonly class FetchLinkedIssue
 {
     /**
      * Maximum comments per issue to include.

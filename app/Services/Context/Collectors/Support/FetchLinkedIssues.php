@@ -11,7 +11,7 @@ use Throwable;
 /**
  * Orchestrates fetching multiple linked issues with error handling and limits.
  */
-final readonly class LinkedIssueFetchOrchestrator
+final readonly class FetchLinkedIssues
 {
     /**
      * Maximum number of issues to fetch to prevent API abuse.
@@ -22,7 +22,7 @@ final readonly class LinkedIssueFetchOrchestrator
      * Create a new orchestrator instance.
      */
     public function __construct(
-        private LinkedIssueFetcher $issueFetcher = new LinkedIssueFetcher,
+        private FetchLinkedIssue $issueFetcher = new FetchLinkedIssue,
     ) {}
 
     /**
