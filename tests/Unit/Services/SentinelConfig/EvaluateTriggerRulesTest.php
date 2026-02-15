@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 use App\DataTransferObjects\SentinelConfig\TriggersConfig;
-use App\Services\SentinelConfig\TriggerRuleEvaluator;
+use App\Services\SentinelConfig\EvaluateTriggerRules;
 
-describe('TriggerRuleEvaluator', function (): void {
+describe('EvaluateTriggerRules', function (): void {
     beforeEach(function (): void {
-        $this->evaluator = new TriggerRuleEvaluator();
+        $this->evaluator = new EvaluateTriggerRules();
     });
 
     describe('target branch matching', function (): void {

@@ -9,7 +9,7 @@ use App\DataTransferObjects\SentinelConfig\TriggersConfig;
 /**
  * Evaluates trigger rules to determine if a review should run.
  */
-final readonly class TriggerRuleEvaluator
+final readonly class EvaluateTriggerRules
 {
     /**
      * Evaluate trigger rules and return whether review should proceed.
