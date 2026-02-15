@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings\Support;
+namespace App\Services\Briefings\Resolvers;
 
 use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Models\Finding;
@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * Fetches top critical and high-severity findings.
  */
-final readonly class CodeHealthCriticalFindingsFetcher
+final readonly class CodeHealthCriticalFindingsResolver
 {
     private const int LIMIT = 10;
 

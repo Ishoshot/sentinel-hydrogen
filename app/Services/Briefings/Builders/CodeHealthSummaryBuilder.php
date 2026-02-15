@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings\Support;
+namespace App\Services\Briefings\Builders;
 
 use App\Enums\Reviews\FindingCategory;
 use App\Enums\SentinelConfig\SentinelConfigSeverity;
@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * Aggregates findings into severity and category breakdowns.
  */
-final readonly class CodeHealthAggregator
+final readonly class CodeHealthSummaryBuilder
 {
     /**
      * Aggregate findings by severity and category.

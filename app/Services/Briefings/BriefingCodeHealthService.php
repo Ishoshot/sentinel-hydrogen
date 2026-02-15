@@ -6,8 +6,8 @@ namespace App\Services\Briefings;
 
 use App\Models\Finding;
 use App\Models\Run;
-use App\Services\Briefings\Support\CodeHealthAggregator;
-use App\Services\Briefings\Support\CodeHealthCriticalFindingsFetcher;
+use App\Services\Briefings\Builders\CodeHealthSummaryBuilder;
+use App\Services\Briefings\Resolvers\CodeHealthCriticalFindingsResolver;
 use App\Services\Briefings\ValueObjects\BriefingDateRange;
 
 /**
@@ -19,8 +19,8 @@ final readonly class BriefingCodeHealthService
      * Create a new service instance.
      */
     public function __construct(
-        private CodeHealthAggregator $aggregator = new CodeHealthAggregator,
-        private CodeHealthCriticalFindingsFetcher $criticalFindingsFetcher = new CodeHealthCriticalFindingsFetcher,
+        private CodeHealthSummaryBuilder $summaryBuilder = new CodeHealthSummaryBuilder,
+        private CodeHealthCriticalFindingsResolver $criticalFindingsResolver = new CodeHealthCriticalFindingsResolver,
     ) {}
 
     /**
@@ -55,8 +55,8 @@ final readonly class BriefingCodeHealthService
             $findingsQuery->whereIn('run_id', $runIdsSubquery);
         }
 
-        $aggregation = $this->aggregator->aggregate($findingsQuery);
-        $criticalFindings = $this->criticalFindingsFetcher->fetch($findingsQuery);
+        $aggregation = $this->summaryBuilder->aggregate($findingsQuery);
+        $criticalFindings = $this->criticalFindingsResolver->fetch($findingsQuery);
 
         return [
             'code_health' => [
