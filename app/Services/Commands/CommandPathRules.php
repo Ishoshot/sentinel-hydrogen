@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Commands;
 
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
 use App\Services\Context\SensitiveDataRedactor;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
 use App\Support\PathRuleMatcher;
 
 /**

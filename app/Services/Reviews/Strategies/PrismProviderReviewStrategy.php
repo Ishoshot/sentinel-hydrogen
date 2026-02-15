@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews\Strategies;
 
-use App\DataTransferObjects\SentinelConfig\ProviderConfig;
 use App\Enums\AI\AiProvider;
 use App\Exceptions\NoProviderKeyException;
 use App\Models\ProviderKey;
@@ -19,6 +18,7 @@ use App\Services\Reviews\Parsers\PrismReviewResponseParser;
 use App\Services\Reviews\Resolvers\PrismReviewProviderResolver;
 use App\Services\Reviews\ValueObjects\PullRequestMetrics;
 use App\Services\Reviews\ValueObjects\ReviewResult;
+use App\Services\SentinelConfig\ValueObjects\ProviderConfig;
 
 final readonly class PrismProviderReviewStrategy
 {

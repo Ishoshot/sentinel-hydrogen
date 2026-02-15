@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Commands;
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
-use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
 use App\Services\Context\SensitiveDataRedactor;
 use App\Services\SentinelConfig\ParseSentinelConfig;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
+use App\Services\SentinelConfig\ValueObjects\SentinelConfig;
 use App\Support\PathRuleMatcher;
 use Illuminate\Support\Facades\Log;
 
@@ -104,11 +104,11 @@ final readonly class CommandPathRulesResolver
 
         $parseResult = $this->configParser->tryParse($fetchResult['content']);
 
-        if (! $parseResult['success'] || $parseResult['config'] === null) {
+        if (! $parseResult['success']) {
             Log::warning('Command path config parse error', [
                 'repository' => $repository->full_name,
                 'branch' => $branch,
-                'error' => $parseResult['error'] ?? 'Unknown error',
+                'error' => $parseResult['error'],
             ]);
 
             return null;

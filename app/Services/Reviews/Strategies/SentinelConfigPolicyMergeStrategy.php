@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Reviews\Strategies;
 
-use App\DataTransferObjects\SentinelConfig\AnnotationsConfig;
-use App\DataTransferObjects\SentinelConfig\PathsConfig;
-use App\DataTransferObjects\SentinelConfig\ProviderConfig;
-use App\DataTransferObjects\SentinelConfig\ReviewConfig;
+use App\Services\SentinelConfig\ValueObjects\AnnotationsConfig;
+use App\Services\SentinelConfig\ValueObjects\PathsConfig;
+use App\Services\SentinelConfig\ValueObjects\ProviderConfig;
+use App\Services\SentinelConfig\ValueObjects\ReviewConfig;
 
 /**
  * Merges SentinelConfig DTOs into a review policy array.

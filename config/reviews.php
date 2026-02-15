@@ -8,7 +8,7 @@ declare(strict_types=1);
  * These defaults match SentinelConfig::default() / ReviewConfig::default().
  * When a repository has a .sentinel/config.yaml, values are merged on top.
  *
- * @see App\DataTransferObjects\SentinelConfig\ReviewConfig
+ * @see App\Services\SentinelConfig\ValueObjects\ReviewConfig
  * @see App\Services\Reviews\ReviewPolicyResolver
  */
 return [
