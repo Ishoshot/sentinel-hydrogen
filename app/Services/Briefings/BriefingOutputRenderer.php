@@ -2,15 +2,53 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Briefings\Strategies;
+namespace App\Services\Briefings;
 
 use App\Models\BriefingGeneration;
+use App\Services\Briefings\ValueObjects\BriefingOutputFormats;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Spatie\Browsershot\Browsershot;
 
-final class BriefingOutputRenderStrategy
+final class BriefingOutputRenderer
 {
+    /**
+     * Resolve output format configuration for the given generation.
+     */
+    public function resolveFormats(BriefingGeneration $generation): BriefingOutputFormats
+    {
+        $briefing = $generation->briefing;
+        $formats = is_array($briefing?->output_formats)
+            ? array_values($briefing->output_formats)
+            : null;
+
+        $resolvedFormats = BriefingOutputFormats::fromArray($formats);
+
+        if ($resolvedFormats->isEmpty()) {
+            throw new RuntimeException('Briefing output formats are not configured.');
+        }
+
+        return $resolvedFormats;
+    }
+
+    /**
+     * Resolve the configured storage disk.
+     */
+    public function storageDisk(): string
+    {
+        return (string) config('briefings.storage.disk', 'r2');
+    }
+
+    /**
+     * Resolve the storage path for a generated briefing artifact.
+     */
+    public function resolveStoragePath(BriefingGeneration $generation, string $filename): string
+    {
+        $basePath = (string) config('briefings.storage.path', 'briefings');
+
+        return sprintf('%s/%d/%d/%s', $basePath, $generation->workspace_id, $generation->id, $filename);
+    }
+
     /**
      * Render the HTML briefing output.
      */
