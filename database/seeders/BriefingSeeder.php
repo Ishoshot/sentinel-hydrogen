@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\DataTransferObjects\Briefings\BriefingPropertyFormat;
-use App\DataTransferObjects\Briefings\BriefingSchema;
-use App\DataTransferObjects\Briefings\BriefingSchemaBuilder;
-use App\DataTransferObjects\Briefings\BriefingSchemaProperty;
 use App\Enums\Briefings\BriefingOutputFormat;
+use App\Enums\Briefings\BriefingPropertyFormat;
 use App\Models\Briefing;
+use App\Services\Briefings\Builders\BriefingSchemaBuilder;
+use App\Services\Briefings\ValueObjects\BriefingSchema;
+use App\Services\Briefings\ValueObjects\BriefingSchemaProperty;
 use Illuminate\Database\Seeder;
 
 final class BriefingSeeder extends Seeder

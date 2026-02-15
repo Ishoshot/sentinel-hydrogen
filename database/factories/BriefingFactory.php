@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\DataTransferObjects\Briefings\BriefingPropertyFormat;
-use App\DataTransferObjects\Briefings\BriefingSchema;
-use App\DataTransferObjects\Briefings\BriefingSchemaProperty;
+use App\Enums\Briefings\BriefingPropertyFormat;
 use App\Models\Briefing;
 use App\Models\Workspace;
+use App\Services\Briefings\ValueObjects\BriefingSchema;
+use App\Services\Briefings\ValueObjects\BriefingSchemaProperty;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
