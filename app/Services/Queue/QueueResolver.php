@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Queue;
 
+use App\Enums\Queue\Queue;
 use App\Services\Queue\Contracts\QueueRule;
-use App\Services\Queue\Strategies\QueueRuleEvaluationStrategy;
 use App\Services\Queue\ValueObjects\JobContext;
 use App\Services\Queue\ValueObjects\QueueResolution;
+use App\Services\Queue\ValueObjects\QueueRuleEvaluationOutcome;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Central service for determining which queue a job should be dispatched to.
@@ -25,9 +27,9 @@ final class QueueResolver
     private array $rules = [];
 
     /**
-     * Applies queue rules and returns accumulated scoring context.
+     * Indicates whether debug logs should be emitted when resolving queues.
      */
-    private readonly QueueRuleEvaluationStrategy $ruleEvaluationRunner;
+    private bool $debugMode = false;
 
     /**
      * @param  iterable<QueueRule>  $rules
@@ -36,12 +38,7 @@ final class QueueResolver
         iterable $rules = [],
         /** Queue scoring strategy for tie-breaking and default selection. */
         private readonly QueueScorer $scorer = new QueueScorer(),
-        /** Logger used to emit queue resolution traces. */
-        private readonly ResolutionLogger $logger = new ResolutionLogger(),
-        ?QueueRuleEvaluationStrategy $ruleEvaluationRunner = null,
     ) {
-        $this->ruleEvaluationRunner = $ruleEvaluationRunner ?? new QueueRuleEvaluationStrategy($this->scorer);
-
         foreach ($rules as $rule) {
             $this->addRule($rule);
         }
@@ -63,7 +60,7 @@ final class QueueResolver
      */
     public function enableDebugMode(): self
     {
-        $this->logger->enableDebugMode();
+        $this->debugMode = true;
 
         return $this;
     }
@@ -73,10 +70,10 @@ final class QueueResolver
      */
     public function resolve(JobContext $context): QueueResolution
     {
-        $evaluation = $this->ruleEvaluationRunner->evaluate($this->rules, $context);
+        $evaluation = $this->evaluateRules($context);
 
-        if ($evaluation->wasForced() && $evaluation->forcedQueue instanceof \App\Enums\Queue\Queue && $evaluation->forcedBy !== null) {
-            return $this->logger->buildResolution(
+        if ($evaluation->wasForced() && $evaluation->forcedQueue instanceof Queue && $evaluation->forcedBy !== null) {
+            return $this->buildResolution(
                 queue: $evaluation->forcedQueue,
                 trace: $evaluation->trace,
                 context: $context,
@@ -92,7 +89,7 @@ final class QueueResolver
 
         $selectedQueue = $this->scorer->selectByScore($scores);
 
-        return $this->logger->buildResolution(
+        return $this->buildResolution(
             queue: $selectedQueue,
             trace: $evaluation->trace,
             context: $context,
@@ -128,5 +125,88 @@ final class QueueResolver
     private function sortRules(): void
     {
         usort($this->rules, fn (QueueRule $a, QueueRule $b): int => $a->priority() <=> $b->priority());
+    }
+
+    private function evaluateRules(JobContext $context): QueueRuleEvaluationOutcome
+    {
+        $trace = [];
+        $scores = $this->scorer->initializeScores();
+
+        foreach ($this->rules as $rule) {
+            if (! $rule->applies($context)) {
+                $trace[] = [
+                    'rule' => $rule->name(),
+                    'applied' => false,
+                    'reason' => 'Rule does not apply to context',
+                ];
+
+                continue;
+            }
+
+            $result = $rule->evaluate($context);
+
+            $trace[] = [
+                'rule' => $rule->name(),
+                'applied' => true,
+                'result' => $result->toArray(),
+            ];
+
+            if ($result->isForced() && $result->forcedQueue !== null) {
+                return new QueueRuleEvaluationOutcome(
+                    forcedQueue: $result->forcedQueue,
+                    forcedBy: $rule->name(),
+                    forcedReason: $result->reason,
+                    trace: $trace,
+                    scores: $scores,
+                );
+            }
+
+            if ($result->hasEffect() && $result->targetQueue !== null) {
+                $scores[$result->targetQueue->value] += $result->scoreAdjustment;
+            }
+        }
+
+        return new QueueRuleEvaluationOutcome(
+            forcedQueue: null,
+            forcedBy: null,
+            forcedReason: null,
+            trace: $trace,
+            scores: $scores,
+        );
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $trace
+     * @param  array<string, int>|null  $scores
+     */
+    private function buildResolution(
+        Queue $queue,
+        array $trace,
+        JobContext $context,
+        ?string $forcedBy,
+        string $reason,
+        ?array $scores = null,
+    ): QueueResolution {
+        $resolution = new QueueResolution(
+            queue: $queue,
+            forcedBy: $forcedBy,
+            reason: $reason,
+            trace: $trace,
+            scores: $scores,
+        );
+
+        if ($this->debugMode) {
+            Log::debug('Queue resolution', [
+                'job_class' => $context->jobClass,
+                'workspace_id' => $context->workspaceId,
+                'tier' => $context->tier,
+                'resolved_queue' => $queue->value,
+                'forced_by' => $forcedBy,
+                'reason' => $reason,
+                'trace' => $trace,
+            ]);
+        }
+
+        return $resolution;
     }
 }
