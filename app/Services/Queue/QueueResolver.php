@@ -127,6 +127,9 @@ final class QueueResolver
         usort($this->rules, fn (QueueRule $a, QueueRule $b): int => $a->priority() <=> $b->priority());
     }
 
+    /**
+     * Evaluate all registered rules against the given context.
+     */
     private function evaluateRules(JobContext $context): QueueRuleEvaluationOutcome
     {
         $trace = [];
@@ -176,6 +179,8 @@ final class QueueResolver
     }
 
     /**
+     * Build a queue resolution from the evaluation outcome.
+     *
      * @param  array<int, array<string, mixed>>  $trace
      * @param  array<string, int>|null  $scores
      */
