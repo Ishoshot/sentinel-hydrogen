@@ -9,9 +9,9 @@ use GrahamCampbell\GitHub\GitHubManager;
 final readonly class GitHubInstallationRepositoriesClient
 {
     /**
-     * Create a new paginator instance.
+     * Create a new installation repositories client instance.
      */
-    public function __construct(private GitHubApiRequestClient $requestExecutor) {}
+    public function __construct(private GitHubApiOperationClient $operationClient) {}
 
     /**
      * @return array<int, array<string, mixed>>
@@ -24,7 +24,7 @@ final readonly class GitHubInstallationRepositoriesClient
 
         do {
             /** @var array{repositories?: array<int, array<string, mixed>>} $response */
-            $response = $this->requestExecutor->runInstallation(
+            $response = $this->operationClient->runWithInstallationAuthentication(
                 $installationId,
                 sprintf('listRepositories(installation=%d, page=%d)', $installationId, $page),
                 fn (GitHubManager $github): array => $github->connection()->apps()->listRepositories($page),

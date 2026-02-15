@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Services\GitHub;
 
 use App\Models\Installation;
-use App\Services\GitHub\Clients\GitHubApiRequestClient;
-use App\Services\GitHub\Clients\GitHubIssueCommentClient;
-use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Services\GitHub\Clients\GitHubApiOperationClient;
 use App\Services\GitHub\Clients\GitHubAppOperationClient;
 use App\Services\GitHub\Clients\GitHubInstallationRepositoriesClient;
+use App\Services\GitHub\Clients\GitHubIssueCommentClient;
 use App\Services\GitHub\Clients\GitHubPullRequestCommitClient;
 use App\Services\GitHub\Clients\GitHubRepositoryContentClient;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use GrahamCampbell\GitHub\GitHubManager;
 
 final readonly class GitHubApiService implements GitHubApiServiceContract
@@ -21,7 +21,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function __construct(
         private GitHubAppOperationClient $appOperationInvoker,
-        private GitHubApiRequestClient $requestExecutor,
+        private GitHubApiOperationClient $operationClient,
         private GitHubInstallationRepositoriesClient $repositoriesPaginator,
         private GitHubRepositoryContentClient $repositoryContentOperations,
         private GitHubPullRequestCommitClient $pullRequestCommitOperations,
@@ -189,7 +189,7 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
      */
     public function getClientForInstallation(Installation $installation): GitHubManager
     {
-        return $this->requestExecutor->getClientForInstallation($installation);
+        return $this->operationClient->authenticateInstallation($installation->installation_id);
     }
 
     /**

@@ -11,11 +11,11 @@ use GrahamCampbell\GitHub\GitHubManager;
 final readonly class GitHubAppOperationClient
 {
     /**
-     * Create a new app operation invoker instance.
+     * Create a new app operation client instance.
      */
     public function __construct(
-        private GitHubApiRequestClient $requestExecutor,
-        private GitHubApiResponsePolicy $responseGuard,
+        private GitHubApiOperationClient $operationClient,
+        private GitHubApiResponsePolicy $responsePolicy,
     ) {}
 
     /**
@@ -24,6 +24,6 @@ final readonly class GitHubAppOperationClient
      */
     public function map(string $operationName, Closure $operation): array
     {
-        return $this->responseGuard->map($this->requestExecutor->runApp($operationName, $operation));
+        return $this->responsePolicy->map($this->operationClient->runWithAppAuthentication($operationName, $operation));
     }
 }

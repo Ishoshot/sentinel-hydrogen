@@ -11,11 +11,11 @@ use GrahamCampbell\GitHub\GitHubManager;
 final readonly class GitHubInstallationOperationClient
 {
     /**
-     * Create a new installation operation invoker instance.
+     * Create a new installation operation client instance.
      */
     public function __construct(
-        private GitHubApiRequestClient $requestExecutor,
-        private GitHubApiResponsePolicy $responseGuard,
+        private GitHubApiOperationClient $operationClient,
+        private GitHubApiResponsePolicy $responsePolicy,
     ) {}
 
     /**
@@ -24,7 +24,7 @@ final readonly class GitHubInstallationOperationClient
      */
     public function map(int $installationId, string $operationName, Closure $operation): array
     {
-        return $this->responseGuard->map($this->requestExecutor->runInstallation(
+        return $this->responsePolicy->map($this->operationClient->runWithInstallationAuthentication(
             $installationId,
             $operationName,
             $operation,
@@ -37,7 +37,7 @@ final readonly class GitHubInstallationOperationClient
      */
     public function mapOrString(int $installationId, string $operationName, Closure $operation): array|string
     {
-        return $this->responseGuard->mapOrString($this->requestExecutor->runInstallation(
+        return $this->responsePolicy->mapOrString($this->operationClient->runWithInstallationAuthentication(
             $installationId,
             $operationName,
             $operation,
@@ -50,7 +50,7 @@ final readonly class GitHubInstallationOperationClient
      */
     public function listOfMaps(int $installationId, string $operationName, Closure $operation): array
     {
-        return $this->responseGuard->listOfMaps($this->requestExecutor->runInstallation(
+        return $this->responsePolicy->listOfMaps($this->operationClient->runWithInstallationAuthentication(
             $installationId,
             $operationName,
             $operation,
@@ -63,7 +63,7 @@ final readonly class GitHubInstallationOperationClient
      */
     public function repositoryTree(int $installationId, string $operationName, Closure $operation): array
     {
-        return $this->responseGuard->repositoryTree($this->requestExecutor->runInstallation(
+        return $this->responsePolicy->repositoryTree($this->operationClient->runWithInstallationAuthentication(
             $installationId,
             $operationName,
             $operation,
