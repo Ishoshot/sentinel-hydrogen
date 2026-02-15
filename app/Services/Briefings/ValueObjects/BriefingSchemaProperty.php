@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\DataTransferObjects\Briefings;
+namespace App\Services\Briefings\ValueObjects;
+
+use App\Enums\Briefings\BriefingPropertyFormat;
+use App\Enums\Briefings\BriefingPropertyType;
 
 /**
  * Represents a single property definition within a briefing parameter schema.

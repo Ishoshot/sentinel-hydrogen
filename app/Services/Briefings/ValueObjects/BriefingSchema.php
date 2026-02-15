@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\DataTransferObjects\Briefings;
+namespace App\Services\Briefings\ValueObjects;
+
+use App\Services\Briefings\Builders\BriefingSchemaBuilder;
 
 /**
  * Represents a complete briefing parameter schema.

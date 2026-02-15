@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\DataTransferObjects\Briefings;
+namespace App\Services\Briefings\Builders;
+
+use App\Enums\Briefings\BriefingPropertyFormat;
+use App\Services\Briefings\ValueObjects\BriefingSchema;
+use App\Services\Briefings\ValueObjects\BriefingSchemaProperty;
 
 /**
  * Fluent builder for constructing BriefingSchema instances.
