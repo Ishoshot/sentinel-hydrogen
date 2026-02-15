@@ -7,7 +7,7 @@ namespace App\Actions\Reviews\Guards;
 use App\Actions\Reviews\ResolvePullRequestSentinelConfig;
 use App\Actions\Reviews\ValueObjects\PullRequestWebhookPreflightResult;
 use App\Models\Repository;
-use App\Services\SentinelConfig\TriggerRuleEvaluator;
+use App\Services\SentinelConfig\EvaluateTriggerRules;
 use Illuminate\Support\Facades\Log;
 
 final readonly class PullRequestWebhookPreflightGuard
@@ -17,7 +17,7 @@ final readonly class PullRequestWebhookPreflightGuard
      */
     public function __construct(
         private ResolvePullRequestSentinelConfig $resolvePullRequestSentinelConfig,
-        private TriggerRuleEvaluator $triggerEvaluator,
+        private EvaluateTriggerRules $triggerEvaluator,
     ) {}
 
     /**

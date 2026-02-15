@@ -12,7 +12,7 @@ use App\Models\Installation;
 use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\Run;
-use App\Services\Reviews\FormatRunAnnotations;
+use App\Services\Reviews\Strategies\EligibleFindingSelectionStrategy;
 
 beforeEach(function (): void {
     Provider::query()->firstOrCreate(
@@ -118,7 +118,7 @@ it('filters findings below severity threshold', function (): void {
         'line_start' => 10,
     ]);
 
-    $formatter = app(FormatRunAnnotations::class);
+    $selector = app(EligibleFindingSelectionStrategy::class);
     $run->loadMissing('findings');
     $config = [
         'style' => 'review',
@@ -126,7 +126,7 @@ it('filters findings below severity threshold', function (): void {
         'grouped' => true,
         'include_suggestions' => true,
     ];
-    $eligibleFindings = $formatter->filterEligibleFindings($run, $config);
+    $eligibleFindings = $selector->select($run, $config);
 
     // Only critical findings should be eligible (none in this case)
     expect($eligibleFindings)->toHaveCount(0);
@@ -162,7 +162,7 @@ it('respects max inline comments limit in filtering', function (): void {
         ['severity' => 'info', 'file_path' => 'src/E.php', 'line_start' => 5],
     )->create();
 
-    $formatter = app(FormatRunAnnotations::class);
+    $selector = app(EligibleFindingSelectionStrategy::class);
     $run->loadMissing('findings');
     $config = [
         'style' => 'review',
@@ -170,7 +170,7 @@ it('respects max inline comments limit in filtering', function (): void {
         'grouped' => true,
         'include_suggestions' => true,
     ];
-    $eligibleFindings = $formatter->filterEligibleFindings($run, $config);
+    $eligibleFindings = $selector->select($run, $config);
 
     // Should be limited to 2 findings (highest severity first)
     expect($eligibleFindings)->toHaveCount(2);
@@ -214,7 +214,7 @@ it('excludes findings without file path from filtering', function (): void {
         'line_start' => 15,
     ]);
 
-    $formatter = app(FormatRunAnnotations::class);
+    $selector = app(EligibleFindingSelectionStrategy::class);
     $run->loadMissing('findings');
     $config = [
         'style' => 'review',
@@ -222,7 +222,7 @@ it('excludes findings without file path from filtering', function (): void {
         'grouped' => true,
         'include_suggestions' => true,
     ];
-    $eligibleFindings = $formatter->filterEligibleFindings($run, $config);
+    $eligibleFindings = $selector->select($run, $config);
 
     // Only the finding with file_path should be eligible
     expect($eligibleFindings)->toHaveCount(1)
@@ -263,7 +263,7 @@ it('excludes findings without line start from filtering', function (): void {
         'line_start' => 20,
     ]);
 
-    $formatter = app(FormatRunAnnotations::class);
+    $selector = app(EligibleFindingSelectionStrategy::class);
     $run->loadMissing('findings');
     $config = [
         'style' => 'review',
@@ -271,7 +271,7 @@ it('excludes findings without line start from filtering', function (): void {
         'grouped' => true,
         'include_suggestions' => true,
     ];
-    $eligibleFindings = $formatter->filterEligibleFindings($run, $config);
+    $eligibleFindings = $selector->select($run, $config);
 
     expect($eligibleFindings)->toHaveCount(1)
         ->and($eligibleFindings->first()->file_path)->toBe('src/WithLine.php');

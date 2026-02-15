@@ -7,7 +7,7 @@ namespace App\Actions\Reviews;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\DataTransferObjects\SentinelConfig\SentinelConfig;
 use App\Models\Repository;
-use App\Services\SentinelConfig\Contracts\SentinelConfigParser;
+use App\Services\SentinelConfig\ParseSentinelConfig;
 use Illuminate\Support\Facades\Log;
 
 final readonly class ResolvePullRequestSentinelConfig
@@ -17,7 +17,7 @@ final readonly class ResolvePullRequestSentinelConfig
      */
     public function __construct(
         private FetchesSentinelConfig $fetchConfig,
-        private SentinelConfigParser $configParser,
+        private ParseSentinelConfig $configParser,
     ) {}
 
     /**
