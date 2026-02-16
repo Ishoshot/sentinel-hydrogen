@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
-use App\Actions\Admin\Dashboard\FetchAdminRunsTrend;
+use App\Actions\Admin\Dashboard\FetchAdminPipelineThroughputTrend;
 use App\Actions\Admin\Dashboard\ValueObjects\AdminDashboardFilters;
 use App\Filament\Widgets\Concerns\HasAdminLineChartStyling;
 use App\Filament\Widgets\Concerns\HasChartDataPresence;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
-final class RunsTrendChart extends ChartWidget
+final class PipelineThroughputTrendChart extends ChartWidget
 {
     use HasAdminLineChartStyling;
     use HasChartDataPresence;
     use InteractsWithPageFilters;
 
-    protected ?string $heading = 'Run Volume';
+    protected ?string $heading = 'Pipeline Throughput';
 
     protected int|string|array $columnSpan = [
         'md' => 2,
@@ -27,10 +27,10 @@ final class RunsTrendChart extends ChartWidget
     public function getDescription(): ?string
     {
         if (! $this->chartHasVisibleData()) {
-            return 'No runs found for the selected filters.';
+            return 'No pipeline activity found for the selected period.';
         }
 
-        return 'Daily run count for the selected date range.';
+        return 'Daily throughput across runs, commands, and briefings.';
     }
 
     protected function getData(): array
@@ -38,17 +38,12 @@ final class RunsTrendChart extends ChartWidget
         $filters = AdminDashboardFilters::fromArray($this->pageFilters ?? []);
 
         return $this->collapseLineChartWhenEmpty(
-            app(FetchAdminRunsTrend::class)->handle($filters)
+            app(FetchAdminPipelineThroughputTrend::class)->handle($filters)
         );
     }
 
     protected function getType(): string
     {
         return 'line';
-    }
-
-    protected function lineChartLegendVisible(): bool
-    {
-        return false;
     }
 }

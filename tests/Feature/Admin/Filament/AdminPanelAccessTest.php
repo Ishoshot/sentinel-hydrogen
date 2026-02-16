@@ -27,7 +27,23 @@ it('allows active admins to access the admin dashboard', function (): void {
 
     $this->get('/admin')
         ->assertSuccessful()
-        ->assertSee('Dashboard');
+        ->assertSee('Dashboard')
+        ->assertSee('Overview')
+        ->assertSee('Reliability')
+        ->assertSee('Filter Dashboard');
+});
+
+it('renders the reliability dashboard tab page', function (): void {
+    $admin = Admin::factory()->create();
+
+    actingAs($admin, 'admin_web');
+
+    $this->get('/admin/reliability')
+        ->assertSuccessful()
+        ->assertSee('Dashboard Reliability')
+        ->assertSee('Overview')
+        ->assertSee('Reliability')
+        ->assertSee('Filter Dashboard');
 });
 
 it('renders core filament resource pages for authenticated admins', function (string $path): void {

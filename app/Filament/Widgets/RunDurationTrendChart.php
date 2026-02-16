@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
-use App\Actions\Admin\Dashboard\FetchAdminRunsTrend;
+use App\Actions\Admin\Dashboard\FetchAdminRunDurationTrend;
 use App\Actions\Admin\Dashboard\ValueObjects\AdminDashboardFilters;
 use App\Filament\Widgets\Concerns\HasAdminLineChartStyling;
 use App\Filament\Widgets\Concerns\HasChartDataPresence;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
-final class RunsTrendChart extends ChartWidget
+final class RunDurationTrendChart extends ChartWidget
 {
     use HasAdminLineChartStyling;
     use HasChartDataPresence;
     use InteractsWithPageFilters;
 
-    protected ?string $heading = 'Run Volume';
+    protected ?string $heading = 'Run Duration Trend';
 
     protected int|string|array $columnSpan = [
         'md' => 2,
@@ -27,10 +27,10 @@ final class RunsTrendChart extends ChartWidget
     public function getDescription(): ?string
     {
         if (! $this->chartHasVisibleData()) {
-            return 'No runs found for the selected filters.';
+            return 'No run duration data available for these filters.';
         }
 
-        return 'Daily run count for the selected date range.';
+        return 'Tracks average and slowest run duration per day.';
     }
 
     protected function getData(): array
@@ -38,17 +38,12 @@ final class RunsTrendChart extends ChartWidget
         $filters = AdminDashboardFilters::fromArray($this->pageFilters ?? []);
 
         return $this->collapseLineChartWhenEmpty(
-            app(FetchAdminRunsTrend::class)->handle($filters)
+            app(FetchAdminRunDurationTrend::class)->handle($filters)
         );
     }
 
     protected function getType(): string
     {
         return 'line';
-    }
-
-    protected function lineChartLegendVisible(): bool
-    {
-        return false;
     }
 }
