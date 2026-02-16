@@ -10,5 +10,6 @@ arch('http helpers')
     ->expect(['auth', 'request'])
     ->toOnlyBeUsedIn([
         'App\Http',
+        'App\Filament',
         'App\Rules',
     ]);

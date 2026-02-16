@@ -48,9 +48,10 @@ trait HasChartDataPresence
      */
     protected function collapseLineChartWhenEmpty(array $chartData): array
     {
-        $datasets = data_get($chartData, 'datasets', []);
+        /** @var array<int, array{data?: array<int, int|float>}> $datasets */
+        $datasets = $chartData['datasets'] ?? [];
 
-        if (! is_array($datasets) || $datasets === []) {
+        if ($datasets === []) {
             return [
                 'datasets' => [],
                 'labels' => [],
@@ -58,21 +59,16 @@ trait HasChartDataPresence
         }
 
         foreach ($datasets as $dataset) {
-            if (! is_array($dataset)) {
-                continue;
-            }
-
-            $values = data_get($dataset, 'data', []);
-
-            if (! is_array($values)) {
-                continue;
-            }
+            $values = $dataset['data'] ?? [];
 
             foreach ($values as $value) {
-                if (is_numeric($value) && (float) $value > 0) {
+                if ((float) $value > 0) {
+                    /** @var array<int, string> $labels */
+                    $labels = $chartData['labels'] ?? [];
+
                     return [
                         'datasets' => $datasets,
-                        'labels' => is_array(data_get($chartData, 'labels', [])) ? data_get($chartData, 'labels', []) : [],
+                        'labels' => $labels,
                     ];
                 }
             }

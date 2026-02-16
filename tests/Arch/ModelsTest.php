@@ -21,6 +21,7 @@ arch('models')
         'App\Providers',
         'App\Rules',
         'App\Services',
+        'App\Filament',
         'Database\Factories',
         'Database\Seeders',
     ]);

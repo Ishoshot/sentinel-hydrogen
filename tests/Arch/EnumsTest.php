@@ -23,6 +23,7 @@ arch('enums are used in appropriate locations')
         'App\Providers',
         'App\Services',
         'App\Support',
+        'App\Filament',
         'Database\Factories',
         'Database\Seeders',
     ]);
