@@ -27,7 +27,6 @@ final readonly class PlanPeriodUsageResolver
                 RunStatus::Completed,
                 RunStatus::Failed,
             ])
-            ->lockForUpdate()
             ->count();
     }
 
@@ -45,7 +44,6 @@ final readonly class PlanPeriodUsageResolver
                 CommandRunStatus::Completed,
                 CommandRunStatus::Failed,
             ])
-            ->lockForUpdate()
             ->count();
     }
 }

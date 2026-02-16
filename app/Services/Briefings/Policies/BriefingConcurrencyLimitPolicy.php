@@ -21,14 +21,15 @@ final class BriefingConcurrencyLimitPolicy
         $limit = (int) config('briefings.limits.max_concurrent_generations', 3);
 
         return DB::transaction(function () use ($workspace, $limit): BriefingLimitResult {
-            $pendingCount = BriefingGeneration::query()
+            $pendingGenerations = BriefingGeneration::query()
                 ->where('workspace_id', $workspace->id)
                 ->whereIn('status', [
                     BriefingGenerationStatus::Pending,
                     BriefingGenerationStatus::Processing,
                 ])
                 ->lockForUpdate()
-                ->count();
+                ->get(['id']);
+            $pendingCount = $pendingGenerations->count();
 
             if ($pendingCount >= $limit) {
                 $message = sprintf(
