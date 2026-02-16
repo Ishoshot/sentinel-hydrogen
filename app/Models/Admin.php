@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Database\Factories\AdminFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -13,7 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
 /**
  * Admin user for the admin dashboard.
  */
-final class Admin extends Authenticatable
+final class Admin extends Authenticatable implements FilamentUser
 {
     use HasApiTokens;
 
@@ -39,6 +41,18 @@ final class Admin extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    /**
+     * Determine if the admin can access a Filament panel.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        if ($panel->getId() !== 'admin') {
+            return false;
+        }
+
+        return $this->is_active;
+    }
 
     /**
      * @return array<string, string>
