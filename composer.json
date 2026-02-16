@@ -23,6 +23,7 @@
         "resend/resend-laravel": "^1.1",
         "spatie/browsershot": "^5.2",
         "standard-webhooks/standard-webhooks": "^1.0",
+        "symfony/yaml": "^7.4",
         "yethee/tiktoken": "^1.1"
     },
     "require-dev": {

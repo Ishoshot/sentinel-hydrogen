@@ -414,14 +414,14 @@ Configure AI provider preferences for code reviews.
 provider:
     preferred: anthropic
     model: claude-sonnet-4-5-20250929
-    fallback: true
+    fallback: false
 ```
 
 | Property    | Type    | Default | Description                                                          |
 | ----------- | ------- | ------- | -------------------------------------------------------------------- |
 | `preferred` | string  | `null`  | Preferred AI provider: `anthropic`, `openai`                         |
 | `model`     | string  | `null`  | Specific model to use (e.g., `claude-sonnet-4-5-20250929`, `gpt-4o`) |
-| `fallback`  | boolean | `true`  | Whether to fallback to other providers on failure                    |
+| `fallback`  | boolean | `false` | Whether to fall back to other providers on failure                   |
 
 #### Provider Selection
 
@@ -429,7 +429,7 @@ When `preferred` is set, Sentinel will attempt to use that provider first. If `p
 
 #### Fallback Behavior
 
-When `fallback: true` (default):
+When `fallback: true`:
 
 -   If the preferred provider fails (no API key, rate limit, insufficient balance), Sentinel tries other configured providers
 -   Up to 3 fallback attempts are made before giving up
