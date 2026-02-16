@@ -71,6 +71,12 @@ final readonly class UpdatePromotion
                 $updateData['is_active'] = $data['is_active'];
             }
 
+            if (array_key_exists('eligible_plan_ids', $data)) {
+                $updateData['eligible_plan_ids'] = is_array($data['eligible_plan_ids']) && $data['eligible_plan_ids'] !== []
+                    ? array_values($data['eligible_plan_ids'])
+                    : null;
+            }
+
             $promotion->update($updateData);
 
             if ($syncToPolar && $this->polarDiscountService->isConfigured()) {

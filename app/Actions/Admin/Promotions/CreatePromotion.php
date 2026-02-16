@@ -44,6 +44,9 @@ final readonly class CreatePromotion
                 'max_uses' => $data['max_uses'] ?? null,
                 'is_active' => $data['is_active'] ?? true,
                 'times_used' => 0,
+                'eligible_plan_ids' => isset($data['eligible_plan_ids']) && is_array($data['eligible_plan_ids']) && $data['eligible_plan_ids'] !== []
+                    ? array_values($data['eligible_plan_ids'])
+                    : null,
             ]);
 
             if ($syncToPolar && $this->polarDiscountService->isConfigured()) {

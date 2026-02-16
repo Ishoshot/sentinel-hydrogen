@@ -57,7 +57,7 @@ final readonly class ChangeSubscription
 
         $targetPlan = $this->targetPlanResolver->resolve($targetTier);
 
-        $promotion = $this->promotionHandler->validateIfApplicable($direction, $promoCode);
+        $promotion = $this->promotionHandler->validateIfApplicable($direction, $promoCode, $targetPlan);
 
         return match ($direction) {
             TransitionDirection::Subscribe => $this->handleSubscribe($workspace, $targetPlan, $interval, $promotion, $actor),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Promotions;
 
+use App\Models\Plan;
 use App\Models\Promotion;
 use App\Services\Promotions\ValueObjects\PromotionValidationResult;
 
@@ -15,7 +16,7 @@ final readonly class PromotionValidator
     /**
      * Validate a promotion code.
      */
-    public function validate(string $code): PromotionValidationResult
+    public function validate(string $code, ?Plan $targetPlan = null): PromotionValidationResult
     {
         $promotion = Promotion::query()
             ->where('code', mb_strtoupper(mb_trim($code)))
@@ -31,6 +32,10 @@ final readonly class PromotionValidator
 
         if ($promotion->polar_discount_id === null) {
             return PromotionValidationResult::failure('This promotion code is not activated.');
+        }
+
+        if ($targetPlan instanceof Plan && ! $promotion->isEligibleForPlan($targetPlan)) {
+            return PromotionValidationResult::failure('This promotion code is not valid for the selected plan.');
         }
 
         return PromotionValidationResult::success($promotion);

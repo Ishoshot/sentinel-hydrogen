@@ -6,6 +6,7 @@ namespace App\Actions\Subscriptions\Handlers;
 
 use App\Actions\Subscriptions\RecordPromotionUsage;
 use App\Actions\Subscriptions\Support\TransitionDirection;
+use App\Models\Plan;
 use App\Models\Promotion;
 use App\Models\Subscription;
 use App\Models\Workspace;
@@ -32,13 +33,13 @@ final readonly class PromotionHandler
      *
      * @throws InvalidArgumentException if the promotion code is invalid
      */
-    public function validateIfApplicable(string $direction, ?string $promoCode): ?Promotion
+    public function validateIfApplicable(string $direction, ?string $promoCode, ?Plan $targetPlan = null): ?Promotion
     {
         if (! TransitionDirection::acceptsPromotion($direction) || ! is_string($promoCode) || $promoCode === '') {
             return null;
         }
 
-        $result = $this->promotionValidator->validate($promoCode);
+        $result = $this->promotionValidator->validate($promoCode, $targetPlan);
 
         if ($result->failed()) {
             throw new InvalidArgumentException($result->message ?? 'Invalid promotion code.');
