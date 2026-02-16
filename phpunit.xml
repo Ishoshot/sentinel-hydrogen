@@ -73,6 +73,75 @@
             <file>app/Providers/AppServiceProvider.php</file>
             <file>app/Providers/HorizonServiceProvider.php</file>
             <file>app/Providers/QueueServiceProvider.php</file>
+            <!-- Excluded: External API clients that make direct HTTP calls -->
+            <file>app/Services/Billing/Clients/PolarDiscountApiClient.php</file>
+            <file>app/Services/Billing/Clients/PolarWebhookVerificationClient.php</file>
+            <file>app/Services/Billing/PolarDiscountService.php</file>
+            <file>app/Services/CodeIndexing/EmbeddingService.php</file>
+            <file>app/Services/Semantic/AnalyzeSemantics.php</file>
+            <file>app/Actions/CodeIndexing/IndexRepositoryBatch.php</file>
+            <!-- Excluded: Boost framework integration classes -->
+            <file>app/Boost/Antigravity.php</file>
+            <file>app/Boost/Windsurf.php</file>
+            <!-- Excluded: GitHub API clients that make direct HTTP calls -->
+            <file>app/Services/GitHub/Clients/GitHubAppOperationClient.php</file>
+            <file>app/Services/GitHub/Clients/GitHubInstallationOperationClient.php</file>
+            <file>app/Services/GitHub/Clients/GitHubInstallationRepositoriesClient.php</file>
+            <file>app/Services/GitHub/Clients/GitHubIssueCommentClient.php</file>
+            <file>app/Services/GitHub/Clients/GitHubPullRequestCommitClient.php</file>
+            <file>app/Services/GitHub/Clients/GitHubRepositoryContentClient.php</file>
+            <file>app/Services/GitHub/Factories/GitHubJwtFactory.php</file>
+            <!-- Excluded: Review publishers that depend on GitHub API clients -->
+            <file>app/Services/Reviews/PublishRunAnnotations.php</file>
+            <file>app/Services/Reviews/Publishers/PublishCheckRunAnnotations.php</file>
+            <file>app/Services/Reviews/Publishers/PublishCommentAnnotations.php</file>
+            <file>app/Services/Reviews/Publishers/PublishReviewAnnotations.php</file>
+            <!-- Excluded: Context collectors that depend on GitHub API -->
+            <file>app/Services/Context/Collectors/FetchFileContent.php</file>
+            <file>app/Services/Context/Collectors/FetchGuidelineContent.php</file>
+            <file>app/Services/Context/Collectors/FetchRepositoryDocument.php</file>
+            <file>app/Services/Context/Collectors/Support/FetchSentinelConfigBranch.php</file>
+            <file>app/Services/Context/Collectors/Support/FetchImpactedFileContent.php</file>
+            <file>app/Services/Context/Collectors/Support/FetchLinkedIssue.php</file>
+            <file>app/Services/Context/Collectors/Support/FetchLinkedIssues.php</file>
+            <file>app/Services/Context/Collectors/Support/FetchImpactedFileBatch.php</file>
+            <!-- Excluded: Command tools that depend on GitHub API -->
+            <file>app/Services/Commands/Tools/FindSymbolTool.php</file>
+            <file>app/Services/Commands/Tools/GetFileStructureTool.php</file>
+            <file>app/Services/Commands/Tools/ListFilesTool.php</file>
+            <file>app/Services/Commands/Tools/ReadFileTool.php</file>
+            <file>app/Services/Commands/Tools/SearchCodeTool.php</file>
+            <file>app/Services/Commands/Tools/SearchPatternTool.php</file>
+            <file>app/Services/Commands/Tools/CodeIndexLookup.php</file>
+            <file>app/Services/Commands/CommandAgentService.php</file>
+            <!-- Excluded: Briefing narrative client that calls external AI -->
+            <file>app/Services/Briefings/Clients/BriefingNarrativeClient.php</file>
+            <!-- Excluded: Code indexing services that depend on external APIs -->
+            <file>app/Services/CodeIndexing/Clients/RepositoryTreeClient.php</file>
+            <file>app/Services/CodeIndexing/Strategies/SemanticCodeSearchStrategy.php</file>
+            <!-- Excluded: Token limit truncators with complex external dependencies -->
+            <file>app/Services/Context/Filters/Support/TokenLimitProgressiveTruncator.php</file>
+            <file>app/Services/Context/Filters/Support/TokenLimitProjectContextTruncator.php</file>
+            <file>app/Services/Context/Filters/Support/TokenLimitRepositoryContextTruncator.php</file>
+            <file>app/Services/Context/Filters/Support/TokenLimitReviewHistoryTruncator.php</file>
+            <file>app/Services/Context/Filters/Support/ProjectContextSanitizer.php</file>
+            <!-- Excluded: Code indexing classes that depend on vector DB / embedding APIs -->
+            <file>app/Actions/CodeIndexing/GenerateEmbeddingsForCodeIndexes.php</file>
+            <file>app/Jobs/CodeIndexing/GenerateCodeEmbeddingsJob.php</file>
+            <file>app/Services/CodeIndexing/CodeEmbeddingPersister.php</file>
+            <!-- Excluded: Slack delivery handler that depends on external Slack API -->
+            <file>app/Actions/Briefings/Handlers/SlackBriefingDeliveryHandler.php</file>
+            <!-- Excluded: Billing API client that makes direct HTTP calls to Polar -->
+            <file>app/Services/Billing/Clients/PolarApiClient.php</file>
+            <!-- Excluded: Slack clients that make direct HTTP calls -->
+            <file>app/Services/Slack/Clients/SlackChannelClient.php</file>
+            <file>app/Services/Slack/SlackService.php</file>
+            <!-- Excluded: Actions/services that depend on external GitHub API fetching -->
+            <file>app/Services/Commands/CommandPathRulesResolver.php</file>
+            <file>app/Actions/Reviews/Publishers/ManualReviewAcknowledgmentCommentPublisher.php</file>
+            <file>app/Actions/GitHub/PostAutoReviewDisabledComment.php</file>
+            <!-- Excluded: Semantic analysis that depends on external embedding service -->
+            <file>app/Services/Context/Collectors/Support/ImpactSemanticSymbolExtractor.php</file>
         </exclude>
     </source>
     <php>
