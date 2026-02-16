@@ -36,6 +36,8 @@ final class StorePromotionRequest extends FormRequest
             'valid_to' => ['nullable', 'date', 'after_or_equal:valid_from'],
             'max_uses' => ['nullable', 'integer', 'min:1'],
             'is_active' => ['boolean'],
+            'eligible_plan_ids' => ['nullable', 'array'],
+            'eligible_plan_ids.*' => ['integer', 'distinct:strict', 'exists:plans,id'],
             'sync_to_polar' => ['boolean'],
         ];
     }

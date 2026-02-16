@@ -36,6 +36,7 @@ final class PromotionResource extends JsonResource
             'is_active' => $this->is_active,
             'is_valid' => $this->isValid(),
             'polar_discount_id' => $this->polar_discount_id,
+            'eligible_plan_ids' => $this->eligible_plan_ids,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
