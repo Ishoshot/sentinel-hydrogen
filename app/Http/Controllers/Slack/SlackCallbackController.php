@@ -48,7 +48,7 @@ final class SlackCallbackController
         /** @var string $frontendUrl */
         $frontendUrl = config('app.frontend_url');
 
-        return redirect()->to($frontendUrl.'/workspaces')
+        return redirect()->to($frontendUrl.'/auth/error?message='.urlencode($message))
             ->with('error', $message);
     }
 }

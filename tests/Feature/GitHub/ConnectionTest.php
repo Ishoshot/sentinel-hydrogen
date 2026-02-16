@@ -288,3 +288,14 @@ it('redirects github callback to frontend integrations page', function (): void 
 
     $response->assertRedirect('https://frontend.test/acme-workspace/settings/integrations');
 });
+
+it('redirects cancelled github callback to frontend workspaces page', function (): void {
+    config(['app.frontend_url' => 'https://frontend.test']);
+
+    $response = $this->get(route('github.callback', [
+        'installation_id' => 123456,
+        'setup_action' => 'request',
+    ]));
+
+    $response->assertRedirect('https://frontend.test/auth/error?message=Installation+was+cancelled.');
+});

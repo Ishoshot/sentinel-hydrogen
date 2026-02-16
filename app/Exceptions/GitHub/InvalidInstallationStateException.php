@@ -33,7 +33,10 @@ final class InvalidInstallationStateException extends Exception
             ], 400);
         }
 
-        $redirectTo = $this->redirectUrl ?? '/workspaces';
+        /** @var string $frontendUrl */
+        $frontendUrl = config('app.frontend_url');
+
+        $redirectTo = $this->redirectUrl ?? $frontendUrl.'/auth/error?message='.urlencode($this->getMessage());
 
         return redirect()->to($redirectTo)
             ->with('error', $this->getMessage());

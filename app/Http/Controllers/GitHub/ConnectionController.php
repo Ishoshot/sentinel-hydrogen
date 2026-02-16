@@ -139,7 +139,10 @@ final class ConnectionController
      */
     private function redirectToError(string $message): RedirectResponse
     {
-        return redirect()->to('/workspaces')
+        /** @var string $frontendUrl */
+        $frontendUrl = config('app.frontend_url');
+
+        return redirect()->to($frontendUrl.'/auth/error?message='.urlencode($message))
             ->with('error', $message);
     }
 }

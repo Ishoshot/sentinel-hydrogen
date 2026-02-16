@@ -32,13 +32,15 @@ it('renders json response for api requests', function (): void {
 });
 
 it('renders redirect response for web requests', function (): void {
+    config(['app.frontend_url' => 'https://frontend.test']);
+
     $exception = new InvalidInstallationStateException('Test error');
     $request = Request::create('/test', 'GET');
 
     $response = $exception->render($request);
 
     expect($response->getStatusCode())->toBe(302)
-        ->and($response->getTargetUrl())->toContain('/workspaces');
+        ->and($response->getTargetUrl())->toBe('https://frontend.test/auth/error?message=Test+error');
 });
 
 it('renders redirect to custom url', function (): void {

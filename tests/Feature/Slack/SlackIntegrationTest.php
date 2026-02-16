@@ -153,7 +153,9 @@ it('rejects callback with invalid state', function (): void {
     ]));
 
     $response->assertRedirect();
-    expect($response->headers->get('Location'))->toContain('/workspaces');
+    expect($response->headers->get('Location'))
+        ->toContain('/auth/error?message=')
+        ->toContain('Invalid+or+expired+Slack+OAuth+state.');
 });
 
 it('rejects callback with expired state', function (): void {
@@ -171,7 +173,9 @@ it('rejects callback with expired state', function (): void {
     ]));
 
     $response->assertRedirect();
-    expect($response->headers->get('Location'))->toContain('/workspaces');
+    expect($response->headers->get('Location'))
+        ->toContain('/auth/error?message=')
+        ->toContain('Invalid+or+expired+Slack+OAuth+state.');
 });
 
 it('handles callback when user declines authorization', function (): void {
@@ -180,7 +184,9 @@ it('handles callback when user declines authorization', function (): void {
     ]));
 
     $response->assertRedirect();
-    expect($response->headers->get('Location'))->toContain('/workspaces');
+    expect($response->headers->get('Location'))
+        ->toContain('/auth/error?message=')
+        ->toContain('Slack+authorization+was+declined.');
 });
 
 it('lists channels for a connected integration', function (): void {

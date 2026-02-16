@@ -36,7 +36,7 @@ final class InvalidSlackOAuthStateException extends Exception
         /** @var string $frontendUrl */
         $frontendUrl = config('app.frontend_url');
 
-        $redirectTo = $this->redirectUrl ?? $frontendUrl.'/workspaces';
+        $redirectTo = $this->redirectUrl ?? $frontendUrl.'/auth/error?message='.urlencode($this->getMessage());
 
         return redirect()->to($redirectTo)
             ->with('error', $this->getMessage());
