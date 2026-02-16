@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\AiOptions;
 
 use App\Actions\AiOptions\ListProviderAiOptions;
 use App\Enums\AI\AiProvider;

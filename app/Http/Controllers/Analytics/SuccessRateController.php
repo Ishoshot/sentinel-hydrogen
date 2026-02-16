@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Api\Analytics;
+namespace App\Http\Controllers\Analytics;
 
 use App\Actions\Analytics\GetSuccessRate;
 use App\Http\Requests\Analytics\AnalyticsQueryRequest;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Notifications;
 
 use App\Actions\Notifications\MarkAllNotificationsAsRead;
 use App\Actions\Notifications\MarkNotificationAsRead;

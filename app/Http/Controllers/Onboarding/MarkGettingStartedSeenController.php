@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Onboarding;
 
 use App\Actions\Users\MarkGettingStartedAsSeen;
 use Illuminate\Http\JsonResponse;

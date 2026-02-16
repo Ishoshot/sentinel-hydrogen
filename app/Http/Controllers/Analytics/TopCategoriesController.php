@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Api\Analytics;
+namespace App\Http\Controllers\Analytics;
 
 use App\Actions\Analytics\GetTopCategories;
 use App\Http\Requests\Analytics\AnalyticsQueryRequest;

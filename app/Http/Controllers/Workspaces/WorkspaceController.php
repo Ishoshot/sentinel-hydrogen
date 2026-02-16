@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Workspaces;
 
 use App\Actions\Workspaces\CreateWorkspace;
 use App\Actions\Workspaces\DeleteWorkspace;

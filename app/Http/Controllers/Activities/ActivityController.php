@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Activities;
 
 use App\Actions\Activities\ListWorkspaceActivities;
 use App\Http\Requests\Activity\IndexActivitiesRequest;

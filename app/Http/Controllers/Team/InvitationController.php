@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Team;
 
 use App\Actions\Invitations\AcceptInvitation;
 use App\Actions\Invitations\CancelInvitation;

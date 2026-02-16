@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Runs;
 
 use App\Actions\Runs\ListWorkspaceRuns;
 use App\Http\Requests\Run\ListWorkspaceRunsRequest;
