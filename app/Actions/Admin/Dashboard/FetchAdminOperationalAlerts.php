@@ -63,10 +63,10 @@ final readonly class FetchAdminOperationalAlerts
                 ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                     $query->where('runs.workspace_id', $filters->workspaceId);
                 })
-                ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                     $query->where('plans.tier', $filters->planTier?->value);
                 })
-                ->when($filters->runStatus !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->runStatus instanceof RunStatus, function (Builder $query) use ($filters): void {
                     $query->where('runs.status', $filters->runStatus?->value);
                 })
                 ->latest('runs.created_at')
@@ -94,10 +94,10 @@ final readonly class FetchAdminOperationalAlerts
                 ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                     $query->where('runs.workspace_id', $filters->workspaceId);
                 })
-                ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                     $query->where('plans.tier', $filters->planTier?->value);
                 })
-                ->when($filters->runStatus !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->runStatus instanceof RunStatus, function (Builder $query) use ($filters): void {
                     $query->where('runs.status', $filters->runStatus?->value);
                 })
                 ->latest('runs.created_at')
@@ -124,7 +124,7 @@ final readonly class FetchAdminOperationalAlerts
                 ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                     $query->where('command_runs.workspace_id', $filters->workspaceId);
                 })
-                ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                     $query->where('plans.tier', $filters->planTier?->value);
                 })
                 ->latest('command_runs.created_at')
@@ -149,7 +149,7 @@ final readonly class FetchAdminOperationalAlerts
                 ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                     $query->where('briefing_generations.workspace_id', $filters->workspaceId);
                 })
-                ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                     $query->where('plans.tier', $filters->planTier?->value);
                 })
                 ->latest('briefing_generations.created_at')

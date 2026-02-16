@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Override;
 use UnitEnum;
 
 final class AiOptionResource extends Resource
@@ -31,16 +32,19 @@ final class AiOptionResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
+    #[Override]
     public static function form(Schema $schema): Schema
     {
         return AiOptionForm::configure($schema);
     }
 
+    #[Override]
     public static function table(Table $table): Table
     {
         return AiOptionsTable::configure($table);
     }
 
+    #[Override]
     public static function getRelations(): array
     {
         return [];

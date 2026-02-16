@@ -68,22 +68,20 @@ final class PromotionsTable
                 Filter::make('valid_now')
                     ->label('Valid now')
                     ->toggle()
-                    ->query(function (Builder $query): Builder {
-                        return $query
-                            ->where('is_active', true)
-                            ->where(function (Builder $builder): void {
-                                $builder->whereNull('valid_from')
-                                    ->orWhere('valid_from', '<=', now());
-                            })
-                            ->where(function (Builder $builder): void {
-                                $builder->whereNull('valid_to')
-                                    ->orWhere('valid_to', '>=', now());
-                            })
-                            ->where(function (Builder $builder): void {
-                                $builder->whereNull('max_uses')
-                                    ->orWhereColumn('times_used', '<', 'max_uses');
-                            });
-                    }),
+                    ->query(fn (Builder $query): Builder => $query
+                        ->where('is_active', true)
+                        ->where(function (Builder $builder): void {
+                            $builder->whereNull('valid_from')
+                                ->orWhere('valid_from', '<=', now());
+                        })
+                        ->where(function (Builder $builder): void {
+                            $builder->whereNull('valid_to')
+                                ->orWhere('valid_to', '>=', now());
+                        })
+                        ->where(function (Builder $builder): void {
+                            $builder->whereNull('max_uses')
+                                ->orWhereColumn('times_used', '<', 'max_uses');
+                        })),
             ])
             ->recordActions([
                 EditAction::make(),

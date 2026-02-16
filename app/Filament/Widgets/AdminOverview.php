@@ -10,6 +10,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Override;
 
 final class AdminOverview extends StatsOverviewWidget
 {
@@ -21,6 +22,7 @@ final class AdminOverview extends StatsOverviewWidget
 
     protected ?string $description = 'Top-level workspace activity and configuration footprint.';
 
+    #[Override]
     protected function getStats(): array
     {
         $filters = AdminDashboardFilters::fromArray($this->pageFilters ?? []);

@@ -10,6 +10,7 @@ use App\Filament\Widgets\Concerns\HasAdminLineChartStyling;
 use App\Filament\Widgets\Concerns\HasChartDataPresence;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
+use Override;
 
 final class RunDurationTrendChart extends ChartWidget
 {
@@ -24,7 +25,8 @@ final class RunDurationTrendChart extends ChartWidget
         'xl' => 2,
     ];
 
-    public function getDescription(): ?string
+    #[Override]
+    public function getDescription(): string
     {
         if (! $this->chartHasVisibleData()) {
             return 'No run duration data available for these filters.';
@@ -33,6 +35,7 @@ final class RunDurationTrendChart extends ChartWidget
         return 'Tracks average and slowest run duration per day.';
     }
 
+    #[Override]
     protected function getData(): array
     {
         $filters = AdminDashboardFilters::fromArray($this->pageFilters ?? []);

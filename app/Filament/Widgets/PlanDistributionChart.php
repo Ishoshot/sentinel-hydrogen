@@ -10,6 +10,7 @@ use App\Filament\Widgets\Concerns\HasAdminDoughnutChartStyling;
 use App\Filament\Widgets\Concerns\HasChartDataPresence;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
+use Override;
 
 final class PlanDistributionChart extends ChartWidget
 {
@@ -24,7 +25,8 @@ final class PlanDistributionChart extends ChartWidget
         'xl' => 2,
     ];
 
-    public function getDescription(): ?string
+    #[Override]
+    public function getDescription(): string
     {
         if (! $this->chartHasVisibleData()) {
             return 'No workspaces match the current plan filters.';
@@ -33,6 +35,7 @@ final class PlanDistributionChart extends ChartWidget
         return 'Workspace allocation across plan tiers.';
     }
 
+    #[Override]
     protected function getData(): array
     {
         $filters = AdminDashboardFilters::fromArray($this->pageFilters ?? []);

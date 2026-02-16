@@ -20,7 +20,7 @@ final class BriefingForm
     /**
      * @var array<string, string>
      */
-    private const OUTPUT_FORMATS = [
+    private const array OUTPUT_FORMATS = [
         'html' => 'HTML',
         'pdf' => 'PDF',
         'markdown' => 'Markdown',

@@ -81,8 +81,8 @@ final readonly class FetchAdminRunDurationTrend
                 $key = $day->toDateString();
 
                 $labels[] = CarbonImmutable::parse($key)->format('M j');
-                $averageSeries[] = (int) ($durationsByDate[$key]['avg'] ?? 0);
-                $slowestSeries[] = (int) ($durationsByDate[$key]['max'] ?? 0);
+                $averageSeries[] = $durationsByDate[$key]['avg'] ?? 0;
+                $slowestSeries[] = $durationsByDate[$key]['max'] ?? 0;
             }
 
             return [

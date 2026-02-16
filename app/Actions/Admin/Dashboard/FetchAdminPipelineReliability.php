@@ -103,7 +103,7 @@ final readonly class FetchAdminPipelineReliability
             ->when($filters->workspaceId !== null, function (Builder $builder) use ($filters): void {
                 $builder->where('command_runs.workspace_id', $filters->workspaceId);
             })
-            ->when($filters->planTier !== null, function (Builder $builder) use ($filters): void {
+            ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $builder) use ($filters): void {
                 $builder->where('plans.tier', $filters->planTier?->value);
             });
     }
@@ -120,7 +120,7 @@ final readonly class FetchAdminPipelineReliability
             ->when($filters->workspaceId !== null, function (Builder $builder) use ($filters): void {
                 $builder->where('briefing_generations.workspace_id', $filters->workspaceId);
             })
-            ->when($filters->planTier !== null, function (Builder $builder) use ($filters): void {
+            ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $builder) use ($filters): void {
                 $builder->where('plans.tier', $filters->planTier?->value);
             });
     }

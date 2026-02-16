@@ -13,6 +13,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
+use Override;
 
 final class EditPromotion extends EditRecord
 {
@@ -49,6 +50,7 @@ final class EditPromotion extends EditRecord
     /**
      * @param  array<string, mixed>  $data
      */
+    #[Override]
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         if (! $record instanceof Promotion) {

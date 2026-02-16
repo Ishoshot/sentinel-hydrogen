@@ -47,12 +47,12 @@ final readonly class AdminDashboardRunQueryBuilder
             ->when($filters->workspaceId !== null, function (Builder $builder) use ($filters): void {
                 $builder->where('workspace_id', $filters->workspaceId);
             })
-            ->when($filters->planTier !== null, function (Builder $builder) use ($filters): void {
+            ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $builder) use ($filters): void {
                 $builder->whereHas('workspace.plan', function (Builder $planQuery) use ($filters): void {
                     $planQuery->where('tier', $filters->planTier?->value);
                 });
             })
-            ->when($filters->runStatus !== null, function (Builder $builder) use ($filters): void {
+            ->when($filters->runStatus instanceof \App\Enums\Reviews\RunStatus, function (Builder $builder) use ($filters): void {
                 $builder->where('status', $filters->runStatus?->value);
             });
 

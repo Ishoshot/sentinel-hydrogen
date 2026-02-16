@@ -116,11 +116,11 @@ final readonly class FetchAdminPipelineThroughputTrend
             ->when($filters->workspaceId !== null, function (Builder $builder) use ($filters): void {
                 $builder->where('command_runs.workspace_id', $filters->workspaceId);
             })
-            ->when($filters->planTier !== null, function (Builder $builder) use ($filters): void {
+            ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $builder) use ($filters): void {
                 $builder->where('plans.tier', $filters->planTier?->value);
             });
 
-        if ($filters->runStatus !== null) {
+        if ($filters->runStatus instanceof \App\Enums\Reviews\RunStatus) {
             if (! in_array($filters->runStatus->value, CommandRunStatus::values(), true)) {
                 $query->whereRaw('1 = 0');
 
@@ -145,11 +145,11 @@ final readonly class FetchAdminPipelineThroughputTrend
             ->when($filters->workspaceId !== null, function (Builder $builder) use ($filters): void {
                 $builder->where('briefing_generations.workspace_id', $filters->workspaceId);
             })
-            ->when($filters->planTier !== null, function (Builder $builder) use ($filters): void {
+            ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $builder) use ($filters): void {
                 $builder->where('plans.tier', $filters->planTier?->value);
             });
 
-        if ($filters->runStatus !== null) {
+        if ($filters->runStatus instanceof \App\Enums\Reviews\RunStatus) {
             if (! in_array($filters->runStatus->value, BriefingGenerationStatus::values(), true)) {
                 $query->whereRaw('1 = 0');
 

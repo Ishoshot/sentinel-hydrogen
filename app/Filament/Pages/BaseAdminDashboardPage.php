@@ -15,6 +15,7 @@ use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Pages\Dashboard\Concerns\HasFiltersAction;
 use Filament\Pages\Enums\SubNavigationPosition;
 use Filament\Support\Icons\Heroicon;
+use Override;
 
 abstract class BaseAdminDashboardPage extends BaseDashboard
 {
@@ -27,6 +28,7 @@ abstract class BaseAdminDashboardPage extends BaseDashboard
      */
     abstract protected function getDashboardWidgets(): array;
 
+    #[Override]
     final public function getColumns(): array
     {
         return [
@@ -55,6 +57,7 @@ abstract class BaseAdminDashboardPage extends BaseDashboard
     /**
      * @return array<class-string>
      */
+    #[Override]
     final public function getWidgets(): array
     {
         return $this->getDashboardWidgets();
@@ -63,6 +66,7 @@ abstract class BaseAdminDashboardPage extends BaseDashboard
     /**
      * @return array<string>
      */
+    #[Override]
     final public function getPageClasses(): array
     {
         return ['fi-page-admin-dashboard'];

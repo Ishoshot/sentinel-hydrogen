@@ -8,6 +8,7 @@ use App\Actions\Admin\AiOptions\CreateAiOption as CreateAiOptionAction;
 use App\Filament\Resources\AiOptions\AiOptionResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use Override;
 
 final class CreateAiOption extends CreateRecord
 {
@@ -16,6 +17,7 @@ final class CreateAiOption extends CreateRecord
     /**
      * @param  array<string, mixed>  $data
      */
+    #[Override]
     protected function handleRecordCreation(array $data): Model
     {
         return app(CreateAiOptionAction::class)->handle($data);

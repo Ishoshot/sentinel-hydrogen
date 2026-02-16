@@ -10,6 +10,7 @@ use App\Filament\Widgets\Concerns\HasAdminDoughnutChartStyling;
 use App\Filament\Widgets\Concerns\HasChartDataPresence;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
+use Override;
 
 final class RunStatusCompositionChart extends ChartWidget
 {
@@ -24,7 +25,8 @@ final class RunStatusCompositionChart extends ChartWidget
         'xl' => 2,
     ];
 
-    public function getDescription(): ?string
+    #[Override]
+    public function getDescription(): string
     {
         if (! $this->chartHasVisibleData()) {
             return 'No run status data available for the selected period.';
@@ -33,6 +35,7 @@ final class RunStatusCompositionChart extends ChartWidget
         return 'Status mix for runs in the selected period.';
     }
 
+    #[Override]
     protected function getData(): array
     {
         $filters = AdminDashboardFilters::fromArray($this->pageFilters ?? []);

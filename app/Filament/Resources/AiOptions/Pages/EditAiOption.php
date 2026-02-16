@@ -14,6 +14,7 @@ use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use LogicException;
+use Override;
 
 final class EditAiOption extends EditRecord
 {
@@ -33,10 +34,10 @@ final class EditAiOption extends EditRecord
 
                     try {
                         app(DeleteAiOptionAction::class)->handle($record);
-                    } catch (InvalidArgumentException $exception) {
+                    } catch (InvalidArgumentException $invalidArgumentException) {
                         Notification::make()
                             ->danger()
-                            ->title($exception->getMessage())
+                            ->title($invalidArgumentException->getMessage())
                             ->send();
 
                         $action->halt();
@@ -51,6 +52,7 @@ final class EditAiOption extends EditRecord
     /**
      * @param  array<string, mixed>  $data
      */
+    #[Override]
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         if (! $record instanceof AiOption) {

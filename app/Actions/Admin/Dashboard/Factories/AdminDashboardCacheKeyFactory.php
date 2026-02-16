@@ -8,7 +8,7 @@ use App\Actions\Admin\Dashboard\ValueObjects\AdminDashboardFilters;
 
 final readonly class AdminDashboardCacheKeyFactory
 {
-    private const CACHE_VERSION = 'v1';
+    private const string CACHE_VERSION = 'v1';
 
     public function forOverview(AdminDashboardFilters $filters): string
     {

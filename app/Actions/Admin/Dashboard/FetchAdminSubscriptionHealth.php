@@ -48,7 +48,7 @@ final readonly class FetchAdminSubscriptionHealth
                 ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                     $query->where('workspaces.id', $filters->workspaceId);
                 })
-                ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                     $query->where('plans.tier', $filters->planTier?->value);
                 });
 
@@ -86,7 +86,7 @@ final readonly class FetchAdminSubscriptionHealth
                 ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                     $query->where('workspaces.id', $filters->workspaceId);
                 })
-                ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                     $query->where('plans.tier', $filters->planTier?->value);
                 })
                 ->distinct()

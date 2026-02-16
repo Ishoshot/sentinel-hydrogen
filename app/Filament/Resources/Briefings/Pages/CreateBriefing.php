@@ -8,6 +8,7 @@ use App\Actions\Admin\Briefings\CreateBriefing as CreateBriefingAction;
 use App\Filament\Resources\Briefings\BriefingResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use Override;
 
 final class CreateBriefing extends CreateRecord
 {
@@ -16,6 +17,7 @@ final class CreateBriefing extends CreateRecord
     /**
      * @param  array<string, mixed>  $data
      */
+    #[Override]
     protected function handleRecordCreation(array $data): Model
     {
         return app(CreateBriefingAction::class)->handle($data);

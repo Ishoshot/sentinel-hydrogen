@@ -8,6 +8,7 @@ use App\Actions\Admin\Promotions\CreatePromotion as CreatePromotionAction;
 use App\Filament\Resources\Promotions\PromotionResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use Override;
 
 final class CreatePromotion extends CreateRecord
 {
@@ -16,6 +17,7 @@ final class CreatePromotion extends CreateRecord
     /**
      * @param  array<string, mixed>  $data
      */
+    #[Override]
     protected function handleRecordCreation(array $data): Model
     {
         return app(CreatePromotionAction::class)->handle(

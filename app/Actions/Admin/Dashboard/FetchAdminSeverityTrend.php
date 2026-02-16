@@ -62,10 +62,10 @@ final readonly class FetchAdminSeverityTrend
             ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                 $query->where('findings.workspace_id', $filters->workspaceId);
             })
-            ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+            ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                 $query->where('plans.tier', $filters->planTier?->value);
             })
-            ->when($filters->runStatus !== null, function (Builder $query) use ($filters): void {
+            ->when($filters->runStatus instanceof \App\Enums\Reviews\RunStatus, function (Builder $query) use ($filters): void {
                 $query->where('runs.status', $filters->runStatus?->value);
             });
     }
@@ -100,8 +100,11 @@ final readonly class FetchAdminSeverityTrend
                 ? $severityValue->value
                 : (string) $severityValue;
             $total = (int) data_get($row, 'total', 0);
+            if ($date === '') {
+                continue;
+            }
 
-            if ($date === '' || $severity === '') {
+            if ($severity === '') {
                 continue;
             }
 
@@ -114,7 +117,7 @@ final readonly class FetchAdminSeverityTrend
             $dataPoints = [];
 
             foreach ($dateKeys as $dateKey) {
-                $dataPoints[] = (int) ($countsByDateAndSeverity[$dateKey][$severity->value] ?? 0);
+                $dataPoints[] = $countsByDateAndSeverity[$dateKey][$severity->value] ?? 0;
             }
 
             $datasets[] = [

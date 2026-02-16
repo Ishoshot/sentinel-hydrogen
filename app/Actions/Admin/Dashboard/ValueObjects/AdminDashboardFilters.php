@@ -11,9 +11,9 @@ use Throwable;
 
 final readonly class AdminDashboardFilters
 {
-    private const DEFAULT_RANGE_DAYS = 14;
+    private const int DEFAULT_RANGE_DAYS = 14;
 
-    private const MAX_RANGE_DAYS = 120;
+    private const int MAX_RANGE_DAYS = 120;
 
     public function __construct(
         public CarbonImmutable $startDate,

@@ -73,7 +73,7 @@ final readonly class FetchAdminExecutionHealth
                 ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                     $query->where('command_runs.workspace_id', $filters->workspaceId);
                 })
-                ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                     $query->where('plans.tier', $filters->planTier?->value);
                 })
                 ->count();
@@ -86,7 +86,7 @@ final readonly class FetchAdminExecutionHealth
                 ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                     $query->where('briefing_generations.workspace_id', $filters->workspaceId);
                 })
-                ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                     $query->where('plans.tier', $filters->planTier?->value);
                 })
                 ->count();
@@ -99,7 +99,7 @@ final readonly class FetchAdminExecutionHealth
                 ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                     $query->where('briefing_generations.workspace_id', $filters->workspaceId);
                 })
-                ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                     $query->where('plans.tier', $filters->planTier?->value);
                 })
                 ->count();

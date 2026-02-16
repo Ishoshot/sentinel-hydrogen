@@ -10,6 +10,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Override;
 
 final class PipelineReliabilityOverview extends StatsOverviewWidget
 {
@@ -23,6 +24,7 @@ final class PipelineReliabilityOverview extends StatsOverviewWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    #[Override]
     protected function getStats(): array
     {
         $filters = AdminDashboardFilters::fromArray($this->pageFilters ?? []);

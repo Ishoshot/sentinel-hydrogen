@@ -10,6 +10,7 @@ use App\Filament\Widgets\Concerns\HasAdminLineChartStyling;
 use App\Filament\Widgets\Concerns\HasChartDataPresence;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
+use Override;
 
 final class SeverityTrendChart extends ChartWidget
 {
@@ -24,7 +25,8 @@ final class SeverityTrendChart extends ChartWidget
         'xl' => 2,
     ];
 
-    public function getDescription(): ?string
+    #[Override]
+    public function getDescription(): string
     {
         if (! $this->chartHasVisibleData()) {
             return 'No findings were recorded for the selected period.';
@@ -33,6 +35,7 @@ final class SeverityTrendChart extends ChartWidget
         return 'Daily distribution of findings by severity level.';
     }
 
+    #[Override]
     protected function getData(): array
     {
         $filters = AdminDashboardFilters::fromArray($this->pageFilters ?? []);

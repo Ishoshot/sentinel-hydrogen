@@ -65,7 +65,7 @@ final readonly class FetchAdminOverview
                 ->when($filters->workspaceId !== null, function (Builder $query) use ($filters): void {
                     $query->whereKey($filters->workspaceId);
                 })
-                ->when($filters->planTier !== null, function (Builder $query) use ($filters): void {
+                ->when($filters->planTier instanceof \App\Enums\Billing\PlanTier, function (Builder $query) use ($filters): void {
                     $query->whereHas('plan', function (Builder $planQuery) use ($filters): void {
                         $planQuery->where('tier', $filters->planTier?->value);
                     });
