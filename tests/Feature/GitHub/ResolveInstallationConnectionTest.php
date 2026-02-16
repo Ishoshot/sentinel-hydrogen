@@ -56,13 +56,33 @@ describe('handle', function (): void {
     })->throws(InvalidInstallationStateException::class);
 
     it('ignores expired pending connections older than 15 minutes', function (): void {
-        $connection = Connection::factory()->pending()->create([
-            'metadata' => ['state' => 'expired-state-token'],
-            'created_at' => now()->subMinutes(20),
+        Connection::factory()->pending()->create([
+            'metadata' => [
+                'state' => 'expired-state-token',
+                'initiated_at' => now()->subMinutes(20)->toIso8601String(),
+            ],
         ]);
 
         $this->action->handle(12345678, 'expired-state-token');
     })->throws(InvalidInstallationStateException::class);
+
+    it('resolves state for reconnect flow with old record and fresh initiated_at', function (): void {
+        $stateValue = 'reconnect-state-token-123';
+
+        $connection = Connection::factory()->pending()->create([
+            'metadata' => [
+                'state' => $stateValue,
+                'initiated_at' => now()->toIso8601String(),
+            ],
+            'created_at' => now()->subDays(2),
+            'updated_at' => now()->subDays(2),
+        ]);
+
+        $result = $this->action->handle(12345678, $stateValue);
+
+        expect($result)->not->toBeNull()
+            ->and($result->id)->toBe($connection->id);
+    });
 
     it('ignores active connections when resolving from state', function (): void {
         Connection::factory()->active()->create([
