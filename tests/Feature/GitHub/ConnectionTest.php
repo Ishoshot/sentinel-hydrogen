@@ -9,6 +9,7 @@ use App\Models\Installation;
 use App\Models\Provider;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
 beforeEach(function (): void {
     // Ensure GitHub provider exists
@@ -238,4 +239,52 @@ it('requires authentication to view connection', function (): void {
     $response = $this->getJson(route('github.connection.show', $workspace));
 
     $response->assertUnauthorized();
+});
+
+it('redirects github callback to frontend integrations page', function (): void {
+    config(['app.frontend_url' => 'https://frontend.test']);
+
+    $workspace = Workspace::factory()->create([
+        'slug' => 'acme-workspace',
+    ]);
+
+    $provider = Provider::where('type', ProviderType::GitHub)->firstOrFail();
+    $connection = Connection::factory()
+        ->forWorkspace($workspace)
+        ->forProvider($provider)
+        ->pending()
+        ->state([
+            'metadata' => [
+                'state' => 'state-token-123',
+            ],
+        ])
+        ->create();
+
+    $mockGitHubApiService = Mockery::mock(GitHubApiServiceContract::class);
+    $mockGitHubApiService->shouldReceive('getInstallation')
+        ->once()
+        ->with(123456)
+        ->andReturn([
+            'account' => [
+                'type' => 'User',
+                'login' => 'acme-user',
+                'avatar_url' => null,
+            ],
+            'permissions' => [],
+            'events' => [],
+        ]);
+
+    $mockGitHubApiService->shouldReceive('getInstallationRepositories')
+        ->once()
+        ->with(123456)
+        ->andReturn([]);
+
+    $this->app->instance(GitHubApiServiceContract::class, $mockGitHubApiService);
+
+    $response = $this->get(route('github.callback', [
+        'installation_id' => 123456,
+        'state' => 'state-token-123',
+    ]));
+
+    $response->assertRedirect('https://frontend.test/acme-workspace/settings/integrations');
 });

@@ -102,7 +102,10 @@ final class ConnectionController
             return $this->redirectToError('Workspace not found.');
         }
 
-        return redirect()->to(sprintf('/%s/settings/integrations', $workspace->slug))
+        /** @var string $frontendUrl */
+        $frontendUrl = config('app.frontend_url');
+
+        return redirect()->to(sprintf('%s/%s/settings/integrations', $frontendUrl, $workspace->slug))
             ->with('success', 'GitHub connected successfully!');
     }
 
