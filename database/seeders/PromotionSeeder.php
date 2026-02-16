@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Enums\Billing\PlanTier;
+use App\Models\Plan;
 use App\Models\Promotion;
 use Illuminate\Database\Seeder;
 
@@ -14,6 +16,13 @@ final class PromotionSeeder extends Seeder
      */
     public function run(): void
     {
+        /** @var list<int> $scopedPlanIds */
+        $scopedPlanIds = Plan::query()
+            ->whereIn('tier', [PlanTier::Illuminate->value, PlanTier::Orchestrate->value])
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+
         $promotions = [
             [
                 'name' => 'Launch Special',
@@ -25,29 +34,20 @@ final class PromotionSeeder extends Seeder
                 'valid_to' => now()->addMonths(3),
                 'max_uses' => 2,
                 'is_active' => true,
+                'eligible_plan_ids' => $scopedPlanIds !== [] ? $scopedPlanIds : null,
             ],
-            // [
-            //     'name' => 'Friend Referral',
-            //     'description' => 'Discount for users referred by existing customers.',
-            //     'code' => 'FRIEND10',
-            //     'value_type' => 'percentage',
-            //     'value_amount' => 10,
-            //     'valid_from' => now(),
-            //     'valid_to' => null,
-            //     'max_uses' => null,
-            //     'is_active' => true,
-            // ],
-            // [
-            //     'name' => 'First Month Free',
-            //     'description' => 'Get your first month completely free.',
-            //     'code' => 'FIRSTFREE',
-            //     'value_type' => 'flat',
-            //     'value_amount' => 4900, // $49 in cents
-            //     'valid_from' => now(),
-            //     'valid_to' => now()->addMonths(6),
-            //     'max_uses' => 50,
-            //     'is_active' => true,
-            // ],
+            [
+                'name' => 'General Welcome',
+                'description' => 'General purpose welcome discount for any paid checkout.',
+                'code' => 'WELCOME10',
+                'value_type' => 'percentage',
+                'value_amount' => 10,
+                'valid_from' => now(),
+                'valid_to' => now()->addMonths(6),
+                'max_uses' => 100,
+                'is_active' => true,
+                'eligible_plan_ids' => null,
+            ],
         ];
 
         foreach ($promotions as $promotion) {

@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $times_used
  * @property bool $is_active
  * @property string|null $polar_discount_id
+ * @property array<int, int>|null $eligible_plan_ids
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
  */
@@ -52,6 +53,7 @@ final class Promotion extends Model
         'times_used',
         'is_active',
         'polar_discount_id',
+        'eligible_plan_ids',
     ];
 
     /**
@@ -131,6 +133,20 @@ final class Promotion extends Model
     }
 
     /**
+     * Determine if this promotion can be used for the given plan.
+     */
+    public function isEligibleForPlan(Plan|int $plan): bool
+    {
+        if ($this->eligible_plan_ids === null) {
+            return true;
+        }
+
+        $planId = $plan instanceof Plan ? $plan->id : $plan;
+
+        return in_array($planId, $this->eligible_plan_ids, true);
+    }
+
+    /**
      * Get all usages of this promotion.
      *
      * @return HasMany<PromotionUsage, $this>
@@ -166,6 +182,22 @@ final class Promotion extends Model
     }
 
     /**
+     * Scope to promotions eligible for a plan.
+     *
+     * @param  Builder<Promotion>  $query
+     * @return Builder<Promotion>
+     */
+    public function scopeEligibleForPlan(Builder $query, Plan|int $plan): Builder
+    {
+        $planId = $plan instanceof Plan ? $plan->id : $plan;
+
+        return $query->where(function (Builder $builder) use ($planId): void {
+            $builder->whereNull('eligible_plan_ids')
+                ->orWhereJsonContains('eligible_plan_ids', $planId);
+        });
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -176,6 +208,7 @@ final class Promotion extends Model
             'valid_from' => 'datetime',
             'valid_to' => 'datetime',
             'is_active' => 'boolean',
+            'eligible_plan_ids' => 'array',
         ];
     }
 }

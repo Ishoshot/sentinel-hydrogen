@@ -34,6 +34,7 @@ final class PromotionFactory extends Factory
             'times_used' => 0,
             'is_active' => true,
             'polar_discount_id' => fake()->uuid(),
+            'eligible_plan_ids' => null,
         ];
     }
 
@@ -122,6 +123,28 @@ final class PromotionFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'polar_discount_id' => null,
+        ]);
+    }
+
+    /**
+     * Create a promotion scoped to specific plans.
+     *
+     * @param  array<int, int>  $planIds
+     */
+    public function forPlans(array $planIds): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'eligible_plan_ids' => array_values(array_unique($planIds)),
+        ]);
+    }
+
+    /**
+     * Create a promotion usable on all plans.
+     */
+    public function global(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'eligible_plan_ids' => null,
         ]);
     }
 }
