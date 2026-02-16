@@ -6,6 +6,10 @@ inputs:
     description: Whether to install Go and build the semantic analyzer binary.
     required: false
     default: "true"
+  build-assets:
+    description: Whether to install Node and build frontend assets (Vite).
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -34,6 +38,18 @@ runs:
     - name: Install Dependencies
       shell: bash
       run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+    - name: Setup Node
+      if: ${{ inputs.build-assets == 'true' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: npm
+
+    - name: Build Frontend Assets
+      if: ${{ inputs.build-assets == 'true' }}
+      shell: bash
+      run: npm ci && npm run build
 
     - name: Copy Environment File
       shell: bash

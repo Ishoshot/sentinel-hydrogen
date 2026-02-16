@@ -68,6 +68,8 @@ jobs:
 
       - name: Bootstrap Backend Test Environment
         uses: ./.github/actions/backend-test-bootstrap
+        with:
+          build-assets: "true"
 
       - name: Run Pest (${{ matrix.shard.name }})
         run: |
