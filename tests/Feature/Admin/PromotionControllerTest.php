@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Promotions\PromotionValueType;
 use App\Models\Admin;
+use App\Models\Plan;
 use App\Models\Promotion;
 
 beforeEach(function (): void {
@@ -44,6 +45,8 @@ describe('index', function (): void {
 
 describe('store', function (): void {
     it('creates a promotion', function (): void {
+        $eligiblePlan = Plan::factory()->create();
+
         $this->actingAs($this->admin, 'admin')
             ->postJson(route('promotions.store'), [
                 'name' => 'Test Promo',
@@ -51,10 +54,12 @@ describe('store', function (): void {
                 'value_type' => PromotionValueType::Percentage->value,
                 'value_amount' => 20,
                 'is_active' => true,
+                'eligible_plan_ids' => [$eligiblePlan->id],
             ])
             ->assertCreated()
             ->assertJsonPath('data.name', 'Test Promo')
             ->assertJsonPath('data.code', 'TEST123')
+            ->assertJsonPath('data.eligible_plan_ids.0', $eligiblePlan->id)
             ->assertJsonPath('message', 'Promotion created successfully.');
 
         \Pest\Laravel\assertDatabaseHas('promotions', [
@@ -105,13 +110,16 @@ describe('show', function (): void {
 describe('update', function (): void {
     it('updates a promotion', function (): void {
         $promotion = Promotion::factory()->create(['name' => 'Original']);
+        $plan = Plan::factory()->create();
 
         $this->actingAs($this->admin, 'admin')
             ->patchJson(route('promotions.update', $promotion), [
                 'name' => 'Updated',
+                'eligible_plan_ids' => [$plan->id],
             ])
             ->assertOk()
             ->assertJsonPath('data.name', 'Updated')
+            ->assertJsonPath('data.eligible_plan_ids.0', $plan->id)
             ->assertJsonPath('message', 'Promotion updated successfully.');
 
         \Pest\Laravel\assertDatabaseHas('promotions', [
@@ -129,6 +137,17 @@ describe('update', function (): void {
             ])
             ->assertOk()
             ->assertJsonPath('data.code', 'NEWCODE');
+    });
+
+    it('validates eligible plan ids', function (): void {
+        $promotion = Promotion::factory()->create();
+
+        $this->actingAs($this->admin, 'admin')
+            ->patchJson(route('promotions.update', $promotion), [
+                'eligible_plan_ids' => [999999],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['eligible_plan_ids.0']);
     });
 });
 

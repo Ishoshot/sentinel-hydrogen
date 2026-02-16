@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Actions\Subscriptions\Handlers\PromotionHandler;
 use App\Actions\Subscriptions\Support\TransitionDirection;
+use App\Enums\Billing\PlanTier;
+use App\Models\Plan;
 use App\Models\Promotion;
 use App\Models\PromotionUsage;
 use App\Models\Subscription;
@@ -47,9 +49,10 @@ it('returns null when promo code is empty string', function (): void {
 
 it('returns promotion on valid subscribe promo code', function (): void {
     $promotion = Promotion::factory()->create();
+    $targetPlan = Plan::factory()->create(['tier' => PlanTier::Illuminate->value]);
     $handler = app(PromotionHandler::class);
 
-    $result = $handler->validateIfApplicable(TransitionDirection::Subscribe, $promotion->code);
+    $result = $handler->validateIfApplicable(TransitionDirection::Subscribe, $promotion->code, $targetPlan);
 
     expect($result)->toBeInstanceOf(Promotion::class)
         ->and($result->id)->toBe($promotion->id);
@@ -57,9 +60,10 @@ it('returns promotion on valid subscribe promo code', function (): void {
 
 it('returns promotion on valid upgrade promo code', function (): void {
     $promotion = Promotion::factory()->create();
+    $targetPlan = Plan::factory()->create(['tier' => PlanTier::Illuminate->value]);
     $handler = app(PromotionHandler::class);
 
-    $result = $handler->validateIfApplicable(TransitionDirection::Upgrade, $promotion->code);
+    $result = $handler->validateIfApplicable(TransitionDirection::Upgrade, $promotion->code, $targetPlan);
 
     expect($result)->toBeInstanceOf(Promotion::class)
         ->and($result->id)->toBe($promotion->id);
@@ -67,30 +71,43 @@ it('returns promotion on valid upgrade promo code', function (): void {
 
 it('throws exception on invalid promo code', function (): void {
     $handler = app(PromotionHandler::class);
+    $targetPlan = Plan::factory()->create(['tier' => PlanTier::Illuminate->value]);
 
-    $handler->validateIfApplicable(TransitionDirection::Subscribe, 'INVALID');
+    $handler->validateIfApplicable(TransitionDirection::Subscribe, 'INVALID', $targetPlan);
 })->throws(InvalidArgumentException::class, 'Invalid promotion code.');
 
 it('throws exception for expired promotion', function (): void {
     Promotion::factory()->expired()->create(['code' => 'EXPIRED']);
     $handler = app(PromotionHandler::class);
+    $targetPlan = Plan::factory()->create(['tier' => PlanTier::Illuminate->value]);
 
-    $handler->validateIfApplicable(TransitionDirection::Subscribe, 'EXPIRED');
+    $handler->validateIfApplicable(TransitionDirection::Subscribe, 'EXPIRED', $targetPlan);
 })->throws(InvalidArgumentException::class);
 
 it('throws exception for inactive promotion', function (): void {
     Promotion::factory()->inactive()->create(['code' => 'INACTIVE']);
     $handler = app(PromotionHandler::class);
+    $targetPlan = Plan::factory()->create(['tier' => PlanTier::Illuminate->value]);
 
-    $handler->validateIfApplicable(TransitionDirection::Subscribe, 'INACTIVE');
+    $handler->validateIfApplicable(TransitionDirection::Subscribe, 'INACTIVE', $targetPlan);
 })->throws(InvalidArgumentException::class);
 
 it('throws exception for promotion not synced to polar', function (): void {
     Promotion::factory()->notSynced()->create(['code' => 'NOTSYNC']);
     $handler = app(PromotionHandler::class);
+    $targetPlan = Plan::factory()->create(['tier' => PlanTier::Illuminate->value]);
 
-    $handler->validateIfApplicable(TransitionDirection::Subscribe, 'NOTSYNC');
+    $handler->validateIfApplicable(TransitionDirection::Subscribe, 'NOTSYNC', $targetPlan);
 })->throws(InvalidArgumentException::class);
+
+it('throws exception when promotion is not eligible for the target plan', function (): void {
+    $eligiblePlan = Plan::factory()->create(['tier' => PlanTier::Illuminate->value]);
+    $targetPlan = Plan::factory()->create(['tier' => PlanTier::Orchestrate->value]);
+    Promotion::factory()->forPlans([$eligiblePlan->id])->create(['code' => 'SCOPED-NOT-ELIGIBLE']);
+
+    $handler = app(PromotionHandler::class);
+    $handler->validateIfApplicable(TransitionDirection::Subscribe, 'SCOPED-NOT-ELIGIBLE', $targetPlan);
+})->throws(InvalidArgumentException::class, 'This promotion code is not valid for the selected plan.');
 
 // --- recordPendingCheckout ---
 

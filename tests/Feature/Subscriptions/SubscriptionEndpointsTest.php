@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Billing\PlanTier;
 use App\Enums\Billing\SubscriptionStatus;
 use App\Models\Plan;
+use App\Models\Promotion;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Workspace;
@@ -430,6 +431,42 @@ it('rejects invalid promo codes', function (): void {
 
     $response->assertUnprocessable()
         ->assertJsonPath('message', 'Invalid promotion code.');
+});
+
+it('rejects promo code when not eligible for target plan', function (): void {
+    config()->set('services.polar.access_token', null);
+
+    $user = User::factory()->create();
+    $foundationPlan = Plan::factory()->create(['tier' => PlanTier::Foundation->value]);
+    $illuminatePlan = Plan::factory()->illuminate()->create();
+    $orchestratePlan = Plan::factory()->orchestrate()->create();
+
+    Promotion::factory()->forPlans([$orchestratePlan->id])->create([
+        'code' => 'ORCH-ONLY',
+    ]);
+
+    $workspace = Workspace::factory()->create([
+        'owner_id' => $user->id,
+        'plan_id' => $foundationPlan->id,
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
+
+    $workspace->teamMembers()->create([
+        'user_id' => $user->id,
+        'team_id' => $workspace->team->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'owner',
+        'joined_at' => now(),
+    ]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->postJson(route('subscriptions.change', $workspace), [
+            'plan_tier' => $illuminatePlan->tier,
+            'promo_code' => 'ORCH-ONLY',
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonPath('message', 'This promotion code is not valid for the selected plan.');
 });
 
 it('prevents non-owners from changing subscriptions', function (): void {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Admin\Promotions\UpdatePromotion;
 use App\Enums\Promotions\PromotionValueType;
+use App\Models\Plan;
 use App\Models\Promotion;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -181,4 +182,19 @@ it('updates multiple fields at once', function (): void {
         ->and($result->code)->toBe('MULTI-PROMO')
         ->and($result->is_active)->toBeFalse()
         ->and($result->description)->toBe('Updated description');
+});
+
+it('updates eligible plan ids and allows resetting to global', function (): void {
+    $planA = Plan::factory()->create();
+    $planB = Plan::factory()->create();
+    $promotion = Promotion::factory()->create(['eligible_plan_ids' => null]);
+
+    $action = app(UpdatePromotion::class);
+    $scoped = $action->handle($promotion, ['eligible_plan_ids' => [$planA->id, $planB->id]]);
+
+    expect($scoped->eligible_plan_ids)->toBe([$planA->id, $planB->id]);
+
+    $global = $action->handle($promotion->fresh(), ['eligible_plan_ids' => null]);
+
+    expect($global->eligible_plan_ids)->toBeNull();
 });

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\Billing\PlanTier;
+use App\Models\Plan;
 use App\Models\Promotion;
 use App\Services\Promotions\PromotionValidator;
 use App\Services\Promotions\ValueObjects\PromotionValidationResult;
@@ -111,4 +113,32 @@ it('rejects a promo code not synced to Polar', function (): void {
 
     expect($result->failed())->toBeTrue()
         ->and($result->message)->toBe('This promotion code is not activated.');
+});
+
+it('rejects a valid promotion when target plan is not eligible', function (): void {
+    $eligiblePlan = Plan::factory()->create(['tier' => PlanTier::Illuminate->value]);
+    $targetPlan = Plan::factory()->create(['tier' => PlanTier::Orchestrate->value]);
+
+    Promotion::factory()->forPlans([$eligiblePlan->id])->create([
+        'code' => 'SCOPED',
+    ]);
+
+    $validator = app(PromotionValidator::class);
+    $result = $validator->validate('SCOPED', $targetPlan);
+
+    expect($result->failed())->toBeTrue()
+        ->and($result->message)->toBe('This promotion code is not valid for the selected plan.');
+});
+
+it('accepts a valid promotion when target plan is eligible', function (): void {
+    $targetPlan = Plan::factory()->create(['tier' => PlanTier::Illuminate->value]);
+
+    Promotion::factory()->forPlans([$targetPlan->id])->create([
+        'code' => 'MATCHED',
+    ]);
+
+    $validator = app(PromotionValidator::class);
+    $result = $validator->validate('MATCHED', $targetPlan);
+
+    expect($result->isValid())->toBeTrue();
 });
