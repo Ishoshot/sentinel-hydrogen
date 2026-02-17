@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Log;
  */
 final class RunInlineCommentBuilder
 {
+    private const int INLINE_IMPACT_MAX_LENGTH = 140;
+
     /**
      * @param  Collection<int, Finding>  $findings
      * @param  array{style: string, post_threshold: string, grouped: bool, include_suggestions: bool}  $config
@@ -68,7 +70,7 @@ final class RunInlineCommentBuilder
 
         $categoryValue = $finding->category?->value ?? 'unknown';
         $body = "{$severityBadge} | `{$categoryValue}`\n\n";
-        $body .= "### {$finding->title}\n\n";
+        $body .= "#### {$finding->title}\n\n";
         $body .= $finding->description.PHP_EOL;
 
         if ($includeSuggestions) {
@@ -77,7 +79,13 @@ final class RunInlineCommentBuilder
 
         $impact = isset($metadata['impact']) && is_string($metadata['impact']) ? $metadata['impact'] : null;
         if ($impact !== null && $impact !== '') {
-            $body .= "\n_Impact: {$impact}_\n";
+            if (mb_strlen($impact) <= self::INLINE_IMPACT_MAX_LENGTH) {
+                $body .= "\n**🧐 How does this affect ...** {$impact}\n";
+            } else {
+                $body .= "\n<details>\n<summary><strong>🧐 How does this affect ...</strong></summary>\n\n";
+                $body .= "{$impact}\n\n";
+                $body .= "</details>\n";
+            }
         }
 
         $confidence = $finding->confidence;
@@ -96,13 +104,29 @@ final class RunInlineCommentBuilder
     {
         $replacementCode = is_string($metadata['replacement_code'] ?? null) ? $metadata['replacement_code'] : null;
         $explanation = is_string($metadata['explanation'] ?? null) ? $metadata['explanation'] : null;
+        $suggestion = is_string($metadata['suggestion'] ?? null) ? $metadata['suggestion'] : null;
+        $hasExplanation = $explanation !== null && $explanation !== '';
+
+        if (
+            ($replacementCode === null || $replacementCode === '')
+            && ($suggestion === null || $suggestion === '')
+            && ! $hasExplanation
+        ) {
+            return '';
+        }
+
+        $body = "\n";
+
+        if ($hasExplanation) {
+            $body .= "<details>\n<summary><strong>💡 Why this suggestion?</strong></summary>\n\n";
+            $body .= "{$explanation}\n\n";
+            $body .= "</details>\n\n";
+        }
 
         if ($replacementCode !== null && $replacementCode !== '') {
-            $body = "\n";
-
-            if ($explanation !== null && $explanation !== '') {
-                $body .= "**Why:** {$explanation}\n\n";
-            }
+            $body .= "<details>\n<summary><strong>📝 Committable suggestion</strong></summary>\n\n";
+            $body .= "**⚠️ Review before applying**\n";
+            $body .= "Before committing, confirm this patch correctly replaces the intended highlighted code, introduces no missing lines or indentation issues, and passes targeted testing and performance validation.\n\n";
 
             $body .= "```suggestion\n".$replacementCode;
 
@@ -110,15 +134,13 @@ final class RunInlineCommentBuilder
                 $body .= "\n";
             }
 
-            return $body."```\n";
+            return $body."```\n\n</details>\n";
         }
-
-        $suggestion = is_string($metadata['suggestion'] ?? null) ? $metadata['suggestion'] : null;
 
         if ($suggestion !== null && $suggestion !== '') {
-            return "\n**Suggestion:** {$suggestion}\n";
+            return $body."**Suggestion:** {$suggestion}\n";
         }
 
-        return '';
+        return $body;
     }
 }

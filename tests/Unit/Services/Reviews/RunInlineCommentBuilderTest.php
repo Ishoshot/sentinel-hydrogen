@@ -174,7 +174,9 @@ it('includes impact from metadata when present', function (): void {
 
     $comments = $this->builder->build($findings, $this->config);
 
-    expect($comments[0]['body'])->toContain('_Impact: Data could be corrupted_');
+    expect($comments[0]['body'])->toContain('**🧐 How does this affect ...**');
+    expect($comments[0]['body'])->toContain('Data could be corrupted');
+    expect($comments[0]['body'])->not->toContain('<details>');
 });
 
 it('omits impact when not in metadata', function (): void {
@@ -183,7 +185,19 @@ it('omits impact when not in metadata', function (): void {
 
     $comments = $this->builder->build($findings, $this->config);
 
-    expect($comments[0]['body'])->not->toContain('Impact:');
+    expect($comments[0]['body'])->not->toContain('How does this affect ...');
+});
+
+it('renders long impact in collapsible block', function (): void {
+    $longImpact = str_repeat('Impact sentence. ', 12);
+    $finding = createFinding(['metadata' => ['impact' => $longImpact]]);
+    $findings = new Collection([$finding]);
+
+    $comments = $this->builder->build($findings, $this->config);
+
+    expect($comments[0]['body'])->toContain('<details>');
+    expect($comments[0]['body'])->toContain('<summary><strong>🧐 How does this affect ...</strong></summary>');
+    expect($comments[0]['body'])->toContain($longImpact);
 });
 
 it('includes replacement code suggestion when enabled', function (): void {
@@ -198,9 +212,15 @@ it('includes replacement code suggestion when enabled', function (): void {
 
     $comments = $this->builder->build($findings, $config);
 
+    expect($comments[0]['body'])->toContain('<details>');
+    expect($comments[0]['body'])->toContain('<summary><strong>📝 Committable suggestion</strong></summary>');
+    expect($comments[0]['body'])->toContain('**⚠️ Review before applying**');
+    expect($comments[0]['body'])->toContain('Before committing, confirm this patch correctly replaces the intended highlighted code');
     expect($comments[0]['body'])->toContain('```suggestion');
     expect($comments[0]['body'])->toContain('return $sanitized;');
-    expect($comments[0]['body'])->toContain('**Why:** Sanitize inputs before use');
+    expect($comments[0]['body'])->toContain('<summary><strong>💡 Why this suggestion?</strong></summary>');
+    expect($comments[0]['body'])->toContain('Sanitize inputs before use');
+    expect($comments[0]['body'])->toContain('</details>');
 });
 
 it('includes text suggestion when no replacement code', function (): void {
