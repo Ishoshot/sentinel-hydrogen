@@ -121,12 +121,21 @@ it('creates command run and dispatches job for valid @sentinel command', functio
     ProviderKey::factory()->forRepository($repository)->create();
 
     $githubApi = Mockery::mock(GitHubApiServiceContract::class);
+    $githubApi->shouldReceive('createIssueCommentReaction')
+        ->once()
+        ->withArgs(function (int $installationId, string $owner, string $repo, int $commentId, string $content): bool {
+            return $installationId === 12345
+                && $commentId === 99999
+                && $content === 'eyes';
+        })
+        ->andReturn(['id' => 1234, 'content' => 'eyes']);
+
     $githubApi->shouldReceive('createIssueComment')
         ->once()
         ->withArgs(function (int $installationId, string $owner, string $repo, int $number, string $body): bool {
             return $installationId === 12345
                 && $number === 42
-                && str_contains($body, '**Sentinel**: Starting');
+                && str_contains($body, '**Sentinel** is starting');
         })
         ->andReturn(['id' => 456789]);
 
@@ -175,6 +184,85 @@ it('creates command run and dispatches job for valid @sentinel command', functio
     Bus::assertDispatched(ExecuteCommandRunJob::class, function ($job) use ($commandRun) {
         return $job->commandRunId === $commandRun->id;
     });
+});
+
+it('continues to acknowledgment and run dispatch when eyes reaction fails', function (): void {
+    Bus::fake([ExecuteCommandRunJob::class]);
+
+    $user = User::factory()->create();
+    ProviderIdentity::factory()->create([
+        'user_id' => $user->id,
+        'provider' => OAuthProvider::GitHub,
+        'nickname' => 'testuser',
+    ]);
+
+    $workspace = Workspace::factory()->create([
+        'subscription_status' => SubscriptionStatus::Active,
+    ]);
+
+    $workspace->teamMembers()->create([
+        'user_id' => $user->id,
+        'team_id' => $workspace->team->id,
+        'workspace_id' => $workspace->id,
+        'role' => 'member',
+        'joined_at' => now(),
+    ]);
+
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 12345,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'workspace_id' => $workspace->id,
+        'full_name' => 'owner/testrepo',
+    ]);
+
+    ProviderKey::factory()->forRepository($repository)->create();
+
+    $githubApi = Mockery::mock(GitHubApiServiceContract::class);
+    $githubApi->shouldReceive('createIssueCommentReaction')
+        ->once()
+        ->andThrow(new RuntimeException('rate limited'));
+    $githubApi->shouldReceive('createIssueComment')
+        ->once()
+        ->andReturn(['id' => 777001]);
+
+    app()->instance(GitHubApiServiceContract::class, $githubApi);
+
+    $payload = [
+        'action' => 'created',
+        'comment' => [
+            'id' => 99999,
+            'body' => '@sentinel explain repository structure',
+        ],
+        'sender' => [
+            'login' => 'testuser',
+        ],
+        'repository' => [
+            'full_name' => 'owner/testrepo',
+        ],
+        'installation' => [
+            'id' => 12345,
+        ],
+        'issue' => [
+            'number' => 73,
+        ],
+    ];
+
+    ProcessIssueCommentWebhook::dispatchSync($payload);
+
+    $commandRun = CommandRun::query()->first();
+
+    expect($commandRun)->not->toBeNull()
+        ->and($commandRun?->metadata)->toMatchArray([
+            'github_ack_comment_id' => 777001,
+        ]);
+
+    Bus::assertDispatched(ExecuteCommandRunJob::class, fn ($job): bool => $job->commandRunId === $commandRun?->id);
 });
 
 it('detects pull request comments', function (): void {
@@ -276,6 +364,17 @@ it('posts denial comment when user lacks permission', function (): void {
 
     // Mock GitHub API to verify comment is posted
     $githubApi = Mockery::mock(GitHubApiServiceContract::class);
+    $githubApi->shouldReceive('createIssueCommentReaction')
+        ->once()
+        ->withArgs(function ($installationId, $owner, $repo, $commentId, $content) {
+            return $installationId === 12345
+                && $owner === 'owner'
+                && $repo === 'testrepo'
+                && $commentId === 99999
+                && $content === 'eyes';
+        })
+        ->andReturn(['id' => 3331, 'content' => 'eyes']);
+
     $githubApi->shouldReceive('createIssueComment')
         ->once()
         ->withArgs(function ($installationId, $owner, $repo, $number, $body) {
@@ -442,6 +541,11 @@ it('triggers manual review for @sentinel review on PR', function (): void {
     ];
 
     $githubApi = Mockery::mock(GitHubApiServiceContract::class);
+    $githubApi->shouldReceive('createIssueCommentReaction')
+        ->once()
+        ->with(12345, 'owner', 'testrepo', 99999, 'eyes')
+        ->andReturn(['id' => 4441, 'content' => 'eyes']);
+
     $githubApi->shouldReceive('getPullRequest')
         ->once()
         ->with(12345, 'owner', 'testrepo', 42)
@@ -551,6 +655,11 @@ it('triggers manual review for @sentinel re-review on PR', function (): void {
     ];
 
     $githubApi = Mockery::mock(GitHubApiServiceContract::class);
+    $githubApi->shouldReceive('createIssueCommentReaction')
+        ->once()
+        ->with(12345, 'owner', 'testrepo', 88888, 'eyes')
+        ->andReturn(['id' => 5551, 'content' => 'eyes']);
+
     $githubApi->shouldReceive('getPullRequest')->once()->andReturn($prData);
     $githubApi->shouldReceive('createIssueComment')->once()->andReturn(['id' => 333]);
 
@@ -626,6 +735,11 @@ it('posts guidance for @sentinel review on issue (not PR)', function (): void {
     ProviderKey::factory()->forRepository($repository)->create();
 
     $githubApi = Mockery::mock(GitHubApiServiceContract::class);
+    $githubApi->shouldReceive('createIssueCommentReaction')
+        ->once()
+        ->with(12345, 'owner', 'testrepo', 77777, 'eyes')
+        ->andReturn(['id' => 6661, 'content' => 'eyes']);
+
     $githubApi->shouldReceive('createIssueComment')
         ->once()
         ->withArgs(function ($installationId, $owner, $repo, $number, $body) {

@@ -27,6 +27,7 @@ final readonly class HandleIssueCommentCommand
         private IssueCommentCommandPayloadResolver $payloadResolver,
         private IssueCommentReviewCommandGuard $reviewCommandGuard,
         private CommandParser $commandParser,
+        private ReactToIssueCommentMention $reactToIssueCommentMention,
         private CommandPermissionService $permissionService,
         private CreateCommandRun $createCommandRun,
         private PostCommandAcknowledgment $postCommandAcknowledgment,
@@ -65,6 +66,12 @@ final readonly class HandleIssueCommentCommand
 
             return;
         }
+
+        $this->reactToIssueCommentMention->handle(
+            installationId: $installationId,
+            repositoryFullName: $repositoryFullName,
+            commentId: is_int($commentId) ? $commentId : 0,
+        );
 
         $commandType = $parsed->commandType;
         if (! ($commandType instanceof CommandType)) {

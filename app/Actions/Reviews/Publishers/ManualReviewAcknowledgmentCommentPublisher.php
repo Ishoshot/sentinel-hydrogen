@@ -47,6 +47,12 @@ final readonly class ManualReviewAcknowledgmentCommentPublisher
      */
     private function message(): string
     {
-        return "**Sentinel**: Starting code review...\n\nI'll analyze the changes in this pull request and post my findings shortly.";
+        $loadingGif = config('app.url').'/images/sentinel-loading.gif';
+
+        return <<<MD
+        **Sentinel**: Starting code review.
+
+        I'll analyze the changes in this pull request and post my findings shortly... <img src="{$loadingGif}" width="24" height="24" alt="loading" />
+        MD;
     }
 }

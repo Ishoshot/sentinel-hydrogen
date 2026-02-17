@@ -88,11 +88,14 @@ final readonly class PostCommandAcknowledgment
     private function message(CommandRun $commandRun): string
     {
         $commandType = $commandRun->command_type->description();
+        /** @var string $appUrl */
+        $appUrl = config('app.url');
+        $loadingGif = $appUrl.'/images/sentinel-loading.gif';
 
         return <<<MD
-        **Sentinel**: Starting {$commandType}...
+        **Sentinel** is starting {$commandType}.
 
-        I'll analyze your request and post the response shortly.
+        I'll analyze your request and post the response shortly... <img src="{$loadingGif}" width="24" height="24" alt="loading" />
         MD;
     }
 }
