@@ -7,6 +7,7 @@ use App\Actions\GitHub\HandleInstallationWebhook;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Enums\Auth\ProviderType;
 use App\Enums\GitHub\InstallationStatus;
+use App\Jobs\GitHub\CreateConfigPullRequestJob;
 use App\Jobs\GitHub\ProcessInstallationRepositoriesWebhook;
 use App\Jobs\GitHub\ProcessInstallationWebhook;
 use App\Jobs\GitHub\ProcessPullRequestWebhook;
@@ -338,6 +339,8 @@ it('processes installation suspended webhook', function (): void {
 });
 
 it('processes repositories added webhook', function (): void {
+    Queue::fake([CreateConfigPullRequestJob::class]);
+
     $provider = Provider::where('type', ProviderType::GitHub)->first();
     $connection = Connection::factory()->forProvider($provider)->active()->create();
     $installation = Installation::factory()->forConnection($connection)->create([
@@ -357,6 +360,7 @@ it('processes repositories added webhook', function (): void {
     $job->handle(app(HandleInstallationRepositoriesWebhook::class));
 
     expect(Repository::where('github_id', 111)->exists())->toBeTrue();
+    Queue::assertPushed(CreateConfigPullRequestJob::class);
 });
 
 it('processes repositories removed webhook', function (): void {

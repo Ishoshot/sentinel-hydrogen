@@ -58,6 +58,8 @@ Must stay covered:
 - Mock external boundaries, not core domain behavior.
 - Prefer fakes for events/notifications/queues where available.
 - Keep provider payload fixtures realistic and minimal.
+- Never allow real outbound network calls in tests.
+- Tests must fake/mimic external APIs (including GitHub SDK paths) and fail fast on stray requests.
 
 ---
 
@@ -78,4 +80,3 @@ Minimum merge gate:
 3. full suite in CI matrix
 
 If behavior changes, tests must fail before change and pass after change.
-
