@@ -29,6 +29,7 @@ final readonly class HandleIssueCommentCommand
         private CommandParser $commandParser,
         private CommandPermissionService $permissionService,
         private CreateCommandRun $createCommandRun,
+        private PostCommandAcknowledgment $postCommandAcknowledgment,
         private TriggerReviewFromIssueComment $triggerReviewFromIssueComment,
         private PostIssueCommentMessage $postIssueCommentMessage,
     ) {}
@@ -152,6 +153,13 @@ final readonly class HandleIssueCommentCommand
 
         Log::info('Command run created', array_merge($ctx, [
             'command_run_id' => $commandRun->id,
+        ]));
+
+        $ackCommentId = $this->postCommandAcknowledgment->handle($commandRun);
+
+        Log::info('Command acknowledgment handling complete', array_merge($ctx, [
+            'command_run_id' => $commandRun->id,
+            'ack_comment_id' => $ackCommentId,
         ]));
 
         // Dispatch job to execute the command

@@ -41,18 +41,25 @@ final readonly class PostCommandResponse
         }
 
         $body = $this->markdownFormatter->formatSuccess($commandRun, $answer);
+        $ackCommentId = $this->ackCommentId($commandRun);
 
         try {
-            $this->postComment($context, $body);
+            if ($ackCommentId !== null) {
+                $this->updateComment($context, $ackCommentId, $body);
+            } else {
+                $this->postComment($context, $body);
+            }
 
             Log::info('Posted command response to GitHub', [
                 'command_run_id' => $commandRun->id,
                 'issue_number' => $context['issue_number'],
+                'updated_ack_comment_id' => $ackCommentId,
             ]);
         } catch (Throwable $throwable) {
             Log::error('Failed to post command response to GitHub', [
                 'command_run_id' => $commandRun->id,
                 'issue_number' => $context['issue_number'],
+                'updated_ack_comment_id' => $ackCommentId,
                 'error' => $throwable->getMessage(),
             ]);
         }
@@ -70,12 +77,18 @@ final readonly class PostCommandResponse
         }
 
         $body = $this->markdownFormatter->formatError($commandRun, $exception);
+        $ackCommentId = $this->ackCommentId($commandRun);
 
         try {
-            $this->postComment($context, $body);
+            if ($ackCommentId !== null) {
+                $this->updateComment($context, $ackCommentId, $body);
+            } else {
+                $this->postComment($context, $body);
+            }
         } catch (Throwable $throwable) {
             Log::error('Failed to post error response to GitHub', [
                 'command_run_id' => $commandRun->id,
+                'updated_ack_comment_id' => $ackCommentId,
                 'error' => $throwable->getMessage(),
             ]);
         }
@@ -95,5 +108,39 @@ final readonly class PostCommandResponse
             number: $context['issue_number'],
             body: $body
         );
+    }
+
+    /**
+     * Update an existing GitHub comment.
+     *
+     * @param  array{installation_id: int, owner: string, repo: string, issue_number: int}  $context
+     */
+    private function updateComment(array $context, int $commentId, string $body): void
+    {
+        $this->githubApi->updateIssueComment(
+            installationId: $context['installation_id'],
+            owner: $context['owner'],
+            repo: $context['repo'],
+            commentId: $commentId,
+            body: $body
+        );
+    }
+
+    /**
+     * Resolve the acknowledgment comment ID for a command run.
+     */
+    private function ackCommentId(CommandRun $commandRun): ?int
+    {
+        $metadata = $commandRun->metadata;
+
+        if (! is_array($metadata)) {
+            return null;
+        }
+
+        if (! isset($metadata['github_ack_comment_id']) || ! is_numeric($metadata['github_ack_comment_id'])) {
+            return null;
+        }
+
+        return (int) $metadata['github_ack_comment_id'];
     }
 }
