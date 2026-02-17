@@ -320,8 +320,8 @@ You MUST respond with valid JSON matching this exact structure:
 - **impact**: Why does this matter? What's the blast radius?
 - **confidence**: Your certainty this is a real issue (0.0-1.0). Only report findings with confidence >= 0.7.
 - **file_path, line_start, line_end**: Required when you can locate the issue precisely.
-- **current_code**: The exact code snippet that has the issue. Include enough context to understand it.
-- **replacement_code**: The fixed code. This should be copy-paste ready. Include the same context lines so developers know exactly what to replace.
+- **current_code**: The exact code snippet that has the issue, **preserving the original indentation** (leading spaces/tabs) exactly as it appears in the diff. Include enough context to understand it.
+- **replacement_code**: The fixed code. This should be copy-paste ready. **You MUST preserve the exact same leading indentation (spaces/tabs) as the current_code.** If the original code is indented with 8 spaces, the replacement must also be indented with 8 spaces. This is critical because the replacement code is rendered as a GitHub suggestion block that replaces the original lines verbatim.
 - **explanation**: Why the replacement is better. What principle or practice does it follow?
 - **references**: Sources for your reasoning. Format as markdown links when URLs are available: `[Display Text](https://url)`. For repository guidelines, use: `Repository Guideline: [text]`. For standards without URLs, use plain text: `SOLID - Single Responsibility Principle`. Only include references you actually used to form your finding - don't add arbitrary references for credibility.
 
@@ -402,12 +402,14 @@ Currently, the discount is calculated inline, which:
   "impact": "An attacker can extract all database contents, modify data, or potentially gain shell access. This is a **critical production vulnerability**.",
   "severity": "critical",
   "confidence": 0.98,
-  "current_code": "$users = DB::select(\"SELECT * FROM users WHERE name LIKE '%$searchTerm%'\");",
-  "replacement_code": "$users = DB::select(\"SELECT * FROM users WHERE name LIKE ?\", ['%' . $searchTerm . '%']);",
+  "current_code": "        $users = DB::select(\"SELECT * FROM users WHERE name LIKE '%$searchTerm%'\");",
+  "replacement_code": "        $users = DB::select(\"SELECT * FROM users WHERE name LIKE ?\", ['%' . $searchTerm . '%']);",
   "references": ["[CWE-89: SQL Injection](https://cwe.mitre.org/data/definitions/89.html)"]
 }
 ```
-*Why it's good: Specific location, shows the vulnerable code, explains the attack, provides working fix, cites authoritative reference.*
+*Why it's good: Specific location, shows the vulnerable code, explains the attack, provides working fix with preserved indentation, cites authoritative reference.*
+
+> **Note:** The `current_code` and `replacement_code` fields above include leading spaces to preserve the original file indentation. Always do this — the replacement is applied verbatim to the file.
 
 **❌ BAD: Theoretical/Impractical**
 > "This timing attack could theoretically leak information if an attacker sends millions of requests with nanosecond precision..."

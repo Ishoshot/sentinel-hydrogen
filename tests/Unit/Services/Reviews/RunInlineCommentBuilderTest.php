@@ -174,7 +174,7 @@ it('includes impact from metadata when present', function (): void {
 
     $comments = $this->builder->build($findings, $this->config);
 
-    expect($comments[0]['body'])->toContain('**🧐 How does this affect ...**');
+    expect($comments[0]['body'])->toContain('**🧐 How this affects you**');
     expect($comments[0]['body'])->toContain('Data could be corrupted');
     expect($comments[0]['body'])->not->toContain('<details>');
 });
@@ -185,7 +185,7 @@ it('omits impact when not in metadata', function (): void {
 
     $comments = $this->builder->build($findings, $this->config);
 
-    expect($comments[0]['body'])->not->toContain('How does this affect ...');
+    expect($comments[0]['body'])->not->toContain('How this affects you');
 });
 
 it('renders long impact in collapsible block', function (): void {
@@ -196,7 +196,7 @@ it('renders long impact in collapsible block', function (): void {
     $comments = $this->builder->build($findings, $this->config);
 
     expect($comments[0]['body'])->toContain('<details>');
-    expect($comments[0]['body'])->toContain('<summary><strong>🧐 How does this affect ...</strong></summary>');
+    expect($comments[0]['body'])->toContain('<summary>🧐 How this affects you</summary>');
     expect($comments[0]['body'])->toContain($longImpact);
 });
 
@@ -213,12 +213,12 @@ it('includes replacement code suggestion when enabled', function (): void {
     $comments = $this->builder->build($findings, $config);
 
     expect($comments[0]['body'])->toContain('<details>');
-    expect($comments[0]['body'])->toContain('<summary><strong>📝 Committable suggestion</strong></summary>');
+    expect($comments[0]['body'])->toContain('<summary>📝 Committable suggestion</summary>');
     expect($comments[0]['body'])->toContain('**⚠️ Review before applying**');
     expect($comments[0]['body'])->toContain('Before committing, confirm this patch correctly replaces the intended highlighted code');
     expect($comments[0]['body'])->toContain('```suggestion');
     expect($comments[0]['body'])->toContain('return $sanitized;');
-    expect($comments[0]['body'])->toContain('<summary><strong>💡 Why this suggestion?</strong></summary>');
+    expect($comments[0]['body'])->toContain('<summary>💡 Why this suggestion?</summary>');
     expect($comments[0]['body'])->toContain('Sanitize inputs before use');
     expect($comments[0]['body'])->toContain('</details>');
 });
@@ -287,4 +287,65 @@ it('handles null category gracefully', function (): void {
     $comments = $this->builder->build($findings, $this->config);
 
     expect($comments[0]['body'])->toContain('`unknown`');
+});
+
+it('normalizes replacement code indentation to match current code', function (): void {
+    $config = array_merge($this->config, ['include_suggestions' => true]);
+    $finding = createFinding([
+        'metadata' => [
+            'current_code' => '        $rateLimit = $application->rate_limit ?? 10000;',
+            'replacement_code' => '$rateLimit = $application->rate_limit ?? 60;',
+        ],
+    ]);
+    $findings = new Collection([$finding]);
+
+    $comments = $this->builder->build($findings, $config);
+
+    expect($comments[0]['body'])->toContain("```suggestion\n        \$rateLimit = \$application->rate_limit ?? 60;");
+});
+
+it('normalizes multi-line replacement code indentation', function (): void {
+    $config = array_merge($this->config, ['include_suggestions' => true]);
+    $finding = createFinding([
+        'metadata' => [
+            'current_code' => "        Log::info('Incoming webhook payload', [\n            'application_id' => \$request->route('applicationId'),\n        ]);",
+            'replacement_code' => "Log::info('Incoming webhook payload', [\n    'application_id' => \$request->route('applicationId'),\n    'payload_keys' => array_keys(\$request->all()),\n]);",
+        ],
+    ]);
+    $findings = new Collection([$finding]);
+
+    $comments = $this->builder->build($findings, $config);
+
+    expect($comments[0]['body'])->toContain("```suggestion\n        Log::info('Incoming webhook payload', [");
+    expect($comments[0]['body'])->toContain("            'application_id' => \$request->route('applicationId'),");
+});
+
+it('does not normalize when replacement already has correct indentation', function (): void {
+    $config = array_merge($this->config, ['include_suggestions' => true]);
+    $finding = createFinding([
+        'metadata' => [
+            'current_code' => '    return true;',
+            'replacement_code' => '    return false;',
+        ],
+    ]);
+    $findings = new Collection([$finding]);
+
+    $comments = $this->builder->build($findings, $config);
+
+    expect($comments[0]['body'])->toContain("```suggestion\n    return false;");
+});
+
+it('does not normalize when current code has no indentation', function (): void {
+    $config = array_merge($this->config, ['include_suggestions' => true]);
+    $finding = createFinding([
+        'metadata' => [
+            'current_code' => 'return true;',
+            'replacement_code' => 'return false;',
+        ],
+    ]);
+    $findings = new Collection([$finding]);
+
+    $comments = $this->builder->build($findings, $config);
+
+    expect($comments[0]['body'])->toContain("```suggestion\nreturn false;");
 });

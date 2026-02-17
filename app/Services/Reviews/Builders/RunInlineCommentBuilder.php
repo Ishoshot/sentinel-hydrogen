@@ -80,13 +80,11 @@ final class RunInlineCommentBuilder
         $impact = isset($metadata['impact']) && is_string($metadata['impact']) ? $metadata['impact'] : null;
         if ($impact !== null && $impact !== '') {
             if (mb_strlen($impact) <= self::INLINE_IMPACT_MAX_LENGTH) {
-                $body .= "\n**🧐 How does this affect ...** {$impact}\n";
+                $body .= "\n**🧐 How this affects you**\n{$impact}\n";
             } else {
-                $body .= "\n<details>\n<summary><strong>🧐 How does this affect ...</strong></summary>\n\n";
-                $body .= $impact.'
-
-';
-                $body .= "</details>\n";
+                $body .= "\n<details>\n<summary>🧐 How this affects you</summary>\n\n";
+                $body .= "\n{$impact}\n\n";
+                $body .= "</details>\n\n";
             }
         }
 
@@ -120,17 +118,19 @@ final class RunInlineCommentBuilder
         $body = "\n";
 
         if ($hasExplanation) {
-            $body .= "<details>\n<summary><strong>💡 Why this suggestion?</strong></summary>\n\n";
-            $body .= $explanation.'
-
-';
+            $body .= "<details>\n<summary>💡 Why this suggestion?</summary>\n\n";
+            $body .= "\n{$explanation}\n\n";
             $body .= "</details>\n\n";
         }
 
         if ($replacementCode !== null && $replacementCode !== '') {
-            $body .= "<details>\n<summary><strong>📝 Committable suggestion</strong></summary>\n\n";
-            $body .= "**⚠️ Review before applying**\n";
-            $body .= "Before committing, confirm this patch correctly replaces the intended highlighted code, introduces no missing lines or indentation issues, and passes targeted testing and performance validation.\n\n";
+            $currentCode = is_string($metadata['current_code'] ?? null) ? $metadata['current_code'] : null;
+            $replacementCode = $this->normalizeReplacementIndentation($currentCode, $replacementCode);
+
+            $body .= "<details>\n<summary>📝 Committable suggestion</summary>\n\n";
+            $body .= "\n";
+            $body .= "> **⚠️ Review before applying**\n";
+            $body .= "> Before committing, confirm this patch correctly replaces the intended highlighted code, introduces no missing lines or indentation issues, and passes targeted testing and performance validation.\n\n";
 
             $body .= "```suggestion\n".$replacementCode;
 
@@ -138,7 +138,7 @@ final class RunInlineCommentBuilder
                 $body .= "\n";
             }
 
-            return $body."```\n\n</details>\n";
+            return $body."```\n\n</details>\n\n";
         }
 
         if ($suggestion !== null && $suggestion !== '') {
@@ -146,5 +146,54 @@ final class RunInlineCommentBuilder
         }
 
         return $body;
+    }
+
+    /**
+     * Normalize replacement code indentation to match current code.
+     *
+     * LLMs often strip leading whitespace from replacement_code in JSON output.
+     * This detects the indentation gap between current_code and replacement_code,
+     * then pads the replacement to match.
+     */
+    private function normalizeReplacementIndentation(?string $currentCode, string $replacementCode): string
+    {
+        if ($currentCode === null || $currentCode === '') {
+            return $replacementCode;
+        }
+
+        $currentIndent = $this->detectMinIndentation($currentCode);
+        $replacementIndent = $this->detectMinIndentation($replacementCode);
+
+        if ($currentIndent <= 0 || $replacementIndent >= $currentIndent) {
+            return $replacementCode;
+        }
+
+        $padding = str_repeat(' ', $currentIndent - $replacementIndent);
+        $lines = explode("\n", $replacementCode);
+        $padded = array_map(
+            fn (string $line): string => mb_trim($line) === '' ? $line : $padding.$line,
+            $lines,
+        );
+
+        return implode("\n", $padded);
+    }
+
+    /**
+     * Detect the minimum leading whitespace across non-empty lines.
+     */
+    private function detectMinIndentation(string $code): int
+    {
+        $min = PHP_INT_MAX;
+
+        foreach (explode("\n", $code) as $line) {
+            if (mb_trim($line) === '') {
+                continue;
+            }
+
+            $indent = mb_strlen($line) - mb_strlen(mb_ltrim($line));
+            $min = min($min, $indent);
+        }
+
+        return $min === PHP_INT_MAX ? 0 : $min;
     }
 }
