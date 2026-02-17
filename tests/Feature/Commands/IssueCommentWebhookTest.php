@@ -120,6 +120,18 @@ it('creates command run and dispatches job for valid @sentinel command', functio
     // Add provider key
     ProviderKey::factory()->forRepository($repository)->create();
 
+    $githubApi = Mockery::mock(GitHubApiServiceContract::class);
+    $githubApi->shouldReceive('createIssueComment')
+        ->once()
+        ->withArgs(function (int $installationId, string $owner, string $repo, int $number, string $body): bool {
+            return $installationId === 12345
+                && $number === 42
+                && str_contains($body, '**Sentinel**: Starting');
+        })
+        ->andReturn(['id' => 456789]);
+
+    app()->instance(GitHubApiServiceContract::class, $githubApi);
+
     $payload = [
         'action' => 'created',
         'comment' => [
@@ -154,7 +166,10 @@ it('creates command run and dispatches job for valid @sentinel command', functio
         ->and($commandRun->status)->toBe(CommandRunStatus::Queued)
         ->and($commandRun->workspace_id)->toBe($workspace->id)
         ->and($commandRun->repository_id)->toBe($repository->id)
-        ->and($commandRun->initiated_by_id)->toBe($user->id);
+        ->and($commandRun->initiated_by_id)->toBe($user->id)
+        ->and($commandRun->metadata)->toMatchArray([
+            'github_ack_comment_id' => 456789,
+        ]);
 
     // Verify job was dispatched
     Bus::assertDispatched(ExecuteCommandRunJob::class, function ($job) use ($commandRun) {
