@@ -54,4 +54,25 @@ final class RepositorySentinelConfigSettingsHandler
             'config_error' => $configError,
         ]);
     }
+
+    /**
+     * Opportunistically persist config when the stored config is empty.
+     *
+     * Called during PR reviews to heal from initial sync failures.
+     * Does nothing if config is already stored.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    public function healIfEmpty(RepositorySettings $settings, array $config): void
+    {
+        if ($settings->sentinel_config !== null) {
+            return;
+        }
+
+        $settings->update([
+            'sentinel_config' => $config,
+            'config_synced_at' => now(),
+            'config_error' => null,
+        ]);
+    }
 }

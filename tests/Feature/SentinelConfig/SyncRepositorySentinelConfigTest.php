@@ -243,6 +243,49 @@ YAML;
     expect($config->annotations->grouped)->toBeTrue();
 });
 
+describe('healIfEmpty', function (): void {
+    it('persists config when stored config is null', function (): void {
+        $provider = Provider::where('type', ProviderType::GitHub)->first();
+        $connection = Connection::factory()->forProvider($provider)->active()->create();
+        $installation = Installation::factory()->forConnection($connection)->create();
+        $repository = Repository::factory()->forInstallation($installation)->create();
+        $settings = RepositorySettings::factory()->forRepository($repository)->create([
+            'sentinel_config' => null,
+            'config_synced_at' => null,
+            'config_error' => 'Previous fetch error',
+        ]);
+
+        $handler = app(\App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigSettingsHandler::class);
+        $handler->healIfEmpty($settings, ['version' => 1, 'review' => ['min_severity' => 'medium']]);
+
+        $settings->refresh();
+        expect($settings->sentinel_config)->toBe(['version' => 1, 'review' => ['min_severity' => 'medium']]);
+        expect($settings->config_synced_at)->not->toBeNull();
+        expect($settings->config_error)->toBeNull();
+    });
+
+    it('does not overwrite existing stored config', function (): void {
+        $provider = Provider::where('type', ProviderType::GitHub)->first();
+        $connection = Connection::factory()->forProvider($provider)->active()->create();
+        $installation = Installation::factory()->forConnection($connection)->create();
+        $repository = Repository::factory()->forInstallation($installation)->create();
+        $existingConfig = ['version' => 1, 'review' => ['min_severity' => 'high']];
+        $settings = RepositorySettings::factory()->forRepository($repository)->create([
+            'sentinel_config' => $existingConfig,
+            'config_synced_at' => now()->subHour(),
+        ]);
+
+        $originalSyncedAt = $settings->config_synced_at;
+
+        $handler = app(\App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigSettingsHandler::class);
+        $handler->healIfEmpty($settings, ['version' => 1, 'review' => ['min_severity' => 'low']]);
+
+        $settings->refresh();
+        expect($settings->sentinel_config)->toBe($existingConfig);
+        expect($settings->config_synced_at->toDateTimeString())->toBe($originalSyncedAt->toDateTimeString());
+    });
+});
+
 describe('RepositorySettings DTO accessors', function (): void {
     it('returns null when no config is set', function (): void {
         $provider = Provider::where('type', ProviderType::GitHub)->first();

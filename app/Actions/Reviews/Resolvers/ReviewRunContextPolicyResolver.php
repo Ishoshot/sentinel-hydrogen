@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Reviews\Resolvers;
 
 use App\Actions\Reviews\ValueObjects\ReviewRunContextResolution;
+use App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigSettingsHandler;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\Contracts\ContextEngineContract;
@@ -19,6 +20,7 @@ final readonly class ReviewRunContextPolicyResolver
     public function __construct(
         private ReviewPolicyResolverContract $policyResolver,
         private ContextEngineContract $contextEngine,
+        private RepositorySentinelConfigSettingsHandler $settingsHandler,
     ) {}
 
     /**
@@ -52,6 +54,11 @@ final readonly class ReviewRunContextPolicyResolver
 
         if ($branchConfig !== null && is_string($configBranch) && in_array($configBranch, $allowedBranches, true)) {
             $policySnapshot = $this->policyResolver->resolve($repository, $branchConfig, $configBranch);
+
+            $settings = $repository->settings;
+            if ($settings !== null) {
+                $this->settingsHandler->healIfEmpty($settings, $branchConfig);
+            }
         }
 
         return new ReviewRunContextResolution($contextBag, $policySnapshot);
