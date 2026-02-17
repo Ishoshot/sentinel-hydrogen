@@ -82,7 +82,7 @@ final class RunInlineCommentBuilder
             if (mb_strlen($impact) <= self::INLINE_IMPACT_MAX_LENGTH) {
                 $body .= "\n**🧐 How this affects you**\n{$impact}\n";
             } else {
-                $body .= "\n<details>\n<summary>🧐 How this affects you</summary>\n\n";
+                $body .= "\n<details>\n<summary>🧐 How this affects you</summary>\n<br>\n\n";
                 $body .= "\n{$impact}\n\n";
                 $body .= "</details>\n\n";
             }
@@ -118,7 +118,7 @@ final class RunInlineCommentBuilder
         $body = "\n";
 
         if ($hasExplanation) {
-            $body .= "<details>\n<summary>💡 Why this suggestion?</summary>\n\n";
+            $body .= "<details>\n<summary>💡 Why this suggestion?</summary>\n<br>\n\n";
             $body .= "\n{$explanation}\n\n";
             $body .= "</details>\n\n";
         }
@@ -127,7 +127,7 @@ final class RunInlineCommentBuilder
             $currentCode = is_string($metadata['current_code'] ?? null) ? $metadata['current_code'] : null;
             $replacementCode = $this->normalizeReplacementIndentation($currentCode, $replacementCode);
 
-            $body .= "<details>\n<summary>📝 Committable suggestion</summary>\n\n";
+            $body .= "<details>\n<summary>📝 Committable suggestion</summary>\n<br>\n\n";
             $body .= "\n";
             $body .= "> **⚠️ Review before applying**\n";
             $body .= "> Before committing, confirm this patch correctly replaces the intended highlighted code, introduces no missing lines or indentation issues, and passes targeted testing and performance validation.\n\n";
