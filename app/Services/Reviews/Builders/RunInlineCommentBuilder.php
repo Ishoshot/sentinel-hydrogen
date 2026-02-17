@@ -83,7 +83,9 @@ final class RunInlineCommentBuilder
                 $body .= "\n**🧐 How does this affect ...** {$impact}\n";
             } else {
                 $body .= "\n<details>\n<summary><strong>🧐 How does this affect ...</strong></summary>\n\n";
-                $body .= "{$impact}\n\n";
+                $body .= $impact.'
+
+';
                 $body .= "</details>\n";
             }
         }
@@ -119,7 +121,9 @@ final class RunInlineCommentBuilder
 
         if ($hasExplanation) {
             $body .= "<details>\n<summary><strong>💡 Why this suggestion?</strong></summary>\n\n";
-            $body .= "{$explanation}\n\n";
+            $body .= $explanation.'
+
+';
             $body .= "</details>\n\n";
         }
 
@@ -138,7 +142,7 @@ final class RunInlineCommentBuilder
         }
 
         if ($suggestion !== null && $suggestion !== '') {
-            return $body."**Suggestion:** {$suggestion}\n";
+            return $body.sprintf('**Suggestion:** %s%s', $suggestion, PHP_EOL);
         }
 
         return $body;
