@@ -12,6 +12,8 @@ declare(strict_types=1);
  * @see App\Services\Reviews\ReviewPolicyResolver
  */
 return [
+    'ack_comment_updates' => (bool) env('REVIEW_ACK_COMMENT_UPDATES', true),
+
     /*
     |--------------------------------------------------------------------------
     | Impact Analysis Configuration

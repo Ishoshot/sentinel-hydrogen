@@ -29,6 +29,7 @@ final readonly class CreatePullRequestRun
         private PullRequestRunUserResolver $userResolver,
         private PullRequestRunActivityLogger $activityLogger,
         private PostsSkipReasonComment $postSkipReasonComment,
+        private UpdateRunAcknowledgmentComment $updateRunAcknowledgmentComment,
     ) {}
 
     /**
@@ -77,6 +78,16 @@ final readonly class CreatePullRequestRun
 
         if ($run->wasRecentlyCreated) {
             $this->activityLogger->logCreated($repository, $run, $payload, $skipResolution->skipReason);
+        }
+
+        $acknowledgmentUpdated = false;
+
+        if ($skipResolution->shouldSkip() && is_string($skipResolution->skipReason)) {
+            $acknowledgmentUpdated = $this->updateRunAcknowledgmentComment->markSkipped($run, $skipResolution->skipReason);
+        }
+
+        if ($acknowledgmentUpdated) {
+            return $run;
         }
 
         if (! $skipResolution->workspace instanceof \App\Models\Workspace) {

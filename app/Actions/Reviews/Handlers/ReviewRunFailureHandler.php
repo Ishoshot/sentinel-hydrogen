@@ -6,6 +6,7 @@ namespace App\Actions\Reviews\Handlers;
 
 use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Actions\Reviews\Loggers\ReviewRunActivityLogger;
+use App\Actions\Reviews\UpdateRunAcknowledgmentComment;
 use App\Enums\Reviews\SkipReason;
 use App\Exceptions\NoProviderKeyException;
 use App\Models\Run;
@@ -22,6 +23,7 @@ final readonly class ReviewRunFailureHandler
         private ReviewRunFinalizationHandler $finalizer,
         private ReviewRunActivityLogger $activityLogger,
         private PostsSkipReasonComment $postSkipReasonComment,
+        private UpdateRunAcknowledgmentComment $updateRunAcknowledgmentComment,
     ) {}
 
     /**
@@ -37,7 +39,11 @@ final readonly class ReviewRunFailureHandler
             'reason' => $reason->value,
         ]);
 
-        $this->postSkipReasonComment->handle($run, $reason, $message);
+        $acknowledgmentUpdated = $this->updateRunAcknowledgmentComment->markSkipped($run, $message);
+
+        if (! $acknowledgmentUpdated) {
+            $this->postSkipReasonComment->handle($run, $reason, $message);
+        }
 
         return $run;
     }
@@ -56,7 +62,11 @@ final readonly class ReviewRunFailureHandler
         ]);
 
         $this->activityLogger->logSkippedNoProviderKeys($run, $exception);
-        $this->postSkipReasonComment->handle($run, SkipReason::NoProviderKeys);
+        $acknowledgmentUpdated = $this->updateRunAcknowledgmentComment->markSkipped($run, $exception->getMessage());
+
+        if (! $acknowledgmentUpdated) {
+            $this->postSkipReasonComment->handle($run, SkipReason::NoProviderKeys);
+        }
 
         return $run;
     }
@@ -75,6 +85,12 @@ final readonly class ReviewRunFailureHandler
         ]);
 
         $this->activityLogger->logFailed($run, $exception);
-        $this->postSkipReasonComment->handle($run, SkipReason::RunFailed, $this->finalizer->simpleErrorType($exception));
+
+        $errorType = $this->finalizer->simpleErrorType($exception);
+        $acknowledgmentUpdated = $this->updateRunAcknowledgmentComment->markFailed($run, $errorType);
+
+        if (! $acknowledgmentUpdated) {
+            $this->postSkipReasonComment->handle($run, SkipReason::RunFailed, $errorType);
+        }
     }
 }

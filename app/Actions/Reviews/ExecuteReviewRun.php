@@ -31,6 +31,7 @@ final readonly class ExecuteReviewRun
         private ReviewRunCompletionHandler $completionPersister,
         private ReviewRunActivityLogger $activityLogger,
         private ReviewRunFailureHandler $failureHandler,
+        private UpdateRunAcknowledgmentComment $updateRunAcknowledgmentComment,
         private ReviewRunAnnotationHandler $annotationHandler,
     ) {}
 
@@ -97,6 +98,7 @@ final readonly class ExecuteReviewRun
         );
 
         $this->activityLogger->logCompleted($run, $reviewResult, $filteredFindings);
+        $this->updateRunAcknowledgmentComment->markCompleted($run, count($filteredFindings));
         $this->annotationHandler->dispatchIfNeeded($run);
 
         return $run;
