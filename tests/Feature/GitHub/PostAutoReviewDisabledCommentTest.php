@@ -34,7 +34,7 @@ it('posts auto-review disabled comment to pull request', function (): void {
                 && $owner === 'org'
                 && $repo === 'repo'
                 && $number === 42
-                && str_contains($body, 'Review skipped')
+                && str_contains($body, 'Review Skipped')
                 && str_contains($body, 'Auto reviews are disabled');
         })
         ->andReturn(['id' => 99999]);

@@ -47,7 +47,9 @@ final readonly class ManualReviewAcknowledgmentCommentPublisher
      */
     private function message(): string
     {
-        $loadingGif = config('app.url').'/images/sentinel-loading.gif';
+        /** @var string $appUrl */
+        $appUrl = config('app.url');
+        $loadingGif = $appUrl.'/images/sentinel-loading.gif';
 
         return <<<MD
         **Sentinel**: Starting code review.

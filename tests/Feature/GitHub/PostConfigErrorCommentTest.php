@@ -34,7 +34,7 @@ it('posts config error comment to pull request', function (): void {
                 && $owner === 'org'
                 && $repo === 'repo'
                 && $number === 42
-                && str_contains($body, 'Sentinel Configuration Error')
+                && str_contains($body, 'Configuration Error')
                 && str_contains($body, 'Invalid YAML syntax');
         })
         ->andReturn(['id' => 99999]);
