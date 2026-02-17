@@ -268,6 +268,27 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
     }
 
     /**
+     * Create a reaction on an issue comment.
+     *
+     * @return array<string, mixed> The reaction response
+     */
+    public function createIssueCommentReaction(
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $commentId,
+        string $content = 'eyes'
+    ): array {
+        return $this->issueCommentOperations->createIssueCommentReaction(
+            installationId: $installationId,
+            owner: $owner,
+            repo: $repo,
+            commentId: $commentId,
+            content: $content,
+        );
+    }
+
+    /**
      * Get a git reference (branch or tag).
      *
      * @return array<string, mixed> The reference data

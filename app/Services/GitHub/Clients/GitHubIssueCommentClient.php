@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\GitHub\Clients;
 
+use Github\HttpClient\Message\ResponseMediator;
 use GrahamCampbell\GitHub\GitHubManager;
 
 final readonly class GitHubIssueCommentClient
@@ -124,6 +125,40 @@ final readonly class GitHubIssueCommentClient
             repo: $repo,
             commentId: $commentId,
             body: $body,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function createIssueCommentReaction(
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $commentId,
+        string $content = 'eyes'
+    ): array {
+        return $this->operationInvoker->map(
+            $installationId,
+            sprintf('createIssueCommentReaction(%s/%s#%d:%s)', $owner, $repo, $commentId, $content),
+            function (GitHubManager $github) use ($owner, $repo, $commentId, $content): array {
+                $path = sprintf(
+                    '/repos/%s/%s/issues/comments/%d/reactions',
+                    rawurlencode($owner),
+                    rawurlencode($repo),
+                    $commentId
+                );
+
+                $response = $github->connection()->getHttpClient()->post(
+                    $path,
+                    ['Accept' => 'application/vnd.github+json'],
+                    json_encode(['content' => $content]) ?: '{"content":"eyes"}'
+                );
+
+                $decoded = ResponseMediator::getContent($response);
+
+                return is_array($decoded) ? $decoded : [];
+            },
         );
     }
 

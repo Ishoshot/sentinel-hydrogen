@@ -193,6 +193,20 @@ interface GitHubApiServiceContract
     ): array;
 
     /**
+     * Create a reaction on an issue comment.
+     *
+     * @param  string  $content  Supported values include +1, -1, laugh, confused, heart, hooray, rocket, eyes
+     * @return array<string, mixed> The reaction response
+     */
+    public function createIssueCommentReaction(
+        int $installationId,
+        string $owner,
+        string $repo,
+        int $commentId,
+        string $content = 'eyes'
+    ): array;
+
+    /**
      * Get a git reference (branch or tag).
      *
      * @return array<string, mixed> The reference data
