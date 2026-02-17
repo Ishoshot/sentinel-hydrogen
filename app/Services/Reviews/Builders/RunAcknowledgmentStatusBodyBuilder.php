@@ -22,7 +22,6 @@ final class RunAcknowledgmentStatusBodyBuilder
 
         {$summary}
 
-        **Run ID:** `{$run->id}`
         MARKDOWN;
 
         return $this->appendRunLink($body, $run);
@@ -38,7 +37,6 @@ final class RunAcknowledgmentStatusBodyBuilder
 
         {$reason}
 
-        **Run ID:** `{$run->id}`
         MARKDOWN;
 
         return $this->appendRunLink($body, $run);
@@ -55,7 +53,6 @@ final class RunAcknowledgmentStatusBodyBuilder
         Sentinel encountered an error while processing this run.
 
         **Error Type:** `{$errorType}`
-        **Run ID:** `{$run->id}`
         MARKDOWN;
 
         return $this->appendRunLink($body, $run);
