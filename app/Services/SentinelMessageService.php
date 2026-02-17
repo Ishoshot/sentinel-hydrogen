@@ -49,7 +49,7 @@ final readonly class SentinelMessageService
         return <<<MARKDOWN
         {$greeting['emoji']} {$greeting['message']}
 
-        Sentinel is working... <img src="{$loadingGif}" width="24" height="24" alt="loading" />
+        Sentinel is working... <img src="{$loadingGif}" width="24" height="24" style="margin-top: 7px !important" alt="loading" />
 
         ---
         <sub>{$branding}</sub>

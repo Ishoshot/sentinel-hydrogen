@@ -95,7 +95,7 @@ final readonly class PostCommandAcknowledgment
         return <<<MD
         **Sentinel** is starting {$commandType}.
 
-        I'll analyze your request and post the response shortly... <img src="{$loadingGif}" width="24" height="24" alt="loading" />
+        I'll analyze your request and post the response shortly... <img src="{$loadingGif}" width="24" height="24" style="margin-top: 7px !important" alt="loading" />
         MD;
     }
 }

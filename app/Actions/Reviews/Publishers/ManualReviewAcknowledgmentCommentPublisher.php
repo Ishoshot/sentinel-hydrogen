@@ -54,7 +54,7 @@ final readonly class ManualReviewAcknowledgmentCommentPublisher
         return <<<MD
         **Sentinel**: Starting code review.
 
-        I'll analyze the changes in this pull request and post my findings shortly... <img src="{$loadingGif}" width="24" height="24" alt="loading" />
+        I'll analyze the changes in this pull request and post my findings shortly... <img src="{$loadingGif}" width="24" height="24" style="margin-top: 7px !important" alt="loading" />
         MD;
     }
 }

@@ -71,6 +71,7 @@ final readonly class ExecuteCommandRun
 
             $toolCallArrays = array_map(fn (ToolCall $tc): array => $tc->toArray(), $result->toolCalls);
             $sanitizedToolCalls = $this->toolResultSanitizer->sanitizeToolCalls($toolCallArrays);
+            $existingMetadata = is_array($commandRun->metadata) ? $commandRun->metadata : [];
 
             $commandRun->update([
                 'status' => CommandRunStatus::Completed,
@@ -83,6 +84,7 @@ final readonly class ExecuteCommandRun
                 ],
                 'metrics' => $result->metrics->toArray(),
                 'metadata' => [
+                    ...$existingMetadata,
                     'tool_call_count' => count($sanitizedToolCalls),
                     'iterations' => $result->iterations,
                 ],

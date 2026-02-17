@@ -435,3 +435,68 @@ it('posts error response to GitHub on exception', function (): void {
     $action = app(ExecuteCommandRun::class);
     $action->handle($commandRun);
 });
+
+it('updates acknowledgment comment on success when ack comment id exists in metadata', function (): void {
+    $workspace = Workspace::factory()->create();
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 99999,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'workspace_id' => $workspace->id,
+        'full_name' => 'owner/repo',
+        'name' => 'repo',
+    ]);
+
+    $commandRun = CommandRun::factory()->create([
+        'workspace_id' => $workspace->id,
+        'repository_id' => $repository->id,
+        'status' => CommandRunStatus::Queued,
+        'issue_number' => 42,
+        'metadata' => ['github_ack_comment_id' => 777001],
+    ]);
+
+    $agentService = Mockery::mock(CommandAgentServiceContract::class);
+    $agentService->shouldReceive('execute')
+        ->once()
+        ->andReturn(makeCommandExecutionResult([
+            'answer' => 'The answer to your question.',
+            'tool_calls' => [],
+            'iterations' => 3,
+            'metrics' => [
+                'input_tokens' => 100,
+                'output_tokens' => 50,
+                'thinking_tokens' => 0,
+                'duration_ms' => 1000,
+                'model' => 'test',
+                'provider' => 'test',
+            ],
+        ]));
+
+    app()->instance(CommandAgentServiceContract::class, $agentService);
+
+    $githubApi = Mockery::mock(GitHubApiServiceContract::class);
+    $githubApi->shouldReceive('updateIssueComment')
+        ->once()
+        ->withArgs(function ($installationId, $owner, $repo, $commentId, $body) {
+            return $installationId === 99999
+                && $owner === 'owner'
+                && $repo === 'repo'
+                && $commentId === 777001
+                && str_contains($body, 'The answer to your question.');
+        });
+    $githubApi->shouldNotReceive('createIssueComment');
+    app()->instance(GitHubApiServiceContract::class, $githubApi);
+
+    $action = app(ExecuteCommandRun::class);
+    $action->handle($commandRun);
+
+    $commandRun->refresh();
+    expect($commandRun->metadata['github_ack_comment_id'])->toBe(777001)
+        ->and($commandRun->metadata['iterations'])->toBe(3)
+        ->and($commandRun->metadata['tool_call_count'])->toBe(0);
+});
