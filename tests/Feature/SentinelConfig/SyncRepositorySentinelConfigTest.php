@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
+use App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigSettingsHandler;
 use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
 use App\Enums\Auth\ProviderType;
 use App\Enums\Billing\PlanFeature;
@@ -255,7 +256,7 @@ describe('healIfEmpty', function (): void {
             'config_error' => 'Previous fetch error',
         ]);
 
-        $handler = app(\App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigSettingsHandler::class);
+        $handler = app(RepositorySentinelConfigSettingsHandler::class);
         $handler->healIfEmpty($settings, ['version' => 1, 'review' => ['min_severity' => 'medium']]);
 
         $settings->refresh();
@@ -277,7 +278,7 @@ describe('healIfEmpty', function (): void {
 
         $originalSyncedAt = $settings->config_synced_at;
 
-        $handler = app(\App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigSettingsHandler::class);
+        $handler = app(RepositorySentinelConfigSettingsHandler::class);
         $handler->healIfEmpty($settings, ['version' => 1, 'review' => ['min_severity' => 'low']]);
 
         $settings->refresh();

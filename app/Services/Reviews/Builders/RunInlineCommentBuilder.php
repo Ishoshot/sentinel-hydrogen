@@ -83,7 +83,9 @@ final class RunInlineCommentBuilder
                 $body .= "\n**🧐 How this affects you**\n{$impact}\n";
             } else {
                 $body .= "\n<details>\n<summary>🧐 How this affects you</summary>\n<br>\n\n";
-                $body .= "{$impact}\n\n";
+                $body .= $impact.'
+
+';
                 $body .= "</details>\n\n";
             }
         }
@@ -119,7 +121,9 @@ final class RunInlineCommentBuilder
 
         if ($hasExplanation) {
             $body .= "<details>\n<summary>💡 Why this suggestion?</summary>\n<br>\n\n";
-            $body .= "{$explanation}\n\n";
+            $body .= $explanation.'
+
+';
             $body .= "</details>\n\n";
         }
 
