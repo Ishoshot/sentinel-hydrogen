@@ -51,7 +51,10 @@ final readonly class ReviewPromptBuilder
             'repository_context' => $bag->repositoryContext,
             'review_history' => $bag->reviewHistory,
             'guidelines' => $bag->guidelines,
+            'file_contents' => $bag->fileContents,
+            'semantics' => $bag->semantics,
             'project_context' => $bag->projectContext,
+            'impacted_files' => $bag->impactedFiles,
             'sensitive_files' => is_array($sensitiveFiles) ? $sensitiveFiles : [],
         ]);
     }
