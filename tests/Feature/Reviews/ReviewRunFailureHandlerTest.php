@@ -6,6 +6,7 @@ use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Actions\Reviews\Handlers\ReviewRunFailureHandler;
 use App\Actions\Reviews\Handlers\ReviewRunFinalizationHandler;
 use App\Actions\Reviews\Loggers\ReviewRunActivityLogger;
+use App\Actions\Reviews\UpdateRunAcknowledgmentComment;
 use App\Enums\Reviews\RunStatus;
 use App\Enums\Reviews\SkipReason;
 use App\Enums\SentinelConfig\SentinelConfigTone;
@@ -13,8 +14,12 @@ use App\Exceptions\NoProviderKeyException;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Models\Workspace;
+use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Services\Reviews\Builders\RunAcknowledgmentStatusBodyBuilder;
 use App\Services\Reviews\ValueObjects\ReviewPolicy;
 use Illuminate\Support\Facades\Log;
+
+use function Pest\Laravel\mock;
 
 function makeTestPolicy(array $overrides = []): ReviewPolicy
 {
@@ -29,6 +34,20 @@ function makeTestPolicy(array $overrides = []): ReviewPolicy
         annotations: $overrides['annotations'] ?? [],
         provider: $overrides['provider'] ?? [],
         configSource: $overrides['configSource'] ?? 'default',
+    );
+}
+
+function makeDisabledAckUpdater(): UpdateRunAcknowledgmentComment
+{
+    config(['reviews.ack_comment_updates' => false]);
+
+    mock(GitHubApiServiceContract::class)
+        ->shouldNotReceive('updateIssueComment')
+        ->shouldNotReceive('createPullRequestComment');
+
+    return new UpdateRunAcknowledgmentComment(
+        gitHubApiService: app(GitHubApiServiceContract::class),
+        statusBodyBuilder: app(RunAcknowledgmentStatusBodyBuilder::class),
     );
 }
 
@@ -51,6 +70,7 @@ it('marks a run as skipped with reason and posts a comment', function (): void {
         finalizer: new ReviewRunFinalizationHandler,
         activityLogger: app(ReviewRunActivityLogger::class),
         postSkipReasonComment: $postComment,
+        updateRunAcknowledgmentComment: makeDisabledAckUpdater(),
     );
 
     $result = $handler->markSkippedWithReason($run, SkipReason::PlanLimitReached, 'Monthly limit exceeded');
@@ -91,6 +111,7 @@ it('marks a run as skipped for no provider keys and logs activity', function ():
         finalizer: new ReviewRunFinalizationHandler,
         activityLogger: app(ReviewRunActivityLogger::class),
         postSkipReasonComment: $postComment,
+        updateRunAcknowledgmentComment: makeDisabledAckUpdater(),
     );
 
     $policy = makeTestPolicy();
@@ -134,6 +155,7 @@ it('marks a run as failed and logs error and activity', function (): void {
         finalizer: new ReviewRunFinalizationHandler,
         activityLogger: app(ReviewRunActivityLogger::class),
         postSkipReasonComment: $postComment,
+        updateRunAcknowledgmentComment: makeDisabledAckUpdater(),
     );
 
     $policy = makeTestPolicy();
@@ -168,6 +190,7 @@ it('delegates to real finalizer and returns the run', function (): void {
         finalizer: new ReviewRunFinalizationHandler,
         activityLogger: app(ReviewRunActivityLogger::class),
         postSkipReasonComment: $postComment,
+        updateRunAcknowledgmentComment: makeDisabledAckUpdater(),
     );
 
     $result = $handler->markSkippedWithReason($run, SkipReason::InstallationInactive, 'Inactive');
@@ -198,6 +221,7 @@ it('posts skip reason comment with error type on failure', function (): void {
         finalizer: new ReviewRunFinalizationHandler,
         activityLogger: app(ReviewRunActivityLogger::class),
         postSkipReasonComment: $postComment,
+        updateRunAcknowledgmentComment: makeDisabledAckUpdater(),
     );
 
     $handler->markFailed($run, makeTestPolicy(), new RuntimeException('Something broke'));
