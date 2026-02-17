@@ -21,11 +21,7 @@ final readonly class SentinelStatusCommentBuilder
      */
     public function buildConfigErrorComment(string $error): string
     {
-        $branding = $this->brandingResolver->getRandomBranding();
-
-        return <<<MARKDOWN
-        ⚠️ **Sentinel Configuration Error**
-
+        return $this->buildAlert('WARNING', 'Configuration Error', <<<BODY
         Your `.sentinel/config.yaml` file contains an error:
 
         ```
@@ -34,11 +30,8 @@ final readonly class SentinelStatusCommentBuilder
 
         Review has been skipped until this is resolved. Please fix the configuration and push again.
 
-        📖 [Configuration documentation](https://docs.useSentinel.com/configuration)
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        [Configuration documentation](https://docs.useSentinel.com/configuration)
+        BODY);
     }
 
     /**
@@ -46,11 +39,7 @@ final readonly class SentinelStatusCommentBuilder
      */
     public function buildNoProviderKeysComment(): string
     {
-        $branding = $this->brandingResolver->getRandomBranding();
-
-        return <<<MARKDOWN
-        ⚠️ **Review Skipped - No API Key Configured**
-
+        return $this->buildAlert('WARNING', 'Review Skipped — No API Key Configured', <<<'BODY'
         Sentinel cannot perform a code review because no AI provider API key has been configured for this repository.
 
         **To enable reviews:**
@@ -59,10 +48,7 @@ final readonly class SentinelStatusCommentBuilder
         3. Add your Anthropic or OpenAI API key
 
         Your API key is encrypted and never exposed after saving.
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        BODY);
     }
 
     /**
@@ -70,11 +56,7 @@ final readonly class SentinelStatusCommentBuilder
      */
     public function buildRunFailedComment(string $errorType): string
     {
-        $branding = $this->brandingResolver->getRandomBranding();
-
-        return <<<MARKDOWN
-        ❌ **Review Failed**
-
+        return $this->buildAlert('CAUTION', 'Review Failed', <<<BODY
         Sentinel encountered an error while reviewing this pull request.
 
         **Error Type:** `{$errorType}`
@@ -84,10 +66,7 @@ final readonly class SentinelStatusCommentBuilder
         - Checking your repository settings in the Sentinel dashboard
 
         If the issue persists, please contact support.
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        BODY);
     }
 
     /**
@@ -95,21 +74,13 @@ final readonly class SentinelStatusCommentBuilder
      */
     public function buildAutoReviewDisabledComment(): string
     {
-        $branding = $this->brandingResolver->getRandomBranding();
+        return $this->buildAlert('IMPORTANT', 'Review Skipped', <<<'BODY'
+        Auto reviews are disabled on this repository.
 
-        return <<<MARKDOWN
-        > [!IMPORTANT]
-        > ## Review skipped
-        >
-        > Auto reviews are disabled on this repository.
-        >
-        > Please check the settings in the Sentinel UI or the `.sentinel/config.yaml` file in this repository. To trigger a single review, invoke the `@sentinel review` command.
-        >
-        > You can disable this status message by setting the `reviews.review_status` to `false` in the Sentinel configuration file.
+        Please check the settings in the Sentinel UI or the `.sentinel/config.yaml` file in this repository. To trigger a single review, invoke the `@sentinel review` command.
 
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        You can disable this status message by setting the `reviews.review_status` to `false` in the Sentinel configuration file.
+        BODY);
     }
 
     /**
@@ -117,19 +88,13 @@ final readonly class SentinelStatusCommentBuilder
      */
     public function buildPlanLimitReachedComment(?string $message): string
     {
-        $branding = $this->brandingResolver->getRandomBranding();
         $details = $message ?? 'Your current plan has reached its limit.';
 
-        return <<<MARKDOWN
-        ⚠️ **Review Skipped - Plan Limit Reached**
-
+        return $this->buildAlert('WARNING', 'Review Skipped — Plan Limit Reached', <<<BODY
         {$details}
 
         Upgrade your plan in the Sentinel dashboard to continue running reviews.
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        BODY);
     }
 
     /**
@@ -137,21 +102,14 @@ final readonly class SentinelStatusCommentBuilder
      */
     public function buildOrphanedRepositoryComment(): string
     {
-        $branding = $this->brandingResolver->getRandomBranding();
-
-        return <<<MARKDOWN
-        ⚠️ **Review Skipped - Repository Not Connected**
-
+        return $this->buildAlert('WARNING', 'Review Skipped — Repository Not Connected', <<<'BODY'
         This repository is not associated with any Sentinel workspace. Reviews cannot be performed without a workspace connection.
 
         **To fix this:**
         1. Go to your Sentinel dashboard
         2. Navigate to **Repositories**
         3. Re-connect this repository to your workspace
-
-        ---
-        <sub>{$branding}</sub>
-        MARKDOWN;
+        BODY);
     }
 
     /**
@@ -159,17 +117,35 @@ final readonly class SentinelStatusCommentBuilder
      */
     public function buildInstallationInactiveComment(): string
     {
-        $branding = $this->brandingResolver->getRandomBranding();
-
-        return <<<MARKDOWN
-        ⚠️ **Review Skipped - Installation Inactive**
-
+        return $this->buildAlert('WARNING', 'Review Skipped — Installation Inactive', <<<'BODY'
         The GitHub App installation for this repository is no longer active. Reviews cannot be performed without an active installation.
 
         **To fix this:**
         1. Go to your GitHub organization/account settings
         2. Navigate to **Installed GitHub Apps**
         3. Re-install or re-activate the Sentinel GitHub App
+        BODY);
+    }
+
+    /**
+     * Build a GitHub-flavored alert blockquote with branding footer.
+     *
+     * @param  'NOTE'|'TIP'|'IMPORTANT'|'WARNING'|'CAUTION'  $type
+     */
+    private function buildAlert(string $type, string $title, string $body): string
+    {
+        $branding = $this->brandingResolver->getRandomBranding();
+
+        $quotedBody = implode("\n", array_map(
+            fn (string $line): string => '> '.$line,
+            explode("\n", $body),
+        ));
+
+        return <<<MARKDOWN
+        > [!{$type}]
+        > ## {$title}
+        >
+        {$quotedBody}
 
         ---
         <sub>{$branding}</sub>

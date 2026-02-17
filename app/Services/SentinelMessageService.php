@@ -42,9 +42,14 @@ final readonly class SentinelMessageService
     {
         $greeting = $this->brandingResolver->getRandomGreeting();
         $branding = $this->brandingResolver->getRandomBranding();
+        /** @var string $appUrl */
+        $appUrl = config('app.url');
+        $loadingGif = $appUrl.'/images/sentinel-loading.gif';
 
         return <<<MARKDOWN
         {$greeting['emoji']} {$greeting['message']}
+
+        Sentinel is working... <img src="{$loadingGif}" width="24" height="24" alt="loading" />
 
         ---
         <sub>{$branding}</sub>
