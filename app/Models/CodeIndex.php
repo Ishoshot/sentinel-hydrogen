@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\CodeIndexing\CodeIndexScopeType;
+use App\Services\CodeIndexing\ValueObjects\CodeIndexScope;
 use Database\Factories\CodeIndexFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -32,6 +34,10 @@ final class CodeIndex extends Model
      */
     protected $fillable = [
         'repository_id',
+        'scope_type',
+        'scope_ref',
+        'pull_request_number',
+        'head_sha',
         'commit_sha',
         'file_path',
         'file_type',
@@ -86,11 +92,34 @@ final class CodeIndex extends Model
     }
 
     /**
+     * @param  Builder<CodeIndex>  $query
+     * @return Builder<CodeIndex>
+     */
+    public function scopeForScope(Builder $query, CodeIndexScope $scope): Builder
+    {
+        return $query
+            ->where('scope_type', $scope->type->value)
+            ->where('scope_ref', $scope->ref);
+    }
+
+    /**
+     * @param  Builder<CodeIndex>  $query
+     * @return Builder<CodeIndex>
+     */
+    public function scopeForPullRequest(Builder $query, int $pullRequestNumber): Builder
+    {
+        return $query
+            ->where('scope_type', CodeIndexScopeType::PullRequest->value)
+            ->where('pull_request_number', $pullRequestNumber);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
+            'scope_type' => CodeIndexScopeType::class,
             'structure' => 'array',
             'metadata' => 'array',
             'indexed_at' => 'datetime',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\CodeIndexing\CodeIndexScopeType;
 use App\Models\CodeIndex;
 use App\Models\Repository;
 use Database\Factories\Concerns\RefreshOnCreate;
@@ -26,6 +27,10 @@ final class CodeIndexFactory extends Factory
     {
         return [
             'repository_id' => Repository::factory(),
+            'scope_type' => CodeIndexScopeType::Baseline,
+            'scope_ref' => CodeIndexScopeType::Baseline->value,
+            'pull_request_number' => null,
+            'head_sha' => null,
             'commit_sha' => fake()->sha1(),
             'file_path' => sprintf('app/Models/%s.php', fake()->word()),
             'file_type' => 'php',
