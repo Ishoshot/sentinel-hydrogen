@@ -7,6 +7,7 @@ namespace App\Services\CodeIndexing\Strategies;
 use App\Models\Repository;
 use App\Services\CodeIndexing\Contracts\EmbeddingServiceContract;
 use App\Services\CodeIndexing\Mappers\SemanticSearchResultRowMapper;
+use App\Services\CodeIndexing\ValueObjects\CodeIndexScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use stdClass;
@@ -25,8 +26,9 @@ final readonly class SemanticCodeSearchStrategy
      * @param  array<string>|null  $fileTypes
      * @return array<int, array{file_path: string, content: string, score: float, metadata: array<string, mixed>}>
      */
-    public function execute(Repository $repository, string $query, int $limit, ?array $fileTypes): array
+    public function execute(Repository $repository, string $query, int $limit, ?array $fileTypes, ?CodeIndexScope $scope = null): array
     {
+        $resolvedScope = $scope ?? CodeIndexScope::baseline();
         $queryEmbedding = $this->embeddingService->generateEmbedding($query);
 
         if ($queryEmbedding === []) {
@@ -50,7 +52,9 @@ final readonly class SemanticCodeSearchStrategy
             ])
             ->join('code_indexes', 'code_embeddings.code_index_id', '=', 'code_indexes.id')
             ->where('code_embeddings.repository_id', $repository->id)
-            ->whereNotNull('code_embeddings.embedding');
+            ->whereNotNull('code_embeddings.embedding')
+            ->where('code_indexes.scope_type', $resolvedScope->type->value)
+            ->where('code_indexes.scope_ref', $resolvedScope->ref);
 
         if ($fileTypes !== null && $fileTypes !== []) {
             $queryBuilder->whereIn('code_indexes.file_type', $fileTypes);

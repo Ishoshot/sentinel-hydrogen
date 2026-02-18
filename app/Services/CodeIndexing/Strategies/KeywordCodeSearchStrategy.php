@@ -6,6 +6,7 @@ namespace App\Services\CodeIndexing\Strategies;
 
 use App\Models\CodeIndex;
 use App\Models\Repository;
+use App\Services\CodeIndexing\ValueObjects\CodeIndexScope;
 use Illuminate\Database\Eloquent\Builder;
 
 final readonly class KeywordCodeSearchStrategy
@@ -21,7 +22,7 @@ final readonly class KeywordCodeSearchStrategy
      * @param  array<string>|null  $fileTypes
      * @return array<int, array{file_path: string, content: string, score: float, metadata: array<string, mixed>}>
      */
-    public function execute(Repository $repository, string $query, int $limit, ?array $fileTypes): array
+    public function execute(Repository $repository, string $query, int $limit, ?array $fileTypes, ?CodeIndexScope $scope = null): array
     {
         $searchTerms = $this->scoringStrategy->extractTerms($query);
 
@@ -29,7 +30,7 @@ final readonly class KeywordCodeSearchStrategy
             return [];
         }
 
-        $queryBuilder = $this->baseQuery($repository, $fileTypes);
+        $queryBuilder = $this->baseQuery($repository, $fileTypes, $scope ?? CodeIndexScope::baseline());
 
         $queryBuilder->where(function (Builder $builder) use ($searchTerms): void {
             foreach ($searchTerms as $term) {
@@ -64,9 +65,11 @@ final readonly class KeywordCodeSearchStrategy
      * @param  array<string>|null  $fileTypes
      * @return Builder<CodeIndex>
      */
-    private function baseQuery(Repository $repository, ?array $fileTypes): Builder
+    private function baseQuery(Repository $repository, ?array $fileTypes, CodeIndexScope $scope): Builder
     {
-        $queryBuilder = CodeIndex::query()->where('repository_id', $repository->id);
+        $queryBuilder = CodeIndex::query()
+            ->where('repository_id', $repository->id)
+            ->forScope($scope);
 
         if ($fileTypes !== null && $fileTypes !== []) {
             $queryBuilder->whereIn('file_type', $fileTypes);
