@@ -8,6 +8,7 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
+use App\Services\Context\Policies\AdaptiveReviewLimitPolicy;
 use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
 use Illuminate\Support\Facades\Log;
 
@@ -20,20 +21,11 @@ use Illuminate\Support\Facades\Log;
 final readonly class SemanticCollector implements ContextCollector
 {
     /**
-     * Maximum number of files to analyze.
-     */
-    private const int MAX_FILES = 15;
-
-    /**
-     * Maximum file size in bytes to analyze.
-     */
-    private const int MAX_FILE_SIZE = 100000;
-
-    /**
      * Create a new SemanticCollector instance.
      */
     public function __construct(
-        private SemanticAnalyzerInterface $semanticAnalyzer
+        private SemanticAnalyzerInterface $semanticAnalyzer,
+        private AdaptiveReviewLimitPolicy $limitPolicy = new AdaptiveReviewLimitPolicy,
     ) {}
 
     /**
@@ -67,6 +59,9 @@ final readonly class SemanticCollector implements ContextCollector
      */
     public function collect(ContextBag $bag, array $params): void
     {
+        /** @var Repository $repository */
+        $repository = $params['repository'];
+
         // Use file contents already collected by FileContextCollector
         if ($bag->fileContents === []) {
             Log::debug('SemanticCollector: No file contents available');
@@ -75,7 +70,8 @@ final readonly class SemanticCollector implements ContextCollector
         }
 
         // Filter and limit files to analyze
-        $filesToAnalyze = $this->selectFilesToAnalyze($bag->fileContents);
+        $limits = $this->limitPolicy->semanticLimits($repository, $bag->files);
+        $filesToAnalyze = $this->selectFilesToAnalyze($bag->fileContents, $limits['max_files'], $limits['max_file_size']);
 
         if ($filesToAnalyze === []) {
             Log::debug('SemanticCollector: No suitable files to analyze');
@@ -91,6 +87,12 @@ final readonly class SemanticCollector implements ContextCollector
         Log::info('SemanticCollector: Analyzed files', [
             'files_analyzed' => count($semantics),
             'files_requested' => count($filesToAnalyze),
+            'limit_max_files' => $limits['max_files'],
+            'limit_max_file_size' => $limits['max_file_size'],
+            'limit_tier' => $limits['tier'],
+            'limit_pr_size_bucket' => $limits['pr_size_bucket'],
+            'limit_source' => $limits['source'],
+            'adaptive_limits_enabled' => $limits['adaptive'],
         ]);
     }
 
@@ -100,13 +102,13 @@ final readonly class SemanticCollector implements ContextCollector
      * @param  array<string, string>  $fileContents
      * @return array<string, string>
      */
-    private function selectFilesToAnalyze(array $fileContents): array
+    private function selectFilesToAnalyze(array $fileContents, int $maxFiles, int $maxFileSize): array
     {
         $candidates = [];
 
         foreach ($fileContents as $filename => $content) {
             // Skip files that are too large
-            if (mb_strlen($content) > self::MAX_FILE_SIZE) {
+            if (mb_strlen($content) > $maxFileSize) {
                 continue;
             }
 
@@ -114,6 +116,6 @@ final readonly class SemanticCollector implements ContextCollector
         }
 
         // Limit number of files
-        return array_slice($candidates, 0, self::MAX_FILES, true);
+        return array_slice($candidates, 0, max(1, $maxFiles), true);
     }
 }

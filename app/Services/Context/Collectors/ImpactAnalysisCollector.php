@@ -12,6 +12,7 @@ use App\Services\Context\Collectors\Support\ImpactedFileSearcher;
 use App\Services\Context\Collectors\Support\ImpactModifiedSymbolExtractor;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
+use App\Services\Context\Policies\AdaptiveReviewLimitPolicy;
 use App\Services\Context\ValueObjects\ImpactedFile;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,7 @@ final readonly class ImpactAnalysisCollector implements ContextCollector
     public function __construct(
         private CodeSearchServiceContract $codeSearchService,
         private GitHubApiServiceContract $gitHubApiService,
+        private AdaptiveReviewLimitPolicy $limitPolicy = new AdaptiveReviewLimitPolicy,
         private ?ImpactModifiedSymbolExtractor $symbolExtractor = null,
         private ?ImpactedFileSearcher $fileSearcher = null,
     ) {}
@@ -92,16 +94,26 @@ final readonly class ImpactAnalysisCollector implements ContextCollector
             return;
         }
 
-        $symbolsToSearch = array_slice($modifiedSymbols, 0, $this->maxSymbols());
+        $impactLimits = $this->limitPolicy->impactAnalysisLimits($repository, $bag->files);
+        $symbolsToSearch = array_slice($modifiedSymbols, 0, $impactLimits['max_symbols']);
 
         Log::debug('ImpactAnalysisCollector: Searching for references', [
             'symbols_count' => count($symbolsToSearch),
             'total_modified' => count($modifiedSymbols),
+            'limit_max_symbols' => $impactLimits['max_symbols'],
+            'limit_max_files' => $impactLimits['max_files'],
+            'limit_max_file_size' => $impactLimits['max_file_size'],
+            'limit_search_limit_per_symbol' => $impactLimits['search_limit_per_symbol'],
+            'limit_min_relevance_score' => $impactLimits['min_relevance_score'],
+            'limit_tier' => $impactLimits['tier'],
+            'limit_pr_size_bucket' => $impactLimits['pr_size_bucket'],
+            'limit_source' => $impactLimits['source'],
+            'adaptive_limits_enabled' => $impactLimits['adaptive'],
         ]);
 
         $prFiles = array_column($bag->files, 'filename');
 
-        $impactedFiles = $fileSearcher->findImpactedFiles($repository, $symbolsToSearch, $prFiles, $run);
+        $impactedFiles = $fileSearcher->findImpactedFiles($repository, $symbolsToSearch, $prFiles, $run, $impactLimits);
 
         if ($impactedFiles === []) {
             Log::debug('ImpactAnalysisCollector: No impacted files found');
@@ -118,6 +130,15 @@ final readonly class ImpactAnalysisCollector implements ContextCollector
             'repository' => $repository->full_name,
             'symbols_searched' => count($symbolsToSearch),
             'impacted_files' => count($impactedFiles),
+            'limit_max_symbols' => $impactLimits['max_symbols'],
+            'limit_max_files' => $impactLimits['max_files'],
+            'limit_max_file_size' => $impactLimits['max_file_size'],
+            'limit_search_limit_per_symbol' => $impactLimits['search_limit_per_symbol'],
+            'limit_min_relevance_score' => $impactLimits['min_relevance_score'],
+            'limit_tier' => $impactLimits['tier'],
+            'limit_pr_size_bucket' => $impactLimits['pr_size_bucket'],
+            'limit_source' => $impactLimits['source'],
+            'adaptive_limits_enabled' => $impactLimits['adaptive'],
         ]);
     }
 
@@ -127,14 +148,6 @@ final readonly class ImpactAnalysisCollector implements ContextCollector
     private function hasCodeIndex(Repository $repository): bool
     {
         return CodeIndex::forRepository($repository)->exists();
-    }
-
-    /**
-     * Resolve the maximum number of symbols to search for references.
-     */
-    private function maxSymbols(): int
-    {
-        return (int) config('reviews.impact_analysis.max_symbols', 25);
     }
 
     /**
