@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Reviews;
 
+use App\Actions\CodeIndexing\DispatchPullRequestPreIndex;
 use App\Actions\GitHub\Contracts\PostsAutoReviewDisabledComment;
 use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Actions\Reviews\Guards\PullRequestWebhookPreflightGuard;
 use App\Actions\Reviews\Resolvers\PullRequestWebhookRepositoryResolver;
+use App\Jobs\CodeIndexing\ProcessPullRequestIndexCleanup;
 use App\Services\GitHub\GitHubWebhookService;
 use App\Services\Logging\LogContext;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +31,7 @@ final readonly class HandlePullRequestWebhook
         private PostsConfigErrorComment $postConfigError,
         private PostsAutoReviewDisabledComment $postAutoReviewDisabled,
         private DispatchReviewRun $dispatchReviewRun,
+        private DispatchPullRequestPreIndex $dispatchPullRequestPreIndex,
         private PullRequestWebhookRepositoryResolver $repositoryResolver,
         private PullRequestWebhookPreflightGuard $preflightGuard,
     ) {}
@@ -53,8 +56,9 @@ final readonly class HandlePullRequestWebhook
 
         $shouldTriggerReview = $this->webhookService->shouldTriggerReview($data['action']);
         $shouldSyncMetadata = $this->webhookService->shouldSyncMetadata($data['action']);
+        $shouldCleanupPreIndex = $this->webhookService->shouldCleanupPreIndex($data['action']);
 
-        if (! $shouldTriggerReview && ! $shouldSyncMetadata) {
+        if (! $shouldTriggerReview && ! $shouldSyncMetadata && ! $shouldCleanupPreIndex) {
             Log::info('Ignoring pull request action', $webhookCtx);
 
             return;
@@ -73,6 +77,14 @@ final readonly class HandlePullRequestWebhook
 
         $ctx = LogContext::fromRepository($repository);
         $ctx['pr_number'] = $data['pull_request_number'];
+
+        if ($shouldCleanupPreIndex) {
+            ProcessPullRequestIndexCleanup::dispatch($repository, $data['pull_request_number']);
+
+            Log::info('Queued pull request pre-index cleanup', $ctx);
+
+            return;
+        }
 
         $preflight = $this->preflightGuard->evaluate($repository, $data, $ctx);
         if ($preflight->shouldPostAutoReviewDisabledComment) {
@@ -99,6 +111,8 @@ final readonly class HandlePullRequestWebhook
 
             return;
         }
+
+        $this->dispatchPullRequestPreIndex->handle($repository, $data, $ctx);
 
         $greetingCommentId = $this->postGreeting->handle($repository, $data['pull_request_number']);
 

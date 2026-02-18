@@ -57,4 +57,12 @@ enum PullRequestAction: string
             self::ReadyForReview,
         ], true);
     }
+
+    /**
+     * Check if this action should clean up temporary PR index data.
+     */
+    public function shouldCleanupPreIndex(): bool
+    {
+        return $this === self::Closed;
+    }
 }

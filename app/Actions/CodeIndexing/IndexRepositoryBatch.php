@@ -9,6 +9,7 @@ use App\Jobs\CodeIndexing\GenerateCodeEmbeddingsJob;
 use App\Models\CodeIndex;
 use App\Models\Repository;
 use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;
+use App\Services\CodeIndexing\ValueObjects\CodeIndexScope;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -26,8 +27,9 @@ final readonly class IndexRepositoryBatch
     /**
      * @param  array<int, array{path: string, type: string, size?: int}>  $files
      */
-    public function handle(Repository $repository, string $commitSha, array $files): void
+    public function handle(Repository $repository, string $commitSha, array $files, ?CodeIndexScope $scope = null): void
     {
+        $resolvedScope = $scope ?? CodeIndexScope::baseline();
         $installation = $repository->installation;
 
         if ($installation === null) {
@@ -42,6 +44,8 @@ final readonly class IndexRepositoryBatch
             'repository_id' => $repository->id,
             'commit_sha' => $commitSha,
             'files_count' => count($files),
+            'scope_type' => $resolvedScope->type->value,
+            'scope_ref' => $resolvedScope->ref,
         ]);
 
         $indexed = 0;
@@ -63,13 +67,14 @@ final readonly class IndexRepositoryBatch
                     continue;
                 }
 
-                $result = $this->indexingService->indexFile($repository, $commitSha, $file['path'], $content);
+                $result = $this->indexingService->indexFile($repository, $commitSha, $file['path'], $content, $resolvedScope);
 
                 if ($result['indexed']) {
                     $indexed++;
 
                     $codeIndex = CodeIndex::query()
                         ->where('repository_id', $repository->id)
+                        ->forScope($resolvedScope)
                         ->where('file_path', $file['path'])
                         ->first();
 
@@ -92,6 +97,8 @@ final readonly class IndexRepositoryBatch
             'repository_id' => $repository->id,
             'indexed' => $indexed,
             'failed' => $failed,
+            'scope_type' => $resolvedScope->type->value,
+            'scope_ref' => $resolvedScope->ref,
         ]);
 
         if ($codeIndexIds !== []) {
