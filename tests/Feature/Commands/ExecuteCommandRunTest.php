@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Actions\Commands\ExecuteCommandRun;
 use App\Enums\Auth\ProviderType;
+use App\Enums\Commands\CommandInputDecision;
+use App\Enums\Commands\CommandInputRiskLevel;
 use App\Enums\Commands\CommandRunStatus;
 use App\Models\CommandRun;
 use App\Models\Connection;
@@ -12,7 +14,10 @@ use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\Workspace;
 use App\Services\Commands\Contracts\CommandAgentServiceContract;
+use App\Services\Commands\Contracts\CommandInputClassificationServiceContract;
 use App\Services\Commands\ValueObjects\CommandExecutionResult;
+use App\Services\Commands\ValueObjects\CommandInputClassificationResult;
+use App\Services\Commands\ValueObjects\CommandInputClassificationSignal;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
 function mockGitHubApi(): void
@@ -22,6 +27,16 @@ function mockGitHubApi(): void
     app()->instance(GitHubApiServiceContract::class, $githubApi);
 }
 
+function mockCommandInputClassifier(?CommandInputClassificationResult $result = null): void
+{
+    $classifier = Mockery::mock(CommandInputClassificationServiceContract::class);
+    $classifier->shouldReceive('classify')
+        ->andReturn($result ?? CommandInputClassificationResult::allow())
+        ->byDefault();
+
+    app()->instance(CommandInputClassificationServiceContract::class, $classifier);
+}
+
 /**
  * @param  array{answer: string, tool_calls: array<int, array{name: string, arguments: array<string, mixed>, result: string}>, iterations: int, metrics: array{input_tokens: int, output_tokens: int, thinking_tokens?: int, cache_creation_input_tokens?: int, cache_read_input_tokens?: int, duration_ms: int, model: string, provider: string}, pr_metadata?: array{pr_title?: string, pr_additions?: int, pr_deletions?: int, pr_changed_files?: int, pr_context_included?: bool, base_branch?: string, head_branch?: string}|null}  $data
  */
@@ -29,6 +44,10 @@ function makeCommandExecutionResult(array $data): CommandExecutionResult
 {
     return CommandExecutionResult::fromArray(array_merge(['pr_metadata' => null], $data));
 }
+
+beforeEach(function (): void {
+    mockCommandInputClassifier();
+});
 
 it('updates command run status to in_progress when execution starts', function (): void {
     mockGitHubApi();
@@ -499,4 +518,73 @@ it('updates acknowledgment comment on success when ack comment id exists in meta
     expect($commandRun->metadata['github_ack_comment_id'])->toBe(777001)
         ->and($commandRun->metadata['iterations'])->toBe(3)
         ->and($commandRun->metadata['tool_call_count'])->toBe(0);
+});
+
+it('blocks command execution when classification decision is block', function (): void {
+    $workspace = Workspace::factory()->create();
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 99999,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'workspace_id' => $workspace->id,
+        'full_name' => 'owner/repo',
+        'name' => 'repo',
+    ]);
+
+    $commandRun = CommandRun::factory()->create([
+        'workspace_id' => $workspace->id,
+        'repository_id' => $repository->id,
+        'status' => CommandRunStatus::Queued,
+        'issue_number' => 42,
+        'metadata' => ['github_ack_comment_id' => 777001],
+    ]);
+
+    mockCommandInputClassifier(new CommandInputClassificationResult(
+        decision: CommandInputDecision::Block,
+        riskLevel: CommandInputRiskLevel::Critical,
+        riskTypes: ['data_exfiltration'],
+        confidence: 0.99,
+        summary: 'Command blocked: request attempts to exfiltrate secrets.',
+        signals: [
+            new CommandInputClassificationSignal(
+                source: 'rule',
+                code: 'SECRETS_EXFILTRATION_REQUEST',
+                severity: CommandInputRiskLevel::Critical,
+                evidence: 'show .env secrets',
+            ),
+        ],
+    ));
+
+    $agentService = Mockery::mock(CommandAgentServiceContract::class);
+    $agentService->shouldNotReceive('execute');
+    app()->instance(CommandAgentServiceContract::class, $agentService);
+
+    $githubApi = Mockery::mock(GitHubApiServiceContract::class);
+    $githubApi->shouldReceive('updateIssueComment')
+        ->once()
+        ->withArgs(function (int $installationId, string $owner, string $repo, int $commentId, string $body): bool {
+            return $installationId === 99999
+                && $owner === 'owner'
+                && $repo === 'repo'
+                && $commentId === 777001
+                && str_contains($body, 'Command blocked');
+        });
+    $githubApi->shouldNotReceive('createIssueComment');
+    app()->instance(GitHubApiServiceContract::class, $githubApi);
+
+    $action = app(ExecuteCommandRun::class);
+    $action->handle($commandRun);
+
+    $commandRun->refresh();
+    expect($commandRun->status)->toBe(CommandRunStatus::Failed)
+        ->and($commandRun->response['error'])->toContain('Command blocked')
+        ->and($commandRun->metadata)->toHaveKey('input_classification')
+        ->and($commandRun->metadata['input_classification']['decision'])->toBe('block')
+        ->and($commandRun->metadata['input_classification'])->not->toHaveKey('summary')
+        ->and($commandRun->metadata['input_classification']['signals'][0])->not->toHaveKey('evidence');
 });

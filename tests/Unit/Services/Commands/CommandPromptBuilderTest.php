@@ -74,3 +74,39 @@ it('omits context hints section when none provided', function (): void {
         ->not->toContain('Symbols mentioned:')
         ->not->toContain('Lines referenced:');
 });
+
+it('includes trusted safety profile when classification metadata is provided', function (): void {
+    $builder = app(CommandPromptBuilder::class);
+
+    $message = $builder->buildUserMessage(
+        CommandType::Analyze,
+        'summarize this change',
+        null,
+        null,
+        [
+            'decision' => 'caution',
+            'risk_level' => 'high',
+            'risk_types' => ['prompt_injection', 'policy_bypass'],
+            'confidence' => 0.91,
+            'summary' => 'Suspicious instruction override intent detected.',
+            'signals' => [
+                [
+                    'source' => 'rule',
+                    'code' => 'PROMPT_INJECTION_OVERRIDE_ATTEMPT',
+                    'severity' => 'medium',
+                    'evidence' => 'ignore all previous instructions',
+                ],
+            ],
+        ]
+    );
+
+    expect($message)
+        ->toContain('Trusted Safety Profile')
+        ->toContain('Decision: caution')
+        ->toContain('Risk Level: high')
+        ->toContain('prompt_injection, policy_bypass')
+        ->toContain('Trusted Signals')
+        ->toContain('PROMPT_INJECTION_OVERRIDE_ATTEMPT')
+        ->not->toContain('Suspicious instruction override intent detected.')
+        ->not->toContain('ignore all previous instructions');
+});
