@@ -13,6 +13,7 @@ use App\Services\CodeIndexing\Factories\CodeIndexingPayloadFactory;
 use App\Services\CodeIndexing\Loggers\CodeIndexingTelemetryLogger;
 use App\Services\CodeIndexing\Policies\IndexableFilePolicy;
 use App\Services\CodeIndexing\Strategies\IndexBatchDispatchStrategy;
+use App\Services\CodeIndexing\ValueObjects\CodeIndexScope;
 use App\Services\Semantic\Contracts\SemanticAnalyzerInterface;
 
 /**
@@ -36,8 +37,9 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
     /**
      * Index a repository at a specific commit.
      */
-    public function indexRepository(Repository $repository, string $commitSha): void
+    public function indexRepository(Repository $repository, string $commitSha, ?CodeIndexScope $scope = null): void
     {
+        $resolvedScope = $scope ?? CodeIndexScope::baseline();
         $this->telemetryLogger->logFullIndexStarted($repository->id, $commitSha);
 
         $installation = $repository->installation;
@@ -57,7 +59,7 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
             indexableFiles: count($indexableFiles),
         );
 
-        $this->batchDispatchStrategy->dispatch($repository, $commitSha, $indexableFiles);
+        $this->batchDispatchStrategy->dispatch($repository, $commitSha, $indexableFiles, $resolvedScope);
     }
 
     /**
@@ -65,8 +67,9 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
      *
      * @param  array{added: array<string>, modified: array<string>, removed: array<string>}  $changedFiles
      */
-    public function indexChangedFiles(Repository $repository, string $commitSha, array $changedFiles): void
+    public function indexChangedFiles(Repository $repository, string $commitSha, array $changedFiles, ?CodeIndexScope $scope = null): void
     {
+        $resolvedScope = $scope ?? CodeIndexScope::baseline();
         $changeSetPlan = $this->changeSetBuilder->plan($changedFiles, $repository);
         $indexingLimits = $changeSetPlan['indexing_limits'];
 
@@ -79,7 +82,7 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
         );
 
         if ($changeSetPlan['removed'] !== []) {
-            $this->removeFiles($repository, $changeSetPlan['removed']);
+            $this->removeFiles($repository, $changeSetPlan['removed'], $resolvedScope);
         }
 
         $indexableFiles = $changeSetPlan['indexable_files'];
@@ -101,12 +104,12 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
                 adaptive: $indexingLimits['adaptive'],
             );
 
-            $this->indexRepository($repository, $commitSha);
+            $this->indexRepository($repository, $commitSha, $resolvedScope);
 
             return;
         }
 
-        $this->batchDispatchStrategy->dispatch($repository, $commitSha, $indexableFiles);
+        $this->batchDispatchStrategy->dispatch($repository, $commitSha, $indexableFiles, $resolvedScope);
     }
 
     /**
@@ -114,18 +117,22 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
      *
      * @return array{indexed: bool, structure: array<string, mixed>|null}
      */
-    public function indexFile(Repository $repository, string $commitSha, string $filePath, string $content): array
+    public function indexFile(Repository $repository, string $commitSha, string $filePath, string $content, ?CodeIndexScope $scope = null): array
     {
+        $resolvedScope = $scope ?? CodeIndexScope::baseline();
+
         if (! $this->filePolicy->shouldIndex($filePath)) {
             return ['indexed' => false, 'structure' => null];
         }
 
         $structure = $this->semanticAnalyzer->analyzeFile($content, $filePath);
-        $indexPayload = $this->payloadFactory->build($commitSha, $filePath, $content, $structure);
+        $indexPayload = $this->payloadFactory->build($commitSha, $filePath, $content, $structure, $resolvedScope);
 
         CodeIndex::updateOrCreate(
             [
                 'repository_id' => $repository->id,
+                'scope_type' => $resolvedScope->type->value,
+                'scope_ref' => $resolvedScope->ref,
                 'file_path' => $filePath,
             ],
             $indexPayload
@@ -139,13 +146,15 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
      *
      * @param  array<string>  $filePaths
      */
-    public function removeFiles(Repository $repository, array $filePaths): void
+    public function removeFiles(Repository $repository, array $filePaths, ?CodeIndexScope $scope = null): void
     {
         if ($filePaths === []) {
             return;
         }
 
+        $resolvedScope = $scope ?? CodeIndexScope::baseline();
         $deleted = CodeIndex::where('repository_id', $repository->id)
+            ->forScope($resolvedScope)
             ->whereIn('file_path', $filePaths)
             ->delete();
 

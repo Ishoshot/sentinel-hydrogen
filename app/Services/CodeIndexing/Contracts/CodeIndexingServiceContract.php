@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\CodeIndexing\Contracts;
 
 use App\Models\Repository;
+use App\Services\CodeIndexing\ValueObjects\CodeIndexScope;
 
 interface CodeIndexingServiceContract
 {
@@ -14,7 +15,7 @@ interface CodeIndexingServiceContract
      * @param  Repository  $repository  The repository to index
      * @param  string  $commitSha  The commit SHA to index at
      */
-    public function indexRepository(Repository $repository, string $commitSha): void;
+    public function indexRepository(Repository $repository, string $commitSha, ?CodeIndexScope $scope = null): void;
 
     /**
      * Index only changed files (incremental indexing).
@@ -23,7 +24,7 @@ interface CodeIndexingServiceContract
      * @param  string  $commitSha  The new commit SHA
      * @param  array{added?: array<string>, modified?: array<string>, removed?: array<string>}  $changedFiles
      */
-    public function indexChangedFiles(Repository $repository, string $commitSha, array $changedFiles): void;
+    public function indexChangedFiles(Repository $repository, string $commitSha, array $changedFiles, ?CodeIndexScope $scope = null): void;
 
     /**
      * Index a single file.
@@ -34,7 +35,7 @@ interface CodeIndexingServiceContract
      * @param  string  $content  The file content
      * @return array{indexed: bool, structure: array<string, mixed>|null}
      */
-    public function indexFile(Repository $repository, string $commitSha, string $filePath, string $content): array;
+    public function indexFile(Repository $repository, string $commitSha, string $filePath, string $content, ?CodeIndexScope $scope = null): array;
 
     /**
      * Remove indexed files that no longer exist.
@@ -42,7 +43,7 @@ interface CodeIndexingServiceContract
      * @param  Repository  $repository  The repository
      * @param  array<string>  $filePaths  The file paths to remove
      */
-    public function removeFiles(Repository $repository, array $filePaths): void;
+    public function removeFiles(Repository $repository, array $filePaths, ?CodeIndexScope $scope = null): void;
 
     /**
      * Check if a file should be indexed based on type and path.
