@@ -8,6 +8,7 @@ use App\Enums\Commands\CommandRunStatus;
 use App\Models\CommandRun;
 use App\Services\Commands\CommandToolResultSanitizer;
 use App\Services\Commands\Contracts\CommandAgentServiceContract;
+use App\Services\Commands\Contracts\CommandInputClassificationServiceContract;
 use App\Services\Commands\ValueObjects\ToolCall;
 use App\Services\Plans\PlanLimitEnforcer;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,7 @@ final readonly class ExecuteCommandRun
         private PostCommandResponse $postResponse,
         private CommandToolResultSanitizer $toolResultSanitizer,
         private PlanLimitEnforcer $planLimitEnforcer,
+        private CommandInputClassificationServiceContract $commandInputClassificationService,
     ) {}
 
     /**
@@ -59,6 +61,31 @@ final readonly class ExecuteCommandRun
 
                 return;
             }
+        }
+
+        $classification = $this->commandInputClassificationService->classify($commandRun);
+        $existingMetadata = is_array($commandRun->metadata) ? $commandRun->metadata : [];
+        $commandRun->update([
+            'metadata' => [
+                ...$existingMetadata,
+                'input_classification' => $classification->toSafeContextArray(),
+            ],
+        ]);
+
+        if ($classification->blocksExecution()) {
+            $blockedMessage = $classification->summary !== ''
+                ? $classification->summary
+                : 'Request blocked by Sentinel command safety policy.';
+
+            $commandRun->update([
+                'status' => CommandRunStatus::Failed,
+                'completed_at' => now(),
+                'response' => ['error' => $blockedMessage],
+            ]);
+
+            $this->postResponse->handleError($commandRun, new RuntimeException($blockedMessage));
+
+            return;
         }
 
         $commandRun->update([

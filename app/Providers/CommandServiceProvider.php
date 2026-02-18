@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Services\Commands\CommandAgentService;
+use App\Services\Commands\CommandInputClassificationService;
 use App\Services\Commands\Contracts\CommandAgentServiceContract;
+use App\Services\Commands\Contracts\CommandInputClassificationServiceContract;
 use App\Services\Commands\Contracts\PullRequestContextServiceContract;
 use App\Services\Commands\PullRequestContextService;
 use App\Services\Commands\Tools\FindSymbolTool;
@@ -32,6 +34,7 @@ final class CommandServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(CommandAgentServiceContract::class, CommandAgentService::class);
+        $this->app->bind(CommandInputClassificationServiceContract::class, CommandInputClassificationService::class);
         $this->app->bind(PullRequestContextServiceContract::class, PullRequestContextService::class);
 
         $toolBuilders = [

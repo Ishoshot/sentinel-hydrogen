@@ -63,11 +63,15 @@ final readonly class CommandAgentExecutionContextBuilder
 
         $tools = $this->buildTools($commandRun, $pathRules, $toolBuilders);
 
+        $metadata = is_array($commandRun->metadata) ? $commandRun->metadata : [];
+        $inputClassification = $this->normalizeInputClassification($metadata['input_classification'] ?? null);
+
         $userMessage = $this->promptBuilder->buildUserMessage(
             $commandRun->command_type,
             $commandRun->query,
             $prContext,
-            $this->contextHintsNormalizer->normalize($commandRun->context_snapshot['context_hints'] ?? null)
+            $this->contextHintsNormalizer->normalize($commandRun->context_snapshot['context_hints'] ?? null),
+            $inputClassification,
         );
 
         $enableThinking = $aiProvider === AiProvider::Anthropic
@@ -91,6 +95,74 @@ final readonly class CommandAgentExecutionContextBuilder
             providerOptions: $providerOptions,
             temperature: $temperature,
         );
+    }
+
+    /**
+     * @return array{
+     *     decision?: string,
+     *     risk_level?: string,
+     *     risk_types?: array<int, string>,
+     *     confidence?: float|int,
+     *     signals?: array<int, array{source?: string, code?: string, severity?: string}>
+     * }|null
+     */
+    private function normalizeInputClassification(mixed $value): ?array
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $normalized = [];
+
+        if (is_string($value['decision'] ?? null)) {
+            $normalized['decision'] = $value['decision'];
+        }
+
+        if (is_string($value['risk_level'] ?? null)) {
+            $normalized['risk_level'] = $value['risk_level'];
+        }
+
+        if (is_numeric($value['confidence'] ?? null)) {
+            $normalized['confidence'] = (float) $value['confidence'];
+        }
+
+        if (is_array($value['risk_types'] ?? null)) {
+            $normalized['risk_types'] = array_values(array_filter($value['risk_types'], is_string(...)));
+        }
+
+        if (is_array($value['signals'] ?? null)) {
+            $signals = [];
+
+            foreach ($value['signals'] as $signal) {
+                if (! is_array($signal)) {
+                    continue;
+                }
+
+                $normalizedSignal = [];
+
+                if (is_string($signal['source'] ?? null)) {
+                    $normalizedSignal['source'] = $signal['source'];
+                }
+
+                if (is_string($signal['code'] ?? null)) {
+                    $normalizedSignal['code'] = $signal['code'];
+                }
+
+                if (is_string($signal['severity'] ?? null)) {
+                    $normalizedSignal['severity'] = $signal['severity'];
+                }
+
+                if ($normalizedSignal !== []) {
+                    $signals[] = $normalizedSignal;
+                }
+            }
+
+            if ($signals !== []) {
+                $normalized['signals'] = $signals;
+            }
+        }
+
+        return $normalized === [] ? null : $normalized;
     }
 
     /**
