@@ -71,11 +71,23 @@ final readonly class CodeIndexingTelemetryLogger
     /**
      * LogLargeChangeSet.
      */
-    public function logLargeChangeSet(int $repositoryId, int $changedFiles): void
-    {
+    public function logLargeChangeSet(
+        int $repositoryId,
+        int $changedFiles,
+        int $fullReindexThreshold,
+        string $tier,
+        string $volumeBucket,
+        string $source,
+        bool $adaptive,
+    ): void {
         Log::info('Large change set detected, triggering full reindex', [
             'repository_id' => $repositoryId,
             'changed_files' => $changedFiles,
+            'full_reindex_threshold' => $fullReindexThreshold,
+            'limit_tier' => $tier,
+            'limit_volume_bucket' => $volumeBucket,
+            'limit_source' => $source,
+            'adaptive_limits_enabled' => $adaptive,
         ]);
     }
 

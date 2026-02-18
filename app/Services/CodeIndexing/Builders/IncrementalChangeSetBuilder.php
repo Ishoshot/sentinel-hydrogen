@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\CodeIndexing\Builders;
 
+use App\Models\Repository;
+use App\Services\CodeIndexing\Policies\AdaptiveIndexingLimitPolicy;
 use App\Services\CodeIndexing\Policies\IndexableFilePolicy;
 
 /**
@@ -12,13 +14,12 @@ use App\Services\CodeIndexing\Policies\IndexableFilePolicy;
  */
 final readonly class IncrementalChangeSetBuilder
 {
-    private const int FULL_REINDEX_THRESHOLD = 500;
-
     /**
      * Create a new IncrementalChangeSetBuilder instance.
      */
     public function __construct(
         private IndexableFilePolicy $filePolicy,
+        private AdaptiveIndexingLimitPolicy $indexingLimitPolicy = new AdaptiveIndexingLimitPolicy,
     ) {}
 
     /**
@@ -28,22 +29,25 @@ final readonly class IncrementalChangeSetBuilder
      *   modified: array<string>,
      *   removed: array<string>,
      *   indexable_files: array<int, array{path: string, type: string}>,
-     *   requires_full_reindex: bool
+     *   requires_full_reindex: bool,
+     *   indexing_limits: array{full_reindex_threshold: int, batch_size: int, tier: string, volume_bucket: string, source: string, adaptive: bool}
      * }
      */
-    public function plan(array $changedFiles): array
+    public function plan(array $changedFiles, Repository $repository): array
     {
         $added = $changedFiles['added'];
         $modified = $changedFiles['modified'];
         $removed = $changedFiles['removed'];
         $indexableFiles = $this->prepare($added, $modified);
+        $indexingLimits = $this->indexingLimitPolicy->resolve($repository, count($indexableFiles));
 
         return [
             'added' => $added,
             'modified' => $modified,
             'removed' => $removed,
             'indexable_files' => $indexableFiles,
-            'requires_full_reindex' => $this->exceedsThreshold($indexableFiles),
+            'requires_full_reindex' => $this->exceedsThreshold($indexableFiles, $indexingLimits['full_reindex_threshold']),
+            'indexing_limits' => $indexingLimits,
         ];
     }
 
@@ -69,8 +73,8 @@ final readonly class IncrementalChangeSetBuilder
      *
      * @param  array<int, array{path: string, type: string}>  $indexableFiles
      */
-    public function exceedsThreshold(array $indexableFiles): bool
+    public function exceedsThreshold(array $indexableFiles, int $fullReindexThreshold): bool
     {
-        return count($indexableFiles) > self::FULL_REINDEX_THRESHOLD;
+        return count($indexableFiles) > max(1, $fullReindexThreshold);
     }
 }

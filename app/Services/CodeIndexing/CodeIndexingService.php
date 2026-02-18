@@ -67,7 +67,8 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
      */
     public function indexChangedFiles(Repository $repository, string $commitSha, array $changedFiles): void
     {
-        $changeSetPlan = $this->changeSetBuilder->plan($changedFiles);
+        $changeSetPlan = $this->changeSetBuilder->plan($changedFiles, $repository);
+        $indexingLimits = $changeSetPlan['indexing_limits'];
 
         $this->telemetryLogger->logIncrementalIndexStarted(
             repositoryId: $repository->id,
@@ -90,7 +91,15 @@ final readonly class CodeIndexingService implements CodeIndexingServiceContract
         }
 
         if ($changeSetPlan['requires_full_reindex']) {
-            $this->telemetryLogger->logLargeChangeSet($repository->id, count($indexableFiles));
+            $this->telemetryLogger->logLargeChangeSet(
+                repositoryId: $repository->id,
+                changedFiles: count($indexableFiles),
+                fullReindexThreshold: $indexingLimits['full_reindex_threshold'],
+                tier: $indexingLimits['tier'],
+                volumeBucket: $indexingLimits['volume_bucket'],
+                source: $indexingLimits['source'],
+                adaptive: $indexingLimits['adaptive'],
+            );
 
             $this->indexRepository($repository, $commitSha);
 
