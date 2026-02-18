@@ -27,4 +27,14 @@ final class GitHubPullRequestActionPolicy
 
         return $prAction?->shouldSyncMetadata() ?? false;
     }
+
+    /**
+     * Determine if a pull request action should clean up PR-scoped indexes.
+     */
+    public function shouldCleanupPreIndex(string $action): bool
+    {
+        $prAction = PullRequestAction::tryFrom($action);
+
+        return $prAction?->shouldCleanupPreIndex() ?? false;
+    }
 }

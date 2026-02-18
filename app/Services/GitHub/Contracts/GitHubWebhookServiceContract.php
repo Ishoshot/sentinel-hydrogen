@@ -74,4 +74,9 @@ interface GitHubWebhookServiceContract
      * Check if a pull request action should sync metadata on an existing run.
      */
     public function shouldSyncMetadata(string $action): bool;
+
+    /**
+     * Check if a pull request action should clean up temporary PR indexes.
+     */
+    public function shouldCleanupPreIndex(string $action): bool;
 }

@@ -117,4 +117,12 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
     {
         return $this->pullRequestActionPolicy->shouldSyncMetadata($action);
     }
+
+    /**
+     * Check if a pull request action should clean up temporary PR index data.
+     */
+    public function shouldCleanupPreIndex(string $action): bool
+    {
+        return $this->pullRequestActionPolicy->shouldCleanupPreIndex($action);
+    }
 }
