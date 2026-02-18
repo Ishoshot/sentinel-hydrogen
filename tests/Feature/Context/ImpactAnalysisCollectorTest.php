@@ -637,3 +637,56 @@ it('respects max_file_size configuration limit', function (): void {
     // File should be excluded because it's too large
     expect($bag->impactedFiles)->toBeEmpty();
 });
+
+it('applies adaptive impact-analysis limits by tier and pr-size bucket', function (): void {
+    config([
+        'reviews.adaptive_limits.enabled' => true,
+        'reviews.adaptive_limits.pr_size_buckets' => [
+            'small' => ['max_files_changed' => 100, 'max_lines_changed' => 1000],
+        ],
+        'reviews.adaptive_limits.tiers.foundation.small.impact_analysis.max_symbols' => 1,
+    ]);
+
+    CodeIndex::factory()->create([
+        'repository_id' => $this->repository->id,
+        'file_path' => 'src/Service.php',
+    ]);
+
+    $codeSearchService = Mockery::mock(CodeSearchServiceContract::class);
+    $codeSearchService->shouldReceive('keywordSearch')
+        ->once()
+        ->andReturn([]);
+
+    $gitHubService = Mockery::mock(GitHubApiServiceContract::class);
+    $collector = new ImpactAnalysisCollector($codeSearchService, $gitHubService);
+
+    $patch = "@@ -1,20 +1,25 @@\n".str_repeat("+added line\n", 5);
+
+    $bag = new ContextBag(
+        files: [
+            [
+                'filename' => 'src/File.php',
+                'status' => 'modified',
+                'additions' => 5,
+                'deletions' => 0,
+                'changes' => 5,
+                'patch' => $patch,
+            ],
+        ],
+        semantics: [
+            'src/File.php' => [
+                'language' => 'php',
+                'functions' => [
+                    ['name' => 'func1', 'line_start' => 1, 'line_end' => 3],
+                    ['name' => 'func2', 'line_start' => 2, 'line_end' => 4],
+                ],
+                'classes' => [],
+            ],
+        ],
+    );
+
+    $collector->collect($bag, [
+        'repository' => $this->repository,
+        'run' => $this->run,
+    ]);
+});

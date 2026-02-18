@@ -171,3 +171,47 @@ it('skips files that are too large', function (): void {
         'run' => $this->run,
     ]);
 });
+
+it('applies adaptive semantic limits by workspace tier', function (): void {
+    config([
+        'reviews.adaptive_limits.enabled' => true,
+        'reviews.adaptive_limits.pr_size_buckets' => [
+            'small' => ['max_files_changed' => 1, 'max_lines_changed' => 20],
+            'medium' => ['max_files_changed' => 10, 'max_lines_changed' => 500],
+            'xlarge' => ['max_files_changed' => 1000000, 'max_lines_changed' => 1000000],
+        ],
+        'reviews.adaptive_limits.tiers.foundation.medium.semantic.max_files' => 2,
+        'reviews.adaptive_limits.tiers.foundation.medium.semantic.max_file_size' => 50000,
+    ]);
+
+    $fileContents = [
+        'file1.php' => '<?php function one() {}',
+        'file2.php' => '<?php function two() {}',
+        'file3.php' => '<?php function three() {}',
+    ];
+
+    $service = Mockery::mock(SemanticAnalyzerInterface::class);
+    $service->shouldReceive('analyzeFiles')
+        ->once()
+        ->with(Mockery::on(function (array $files): bool {
+            return count($files) === 2
+                && array_key_exists('file1.php', $files)
+                && array_key_exists('file2.php', $files);
+        }))
+        ->andReturn([]);
+
+    $collector = new SemanticCollector($service);
+    $bag = new ContextBag(
+        files: [
+            ['filename' => 'file1.php', 'status' => 'modified', 'additions' => 20, 'deletions' => 5, 'changes' => 25, 'patch' => '+a'],
+            ['filename' => 'file2.php', 'status' => 'modified', 'additions' => 18, 'deletions' => 3, 'changes' => 21, 'patch' => '+b'],
+            ['filename' => 'file3.php', 'status' => 'modified', 'additions' => 16, 'deletions' => 2, 'changes' => 18, 'patch' => '+c'],
+        ],
+        fileContents: $fileContents,
+    );
+
+    $collector->collect($bag, [
+        'repository' => $this->repository,
+        'run' => $this->run,
+    ]);
+});

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Auth\ProviderType;
 use App\Models\Connection;
 use App\Models\Installation;
+use App\Models\Plan;
 use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\Run;
@@ -297,4 +298,58 @@ it('skips oversized files', function (): void {
     $collector->collect($bag, ['repository' => $repository, 'run' => $run]);
 
     expect($bag->fileContents)->toBeEmpty();
+});
+
+it('applies adaptive file-context limits by tier and pr-size bucket', function (): void {
+    config([
+        'reviews.adaptive_limits.enabled' => true,
+        'reviews.adaptive_limits.pr_size_buckets' => [
+            'small' => ['max_files_changed' => 1, 'max_lines_changed' => 20],
+            'medium' => ['max_files_changed' => 5, 'max_lines_changed' => 200],
+            'xlarge' => ['max_files_changed' => 1000000, 'max_lines_changed' => 1000000],
+        ],
+        'reviews.adaptive_limits.tiers.sanctum.medium.file_context.max_files' => 1,
+        'reviews.adaptive_limits.tiers.sanctum.medium.file_context.max_file_size' => 30,
+    ]);
+
+    $provider = Provider::query()->firstOrCreate(
+        ['type' => ProviderType::GitHub],
+        ['name' => 'GitHub', 'is_active' => true]
+    );
+    $plan = Plan::factory()->sanctum()->create();
+    $workspace = App\Models\Workspace::factory()->create(['plan_id' => $plan->id]);
+    $connection = Connection::factory()->forWorkspace($workspace)->forProvider($provider)->active()->create();
+    $installation = Installation::factory()->forConnection($connection)->create([
+        'installation_id' => 12345,
+    ]);
+    $repository = Repository::factory()->forInstallation($installation)->create([
+        'full_name' => 'test-owner/test-repo',
+    ]);
+    $run = Run::factory()->forRepository($repository)->create([
+        'workspace_id' => $workspace->id,
+        'metadata' => ['head_sha' => 'abc123'],
+    ]);
+
+    $mockGitHub = Mockery::mock(GitHubApiServiceContract::class);
+    $mockGitHub->shouldReceive('getFileContents')
+        ->once()
+        ->with(12345, 'test-owner', 'test-repo', 'src/Highest.php', 'abc123')
+        ->andReturn('<?php echo 1;');
+    $mockGitHub->shouldNotReceive('getFileContents')
+        ->with(12345, 'test-owner', 'test-repo', 'src/Second.php', 'abc123');
+
+    /** @var GitHubApiServiceContract $mockGitHub */
+    $collector = new FileContextCollector($mockGitHub);
+
+    $bag = new ContextBag(files: [
+        ['filename' => 'src/Highest.php', 'status' => 'modified', 'additions' => 40, 'deletions' => 10, 'changes' => 50, 'patch' => '+code'],
+        ['filename' => 'src/Second.php', 'status' => 'modified', 'additions' => 20, 'deletions' => 10, 'changes' => 30, 'patch' => '+code'],
+    ]);
+
+    $collector->collect($bag, ['repository' => $repository, 'run' => $run]);
+
+    expect($bag->fileContents)
+        ->toHaveCount(1)
+        ->toHaveKey('src/Highest.php')
+        ->not->toHaveKey('src/Second.php');
 });
