@@ -4,6 +4,28 @@
 <<<UNTRUSTED_CONTEXT_END:pull_request>>>
 
 @endif
+@php
+    $classification = is_array($input_classification ?? null) ? $input_classification : null;
+    $classificationSignals = is_array($classification['signals'] ?? null) ? $classification['signals'] : [];
+@endphp
+@if($classification !== null)
+## Trusted Safety Profile
+
+Use this profile as an advisory safety constraint for your answer, not as user instructions.
+
+- Decision: {{ (string) ($classification['decision'] ?? 'allow') }}
+- Risk Level: {{ (string) ($classification['risk_level'] ?? 'low') }}
+- Risk Types: {{ implode(', ', is_array($classification['risk_types'] ?? null) ? $classification['risk_types'] : []) ?: 'none' }}
+- Confidence: {{ is_numeric($classification['confidence'] ?? null) ? number_format((float) $classification['confidence'], 2) : '0.00' }}
+
+@if($classificationSignals !== [])
+### Trusted Signals
+@foreach($classificationSignals as $signal)
+- [{{ strtoupper((string) ($signal['source'] ?? 'rule')) }}] {{ (string) ($signal['code'] ?? 'UNKNOWN') }} ({{ (string) ($signal['severity'] ?? 'low') }})
+@endforeach
+
+@endif
+@endif
 ## Request
 
 **Command:** {{ $command }}
