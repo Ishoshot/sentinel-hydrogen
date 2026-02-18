@@ -14,7 +14,7 @@ final readonly class CommandPromptBuilder
 {
     public const string SYSTEM_PROMPT_VERSION = 'command-system@3';
 
-    public const string USER_PROMPT_VERSION = 'command-user@2';
+    public const string USER_PROMPT_VERSION = 'command-user@3';
 
     /**
      * Create a new CommandPromptBuilder instance.
@@ -35,12 +35,20 @@ final readonly class CommandPromptBuilder
      * Build the user message from the command run details.
      *
      * @param  array{files?: array<string>, symbols?: array<string>, lines?: array<array{start: int, end: int|null}>}|null  $contextHints
+     * @param  array{
+     *     decision?: string,
+     *     risk_level?: string,
+     *     risk_types?: array<int, string>,
+     *     confidence?: float|int,
+     *     signals?: array<int, array{source?: string, code?: string, severity?: string}>
+     * }|null  $inputClassification
      */
     public function buildUserMessage(
         CommandType $commandType,
         string $query,
         ?string $untrustedContext = null,
-        ?array $contextHints = null
+        ?array $contextHints = null,
+        ?array $inputClassification = null,
     ): string {
         return $this->renderer->render('prompts.commands.user', [
             'command' => $commandType->description(),
@@ -51,6 +59,7 @@ final readonly class CommandPromptBuilder
                 'symbols' => [],
                 'lines' => [],
             ],
+            'input_classification' => $inputClassification,
         ]);
     }
 
