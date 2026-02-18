@@ -31,7 +31,7 @@ final readonly class FetchImpactedFileBatch
      * @param  array<int, array{file_path: string, symbol: string, match_type: string, score: float, match_count: int, content: string}>  $candidates
      * @return array<int, ImpactedFile>
      */
-    public function fetch(Repository $repository, array $candidates, Run $run): array
+    public function fetch(Repository $repository, array $candidates, Run $run, int $maxFileSize): array
     {
         $coordinates = $this->coordinatesResolver->resolve($repository, $run);
 
@@ -39,7 +39,6 @@ final readonly class FetchImpactedFileBatch
             return [];
         }
 
-        $maxFileSize = $this->maxFileSize();
         $contentFetcher = $this->contentFetcher();
         $impactedFiles = [];
 
@@ -75,14 +74,6 @@ final readonly class FetchImpactedFileBatch
         }
 
         return $impactedFiles;
-    }
-
-    /**
-     * Resolve the maximum file size allowed for impacted file content.
-     */
-    private function maxFileSize(): int
-    {
-        return (int) config('reviews.impact_analysis.max_file_size', 50000);
     }
 
     /**

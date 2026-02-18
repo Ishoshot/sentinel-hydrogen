@@ -13,11 +13,6 @@ use App\Services\GitHub\Parsers\GitHubContentParser;
 final readonly class FetchFileContent
 {
     /**
-     * Maximum file size in bytes (skip large files).
-     */
-    private const int MAX_FILE_SIZE = 50000;
-
-    /**
      * Create a new file content fetcher instance.
      */
     public function __construct(
@@ -28,7 +23,7 @@ final readonly class FetchFileContent
     /**
      * Fetch file content from GitHub, returning null for oversized or undecodable files.
      */
-    public function fetch(int $installationId, string $owner, string $repo, string $path, string $ref): ?string
+    public function fetch(int $installationId, string $owner, string $repo, string $path, string $ref, int $maxFileSize): ?string
     {
         $response = $this->gitHubApiService->getFileContents(
             $installationId,
@@ -39,11 +34,11 @@ final readonly class FetchFileContent
         );
 
         if (is_string($response)) {
-            return mb_strlen($response) <= self::MAX_FILE_SIZE ? $response : null;
+            return mb_strlen($response) <= $maxFileSize ? $response : null;
         }
 
         $size = $response['size'] ?? 0;
-        if (! is_int($size) || $size > self::MAX_FILE_SIZE) {
+        if (! is_int($size) || $size > $maxFileSize) {
             return null;
         }
 
@@ -53,6 +48,6 @@ final readonly class FetchFileContent
             return null;
         }
 
-        return mb_strlen($content) <= self::MAX_FILE_SIZE ? $content : null;
+        return mb_strlen($content) <= $maxFileSize ? $content : null;
     }
 }

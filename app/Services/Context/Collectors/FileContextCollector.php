@@ -9,6 +9,7 @@ use App\Models\Run;
 use App\Services\Context\Collectors\Support\FileSelectionPolicy;
 use App\Services\Context\ContextBag;
 use App\Services\Context\Contracts\ContextCollector;
+use App\Services\Context\Policies\AdaptiveReviewLimitPolicy;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 use App\Services\GitHub\Resolvers\RepositoryCoordinatesResolver;
 use App\Services\GitHub\ValueObjects\RepositoryCoordinates;
@@ -28,6 +29,7 @@ final readonly class FileContextCollector implements ContextCollector
      */
     public function __construct(
         private GitHubApiServiceContract $gitHubApiService,
+        private AdaptiveReviewLimitPolicy $limitPolicy = new AdaptiveReviewLimitPolicy,
         private FileSelectionPolicy $selectionPolicy = new FileSelectionPolicy,
         private RepositoryCoordinatesResolver $coordinatesResolver = new RepositoryCoordinatesResolver,
         private ?FetchFileContent $fileContentFetcher = null,
@@ -87,12 +89,17 @@ final readonly class FileContextCollector implements ContextCollector
             return;
         }
 
-        $filesToFetch = $this->selectionPolicy->select($bag->files);
+        $limits = $this->limitPolicy->fileContextLimits($repository, $bag->files);
+        $filesToFetch = $this->selectionPolicy->select($bag->files, $limits['max_files']);
 
         if ($filesToFetch === []) {
             Log::debug('FileContextCollector: No suitable files to fetch', [
                 'repository_id' => $repository->id,
                 'total_files' => count($bag->files),
+                'limit_max_files' => $limits['max_files'],
+                'limit_tier' => $limits['tier'],
+                'limit_pr_size_bucket' => $limits['pr_size_bucket'],
+                'limit_source' => $limits['source'],
             ]);
 
             return;
@@ -112,7 +119,8 @@ final readonly class FileContextCollector implements ContextCollector
                     $coordinates->owner,
                     $coordinates->repo,
                     $filename,
-                    $headSha
+                    $headSha,
+                    $limits['max_file_size'],
                 );
 
                 if ($content !== null) {
@@ -133,6 +141,12 @@ final readonly class FileContextCollector implements ContextCollector
             'repository' => $coordinates->fullName,
             'files_fetched' => $fetchedCount,
             'files_requested' => count($filesToFetch),
+            'limit_max_files' => $limits['max_files'],
+            'limit_max_file_size' => $limits['max_file_size'],
+            'limit_tier' => $limits['tier'],
+            'limit_pr_size_bucket' => $limits['pr_size_bucket'],
+            'limit_source' => $limits['source'],
+            'adaptive_limits_enabled' => $limits['adaptive'],
         ]);
     }
 }

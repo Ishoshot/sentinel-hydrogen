@@ -29,15 +29,19 @@ final readonly class ImpactedFileSearcher
     /**
      * @param  array<int, array{name: string, type: string, file: string}>  $symbols
      * @param  array<int, string>  $excludeFiles
+     * @param  array{max_symbols: int, max_files: int, max_file_size: int, search_limit_per_symbol: int, min_relevance_score: float, tier: string, pr_size_bucket: string, source: string, adaptive: bool}  $limits
      * @return array<int, ImpactedFile>
      */
-    public function findImpactedFiles(Repository $repository, array $symbols, array $excludeFiles, Run $run): array
+    public function findImpactedFiles(Repository $repository, array $symbols, array $excludeFiles, Run $run, array $limits): array
     {
         $searchPatternFactory = $this->searchPatternFactory();
         $candidateCollector = $this->candidateCollector();
         $batchFetcher = $this->batchFetcher();
         $candidateFiles = [];
-        $minRelevanceScore = $this->minRelevanceScore();
+        $searchLimitPerSymbol = max(1, (int) $limits['search_limit_per_symbol']);
+        $maxFiles = max(1, (int) $limits['max_files']);
+        $maxFileSize = max(1, (int) $limits['max_file_size']);
+        $minRelevanceScore = min(1.0, max(0.0, (float) $limits['min_relevance_score']));
 
         foreach ($symbols as $symbol) {
             $searchPatterns = $searchPatternFactory->build($symbol);
@@ -46,7 +50,7 @@ final readonly class ImpactedFileSearcher
                 $results = $this->codeSearchService->keywordSearch(
                     $repository,
                     $pattern,
-                    $this->searchLimitPerSymbol()
+                    $searchLimitPerSymbol
                 );
 
                 $candidateFiles = $candidateCollector->collect(
@@ -60,39 +64,9 @@ final readonly class ImpactedFileSearcher
             }
         }
 
-        $candidateFiles = $candidateCollector->rank($candidateFiles, $this->maxFiles());
+        $candidateFiles = $candidateCollector->rank($candidateFiles, $maxFiles);
 
-        return $batchFetcher->fetch($repository, $candidateFiles, $run);
-    }
-
-    /**
-     * Resolve the maximum number of impacted files to include.
-     */
-    private function maxFiles(): int
-    {
-        return (int) config('reviews.impact_analysis.max_files', 20);
-    }
-
-    /**
-     * Resolve the per-symbol search result cap.
-     */
-    private function searchLimitPerSymbol(): int
-    {
-        return (int) config('reviews.impact_analysis.search_limit_per_symbol', 50);
-    }
-
-    /**
-     * Resolve the minimum score required to keep a search result.
-     */
-    private function minRelevanceScore(): float
-    {
-        $value = config('reviews.impact_analysis.min_relevance_score', 0.3);
-
-        if (is_numeric($value)) {
-            return (float) $value;
-        }
-
-        return 0.3;
+        return $batchFetcher->fetch($repository, $candidateFiles, $run, $maxFileSize);
     }
 
     /**

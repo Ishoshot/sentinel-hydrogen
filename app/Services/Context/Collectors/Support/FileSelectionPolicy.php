@@ -10,11 +10,6 @@ namespace App\Services\Context\Collectors\Support;
 final readonly class FileSelectionPolicy
 {
     /**
-     * Maximum number of files to fetch full content for.
-     */
-    private const int MAX_FILES = 10;
-
-    /**
      * File extensions to fetch (code files only).
      */
     private const array ALLOWED_EXTENSIONS = [
@@ -37,7 +32,7 @@ final readonly class FileSelectionPolicy
      * @param  array<int, array{filename: string, status: string, additions: int, deletions: int, changes: int, patch: string|null}>  $files
      * @return array<int, array{filename: string, status: string, additions: int, deletions: int, changes: int, patch: string|null}>
      */
-    public function select(array $files): array
+    public function select(array $files, int $maxFiles): array
     {
         $candidates = [];
 
@@ -56,6 +51,8 @@ final readonly class FileSelectionPolicy
 
         usort($candidates, static fn (array $a, array $b): int => $b['changes'] <=> $a['changes']);
 
-        return array_slice($candidates, 0, self::MAX_FILES);
+        $resolvedMaxFiles = max(1, $maxFiles);
+
+        return array_slice($candidates, 0, $resolvedMaxFiles);
     }
 }
