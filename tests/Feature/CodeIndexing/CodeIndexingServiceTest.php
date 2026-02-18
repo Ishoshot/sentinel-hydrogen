@@ -307,6 +307,56 @@ describe('indexChangedFiles', function (): void {
         // Mockery will verify getRepositoryTree was called
     });
 
+    it('applies adaptive full-reindex threshold when enabled', function (): void {
+        config([
+            'reviews.adaptive_limits.indexing.enabled' => true,
+            'reviews.adaptive_limits.indexing.change_volume_buckets' => [
+                'small' => ['max_files' => 10],
+                'xlarge' => ['max_files' => 1000000],
+            ],
+            'reviews.adaptive_limits.indexing.tiers.foundation.small.full_reindex_threshold' => 2,
+            'reviews.adaptive_limits.indexing.tiers.foundation.small.batch_size' => 50,
+        ]);
+
+        $this->githubApi->shouldReceive('getRepositoryTree')
+            ->once()
+            ->andReturn(['tree' => []]);
+
+        $service = app(CodeIndexingService::class);
+
+        $changedFiles = [
+            'added' => ['app/A.php', 'app/B.php', 'app/C.php'],
+            'modified' => [],
+            'removed' => [],
+        ];
+
+        $service->indexChangedFiles($this->repository, 'commit123', $changedFiles);
+    });
+
+    it('applies adaptive indexing batch size when enabled', function (): void {
+        config([
+            'reviews.adaptive_limits.indexing.enabled' => true,
+            'reviews.adaptive_limits.indexing.change_volume_buckets' => [
+                'small' => ['max_files' => 10],
+                'xlarge' => ['max_files' => 1000000],
+            ],
+            'reviews.adaptive_limits.indexing.tiers.foundation.small.full_reindex_threshold' => 100,
+            'reviews.adaptive_limits.indexing.tiers.foundation.small.batch_size' => 1,
+        ]);
+
+        $service = app(CodeIndexingService::class);
+
+        $changedFiles = [
+            'added' => ['app/Models/NewModel.php', 'app/Services/NewService.php'],
+            'modified' => [],
+            'removed' => [],
+        ];
+
+        $service->indexChangedFiles($this->repository, 'commit123', $changedFiles);
+
+        Bus::assertDispatchedTimes(IndexCodeBatchJob::class, 2);
+    });
+
     it('handles empty change set', function (): void {
         $service = app(CodeIndexingService::class);
 
