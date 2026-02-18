@@ -87,6 +87,48 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Pull Request Pre-Indexing
+    |--------------------------------------------------------------------------
+    |
+    | Optional PR-scoped indexing for opened/synchronized/reopened pull
+    | requests. When enabled, review-time search can blend PR-scoped index
+    | results with baseline repository index results.
+    |
+    */
+
+    'pr_preindex' => [
+        'enabled' => (bool) env('REVIEW_PR_PREINDEX_ENABLED', false),
+        'mode' => env('REVIEW_PR_PREINDEX_MODE', 'async'),
+
+        'eligible_actions' => [
+            'opened',
+            'synchronize',
+            'reopened',
+        ],
+
+        'eligibility' => [
+            'tiers' => array_values(array_filter(array_map(
+                static fn (string $tier): string => mb_trim($tier),
+                explode(',', (string) env('REVIEW_PR_PREINDEX_TIERS', 'illuminate,orchestrate,sanctum'))
+            ))),
+            'max_files_changed' => (int) env('REVIEW_PR_PREINDEX_MAX_FILES_CHANGED', 120),
+            'max_lines_changed' => (int) env('REVIEW_PR_PREINDEX_MAX_LINES_CHANGED', 8000),
+        ],
+
+        'indexing' => [
+            'max_files' => (int) env('REVIEW_PR_PREINDEX_MAX_FILES', 40),
+            'max_file_size' => (int) env('REVIEW_PR_PREINDEX_MAX_FILE_SIZE', 120000),
+            'batch_size' => (int) env('REVIEW_PR_PREINDEX_BATCH_SIZE', 50),
+        ],
+
+        'hybrid_search' => [
+            'enabled' => (bool) env('REVIEW_PR_HYBRID_SEARCH_ENABLED', true),
+            'fallback_to_baseline' => (bool) env('REVIEW_PR_HYBRID_FALLBACK_TO_BASELINE', true),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Adaptive Limit Profiles
     |--------------------------------------------------------------------------
     |
