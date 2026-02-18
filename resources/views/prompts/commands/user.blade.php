@@ -8,7 +8,10 @@
 
 **Command:** {{ $command }}
 
-**Query:** {{ $query }}
+**Query:**
+<<<UNTRUSTED_INPUT_START:user_query>>>
+{{ $query }}
+<<<UNTRUSTED_INPUT_END:user_query>>>
 
 @if(!empty($context_hints['files']))
 **Files mentioned:** {{ implode(', ', array_map(fn($f) => "`{$f}`", $context_hints['files'])) }}
