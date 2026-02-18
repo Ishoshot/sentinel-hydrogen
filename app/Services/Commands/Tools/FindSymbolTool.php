@@ -8,6 +8,7 @@ use App\Models\CommandRun;
 use App\Services\CodeIndexing\Contracts\CodeSearchServiceContract;
 use App\Services\Commands\CommandPathRules;
 use App\Services\Commands\Contracts\CommandToolBuilder;
+use BackedEnum;
 use Prism\Prism\Facades\Tool;
 use Prism\Prism\Tool as PrismTool;
 
@@ -54,6 +55,7 @@ final readonly class FindSymbolTool implements CommandToolBuilder
                     $filePath = $result['file_path'];
                     $symbol = $result['symbol_name'];
                     $chunkType = $result['chunk_type'];
+                    $chunkTypeLabel = $chunkType instanceof BackedEnum ? (string) $chunkType->value : $chunkType;
                     $content = $pathRules->sanitizeContentForPath($filePath, $result['content']);
 
                     $content = $this->formatter->truncate($content, 400);
@@ -62,7 +64,7 @@ final readonly class FindSymbolTool implements CommandToolBuilder
                         "[%d] %s (%s) in %s\n%s",
                         $index + 1,
                         $symbol,
-                        $chunkType,
+                        $chunkTypeLabel,
                         $filePath,
                         $content
                     );

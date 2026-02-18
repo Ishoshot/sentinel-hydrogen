@@ -7,6 +7,7 @@ namespace App\Services\Context\Collectors\Support;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\CodeIndexing\Contracts\CodeSearchServiceContract;
+use App\Services\CodeIndexing\ValueObjects\CodeSearchScope;
 use App\Services\Context\ValueObjects\ImpactedFile;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
@@ -38,6 +39,7 @@ final readonly class ImpactedFileSearcher
         $candidateCollector = $this->candidateCollector();
         $batchFetcher = $this->batchFetcher();
         $candidateFiles = [];
+        $searchScope = $this->resolveSearchScope($run);
         $searchLimitPerSymbol = max(1, (int) $limits['search_limit_per_symbol']);
         $maxFiles = max(1, (int) $limits['max_files']);
         $maxFileSize = max(1, (int) $limits['max_file_size']);
@@ -47,11 +49,19 @@ final readonly class ImpactedFileSearcher
             $searchPatterns = $searchPatternFactory->build($symbol);
 
             foreach ($searchPatterns as $pattern => $matchType) {
-                $results = $this->codeSearchService->keywordSearch(
-                    $repository,
-                    $pattern,
-                    $searchLimitPerSymbol
-                );
+                $results = $searchScope->hasPullRequestScope()
+                    ? $this->codeSearchService->keywordSearch(
+                        $repository,
+                        $pattern,
+                        $searchLimitPerSymbol,
+                        null,
+                        $searchScope,
+                    )
+                    : $this->codeSearchService->keywordSearch(
+                        $repository,
+                        $pattern,
+                        $searchLimitPerSymbol,
+                    );
 
                 $candidateFiles = $candidateCollector->collect(
                     candidates: $candidateFiles,
@@ -67,6 +77,22 @@ final readonly class ImpactedFileSearcher
         $candidateFiles = $candidateCollector->rank($candidateFiles, $maxFiles);
 
         return $batchFetcher->fetch($repository, $candidateFiles, $run, $maxFileSize);
+    }
+
+    /**
+     * Resolve code-search scope for impacted-file lookups.
+     */
+    private function resolveSearchScope(Run $run): CodeSearchScope
+    {
+        $hybridSearchEnabled = (bool) config('reviews.pr_preindex.hybrid_search.enabled', false);
+
+        if (! $hybridSearchEnabled) {
+            return CodeSearchScope::baseline();
+        }
+
+        $includeBaseline = (bool) config('reviews.pr_preindex.hybrid_search.fallback_to_baseline', true);
+
+        return CodeSearchScope::fromRunMetadata($run->metadata, $includeBaseline);
     }
 
     /**
