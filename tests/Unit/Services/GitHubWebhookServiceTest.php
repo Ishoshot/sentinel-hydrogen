@@ -211,3 +211,11 @@ it('determines if action should sync metadata', function (): void {
     expect($service->shouldSyncMetadata('closed'))->toBeFalse();
     expect($service->shouldSyncMetadata('merged'))->toBeFalse();
 });
+
+it('determines if action should clean up pull request pre-index', function (): void {
+    $service = new GitHubWebhookService;
+
+    expect($service->shouldCleanupPreIndex('closed'))->toBeTrue();
+    expect($service->shouldCleanupPreIndex('opened'))->toBeFalse();
+    expect($service->shouldCleanupPreIndex('synchronize'))->toBeFalse();
+});

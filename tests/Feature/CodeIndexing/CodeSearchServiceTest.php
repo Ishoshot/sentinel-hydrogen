@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Auth\ProviderType;
 use App\Enums\CodeIndexing\ChunkType;
+use App\Enums\CodeIndexing\CodeIndexScopeType;
 use App\Models\CodeEmbedding;
 use App\Models\CodeIndex;
 use App\Models\Connection;
@@ -13,6 +14,7 @@ use App\Models\Repository;
 use App\Models\Workspace;
 use App\Services\CodeIndexing\CodeSearchService;
 use App\Services\CodeIndexing\Contracts\EmbeddingServiceContract;
+use App\Services\CodeIndexing\ValueObjects\CodeSearchScope;
 use Illuminate\Support\Facades\Cache;
 
 beforeEach(function (): void {
@@ -156,6 +158,57 @@ describe('keywordSearch', function (): void {
         $results = $this->service->keywordSearch($this->repository, 'the is a', 10);
 
         expect($results)->toBeEmpty();
+    });
+
+    it('prefers pull request scoped results over baseline for the same file path', function (): void {
+        CodeIndex::factory()->create([
+            'repository_id' => $this->repository->id,
+            'scope_type' => CodeIndexScopeType::Baseline,
+            'scope_ref' => CodeIndexScopeType::Baseline->value,
+            'pull_request_number' => null,
+            'head_sha' => null,
+            'file_path' => 'app/Services/BillingService.php',
+            'file_type' => 'php',
+            'content' => '<?php // baseline needle implementation',
+        ]);
+
+        CodeIndex::factory()->create([
+            'repository_id' => $this->repository->id,
+            'scope_type' => CodeIndexScopeType::PullRequest,
+            'scope_ref' => 'pr:42@abc123',
+            'pull_request_number' => 42,
+            'head_sha' => 'abc123',
+            'file_path' => 'app/Services/BillingService.php',
+            'file_type' => 'php',
+            'content' => '<?php // pr needle implementation',
+        ]);
+
+        $scope = CodeSearchScope::forPullRequest(42, 'abc123', true);
+        $results = $this->service->keywordSearch($this->repository, 'needle', 10, null, $scope);
+
+        expect($results)->toHaveCount(1)
+            ->and($results[0]['file_path'])->toBe('app/Services/BillingService.php')
+            ->and($results[0]['content'])->toContain('pr needle');
+    });
+
+    it('falls back to baseline scoped results when pull request scope has no matches', function (): void {
+        CodeIndex::factory()->create([
+            'repository_id' => $this->repository->id,
+            'scope_type' => CodeIndexScopeType::Baseline,
+            'scope_ref' => CodeIndexScopeType::Baseline->value,
+            'pull_request_number' => null,
+            'head_sha' => null,
+            'file_path' => 'app/Services/FeatureFlagService.php',
+            'file_type' => 'php',
+            'content' => '<?php // baseline fallback-token entry',
+        ]);
+
+        $scope = CodeSearchScope::forPullRequest(42, 'abc123', true);
+        $results = $this->service->keywordSearch($this->repository, 'fallback-token', 10, null, $scope);
+
+        expect($results)->toHaveCount(1)
+            ->and($results[0]['file_path'])->toBe('app/Services/FeatureFlagService.php')
+            ->and($results[0]['content'])->toContain('fallback-token');
     });
 });
 

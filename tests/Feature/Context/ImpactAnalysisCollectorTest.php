@@ -8,6 +8,7 @@ use App\Models\Repository;
 use App\Models\Run;
 use App\Models\Workspace;
 use App\Services\CodeIndexing\Contracts\CodeSearchServiceContract;
+use App\Services\CodeIndexing\ValueObjects\CodeSearchScope;
 use App\Services\Context\Collectors\ImpactAnalysisCollector;
 use App\Services\Context\ContextBag;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
@@ -688,5 +689,69 @@ it('applies adaptive impact-analysis limits by tier and pr-size bucket', functio
     $collector->collect($bag, [
         'repository' => $this->repository,
         'run' => $this->run,
+    ]);
+});
+
+it('uses pull request hybrid search scope when enabled', function (): void {
+    config([
+        'reviews.pr_preindex.hybrid_search.enabled' => true,
+        'reviews.pr_preindex.hybrid_search.fallback_to_baseline' => true,
+    ]);
+
+    $this->run->update([
+        'metadata' => [
+            'pull_request_number' => 42,
+            'head_sha' => 'abc123',
+        ],
+    ]);
+
+    CodeIndex::factory()->create([
+        'repository_id' => $this->repository->id,
+        'file_path' => 'src/Service.php',
+    ]);
+
+    $codeSearchService = Mockery::mock(CodeSearchServiceContract::class);
+    $codeSearchService->shouldReceive('keywordSearch')
+        ->once()
+        ->withArgs(function (Repository $repository, string $query, int $limit, ?array $fileTypes, CodeSearchScope $scope): bool {
+            return $repository->id === $this->repository->id
+                && $query === 'myFunc('
+                && $limit > 0
+                && $fileTypes === null
+                && $scope->hasPullRequestScope()
+                && $scope->includeBaseline
+                && $scope->pullRequestScope?->pullRequestNumber === 42
+                && $scope->pullRequestScope?->headSha === 'abc123';
+        })
+        ->andReturn([]);
+
+    $gitHubService = Mockery::mock(GitHubApiServiceContract::class);
+    $collector = new ImpactAnalysisCollector($codeSearchService, $gitHubService);
+
+    $bag = new ContextBag(
+        files: [
+            [
+                'filename' => 'src/Modified.php',
+                'status' => 'modified',
+                'additions' => 1,
+                'deletions' => 0,
+                'changes' => 1,
+                'patch' => "@@ -1,5 +1,7 @@\n+added",
+            ],
+        ],
+        semantics: [
+            'src/Modified.php' => [
+                'language' => 'php',
+                'functions' => [
+                    ['name' => 'myFunc', 'line_start' => 1, 'line_end' => 5],
+                ],
+                'classes' => [],
+            ],
+        ],
+    );
+
+    $collector->collect($bag, [
+        'repository' => $this->repository,
+        'run' => $this->run->fresh(),
     ]);
 });
