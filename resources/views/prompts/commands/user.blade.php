@@ -4,6 +4,18 @@
 <<<UNTRUSTED_CONTEXT_END:pull_request>>>
 
 @endif
+@if(!empty($untrusted_issue_context))
+<<<UNTRUSTED_CONTEXT_START:issue>>>
+{!! $untrusted_issue_context !!}
+<<<UNTRUSTED_CONTEXT_END:issue>>>
+
+@endif
+@if(!empty($untrusted_issue_retrieval_context))
+<<<UNTRUSTED_CONTEXT_START:issue_retrieval>>>
+{!! $untrusted_issue_retrieval_context !!}
+<<<UNTRUSTED_CONTEXT_END:issue_retrieval>>>
+
+@endif
 @php
     $classification = is_array($input_classification ?? null) ? $input_classification : null;
     $classificationSignals = is_array($classification['signals'] ?? null) ? $classification['signals'] : [];
