@@ -114,6 +114,13 @@ interface GitHubApiServiceContract
     public function getIssueComments(int $installationId, string $owner, string $repo, int $number): array;
 
     /**
+     * Get timeline events on an issue.
+     *
+     * @return array<int, array<string, mixed>> List of timeline events
+     */
+    public function getIssueTimeline(int $installationId, string $owner, string $repo, int $number): array;
+
+    /**
      * Get comments on a pull request (issue-style comments, not review comments).
      *
      * @return array<int, array<string, mixed>> List of comments

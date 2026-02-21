@@ -175,6 +175,16 @@ final readonly class GitHubApiService implements GitHubApiServiceContract
     }
 
     /**
+     * Get timeline events on an issue.
+     *
+     * @return array<int, array<string, mixed>> List of timeline events
+     */
+    public function getIssueTimeline(int $installationId, string $owner, string $repo, int $number): array
+    {
+        return $this->issueCommentOperations->getIssueTimeline($installationId, $owner, $repo, $number);
+    }
+
+    /**
      * Get comments on a pull request (issue-style comments, not review comments).
      *
      * @return array<int, array<string, mixed>> List of comments

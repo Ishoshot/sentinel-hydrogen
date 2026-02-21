@@ -83,6 +83,34 @@ final readonly class GitHubIssueCommentClient
     /**
      * @return array<int, array<string, mixed>>
      */
+    public function getIssueTimeline(int $installationId, string $owner, string $repo, int $number): array
+    {
+        return $this->operationInvoker->listOfMaps(
+            $installationId,
+            sprintf('getIssueTimeline(%s/%s#%d)', $owner, $repo, $number),
+            function (GitHubManager $github) use ($owner, $repo, $number): array {
+                $path = sprintf(
+                    '/repos/%s/%s/issues/%d/timeline',
+                    rawurlencode($owner),
+                    rawurlencode($repo),
+                    $number
+                );
+
+                $response = $github->connection()->getHttpClient()->get(
+                    $path,
+                    ['Accept' => 'application/vnd.github+json']
+                );
+
+                $decoded = ResponseMediator::getContent($response);
+
+                return is_array($decoded) ? $decoded : [];
+            },
+        );
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function getPullRequestComments(int $installationId, string $owner, string $repo, int $number): array
     {
         return $this->getIssueComments($installationId, $owner, $repo, $number);
