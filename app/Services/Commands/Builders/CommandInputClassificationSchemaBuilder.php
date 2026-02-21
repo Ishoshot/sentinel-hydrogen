@@ -42,7 +42,7 @@ final class CommandInputClassificationSchemaBuilder
                     'Risk category',
                     self::RISK_TYPES,
                 )),
-                new NumberSchema('confidence', 'Classifier confidence between 0 and 1', minimum: 0, maximum: 1),
+                new NumberSchema('confidence', 'Classifier confidence between 0 and 1', maximum: 1, minimum: 0),
                 new StringSchema('summary', 'Short classification reason'),
                 new ArraySchema(
                     'signals',

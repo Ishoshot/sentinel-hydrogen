@@ -10,12 +10,15 @@ use App\Models\CommandRun;
 use App\Services\Commands\CommandPathRules;
 use App\Services\Commands\CommandPathRulesResolver;
 use App\Services\Commands\Contracts\CommandToolBuilder;
+use App\Services\Commands\Contracts\IssueContextServiceContract;
 use App\Services\Commands\Contracts\PullRequestContextServiceContract;
 use App\Services\Commands\Normalizers\CommandContextHintsNormalizer;
 use App\Services\Commands\Resolvers\CommandAgentProviderResolver;
 use App\Services\Commands\ValueObjects\CommandAgentExecutionContext;
+use Illuminate\Support\Facades\Log;
 use Prism\Prism\Tool as PrismTool;
 use RuntimeException;
+use Throwable;
 
 final readonly class CommandAgentExecutionContextBuilder
 {
@@ -26,6 +29,8 @@ final readonly class CommandAgentExecutionContextBuilder
         private CommandAgentProviderResolver $providerResolver,
         private CommandContextHintsNormalizer $contextHintsNormalizer,
         private PullRequestContextServiceContract $prContextService,
+        private IssueContextServiceContract $issueContextService,
+        private IssueRetrievalContextBuilder $issueRetrievalContextBuilder,
         private CommandPromptBuilder $promptBuilder,
         private CommandPathRulesResolver $pathRulesResolver,
     ) {}
@@ -55,6 +60,7 @@ final readonly class CommandAgentExecutionContextBuilder
         $systemPrompt = $this->promptBuilder->buildSystemPrompt($commandRun->command_type);
 
         $prContext = $this->prContextService->buildContext($commandRun);
+        $issueContext = $this->resolveIssueContext($commandRun);
         $prMetadata = $this->prContextService->getMetadata($commandRun);
         $pathRules = $this->pathRulesResolver->resolve(
             $repository,
@@ -62,17 +68,46 @@ final readonly class CommandAgentExecutionContextBuilder
         );
 
         $tools = $this->buildTools($commandRun, $pathRules, $toolBuilders);
+        $issueRetrievalContext = $this->resolveIssueRetrievalContext($commandRun, $pathRules, $issueContext);
 
         $metadata = is_array($commandRun->metadata) ? $commandRun->metadata : [];
         $inputClassification = $this->normalizeInputClassification($metadata['input_classification'] ?? null);
+        $normalizedContextHints = $this->contextHintsNormalizer->normalize($commandRun->context_snapshot['context_hints'] ?? null);
+        $contextHintFilesCount = is_array($normalizedContextHints['files'] ?? null)
+            ? count($normalizedContextHints['files'])
+            : 0;
+        $contextHintSymbolsCount = is_array($normalizedContextHints['symbols'] ?? null)
+            ? count($normalizedContextHints['symbols'])
+            : 0;
+        $contextHintLinesCount = is_array($normalizedContextHints['lines'] ?? null)
+            ? count($normalizedContextHints['lines'])
+            : 0;
 
         $userMessage = $this->promptBuilder->buildUserMessage(
-            $commandRun->command_type,
-            $commandRun->query,
-            $prContext,
-            $this->contextHintsNormalizer->normalize($commandRun->context_snapshot['context_hints'] ?? null),
-            $inputClassification,
+            commandType: $commandRun->command_type,
+            query: $commandRun->query,
+            untrustedContext: $prContext,
+            contextHints: $normalizedContextHints,
+            inputClassification: $inputClassification,
+            untrustedIssueContext: $issueContext,
+            untrustedIssueRetrievalContext: $issueRetrievalContext,
         );
+
+        Log::debug('Prepared command execution context', [
+            'command_run_id' => $commandRun->id,
+            'repository' => $repository->full_name,
+            'has_pr_context' => $prContext !== null,
+            'pr_context_chars' => $prContext !== null ? mb_strlen($prContext) : 0,
+            'has_issue_context' => $issueContext !== null,
+            'issue_context_chars' => $issueContext !== null ? mb_strlen($issueContext) : 0,
+            'has_issue_retrieval_context' => $issueRetrievalContext !== null,
+            'issue_retrieval_context_chars' => $issueRetrievalContext !== null ? mb_strlen($issueRetrievalContext) : 0,
+            'context_hint_files' => $contextHintFilesCount,
+            'context_hint_symbols' => $contextHintSymbolsCount,
+            'context_hint_lines' => $contextHintLinesCount,
+            'tools_count' => count($tools),
+            'has_input_classification' => $inputClassification !== null,
+        ]);
 
         $enableThinking = $aiProvider === AiProvider::Anthropic
             && config('prism.providers.anthropic.default_thinking_budget', 2048) > 0;
@@ -179,5 +214,46 @@ final readonly class CommandAgentExecutionContextBuilder
         }
 
         return $tools;
+    }
+
+    /**
+     * Resolve issue context with a fail-open fallback.
+     */
+    private function resolveIssueContext(CommandRun $commandRun): ?string
+    {
+        try {
+            return $this->issueContextService->buildContext($commandRun);
+        } catch (Throwable $throwable) {
+            Log::warning('Failed to resolve issue context for command run', [
+                'command_run_id' => $commandRun->id,
+                'repository' => $commandRun->repository?->full_name,
+                'issue_number' => $commandRun->issue_number,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Resolve retrieval context with a fail-open fallback.
+     */
+    private function resolveIssueRetrievalContext(
+        CommandRun $commandRun,
+        CommandPathRules $pathRules,
+        ?string $issueContext,
+    ): ?string {
+        try {
+            return $this->issueRetrievalContextBuilder->build($commandRun, $pathRules, $issueContext);
+        } catch (Throwable $throwable) {
+            Log::warning('Failed to resolve issue retrieval context for command run', [
+                'command_run_id' => $commandRun->id,
+                'repository' => $commandRun->repository?->full_name,
+                'issue_number' => $commandRun->issue_number,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 }
