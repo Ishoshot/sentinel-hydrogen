@@ -80,10 +80,10 @@ it('returns empty string when storage disk config is null', function (): void {
 
 it('uses config default when storage disk key is not set', function (): void {
     // When the entire briefings.storage config section doesn't contain disk key,
-    // the config helper returns the default 'r2'
+    // the config helper returns the default 's3'
     config()->set('briefings.storage', []);
 
-    expect($this->renderer->storageDisk())->toBe('r2');
+    expect($this->renderer->storageDisk())->toBe('s3');
 });
 
 // --- resolveStoragePath ---

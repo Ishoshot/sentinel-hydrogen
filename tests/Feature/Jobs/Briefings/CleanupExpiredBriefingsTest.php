@@ -81,7 +81,7 @@ it('deletes expired shares independently', function (): void {
 });
 
 it('attempts to delete storage files for expired generations', function (): void {
-    Storage::fake('r2');
+    Storage::fake('s3');
 
     $workspace = Workspace::factory()->create();
 

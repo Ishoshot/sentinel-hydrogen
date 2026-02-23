@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Briefings\CreateBriefingSubscription;
 use App\Enums\Briefings\BriefingDeliveryChannel;
 use App\Enums\Briefings\BriefingSchedulePreset;
 use App\Models\Briefing;
@@ -10,6 +11,9 @@ use App\Models\Plan;
 use App\Models\SlackIntegration;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Briefings\ValueObjects\BriefingDeliveryChannels;
+use App\Services\Briefings\ValueObjects\BriefingParameters;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function (): void {
     $this->user = User::factory()->create();
@@ -161,6 +165,43 @@ it('updates a subscription', function (): void {
         ->assertJsonPath('data.is_active', false);
 });
 
+it('rejects invalid briefing parameters on subscription creation', function (): void {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson(route('briefing-subscriptions.store', $this->workspace), [
+            'briefing_id' => $this->briefing->id,
+            'schedule_preset' => BriefingSchedulePreset::Daily->value,
+            'schedule_hour' => 9,
+            'delivery_channels' => [BriefingDeliveryChannel::Push->value],
+            'parameters' => [
+                'start_date' => 'not-a-date',
+            ],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['start_date']);
+});
+
+it('rejects invalid briefing parameters on subscription update', function (): void {
+    $subscription = BriefingSubscription::factory()
+        ->forWorkspace($this->workspace)
+        ->forUser($this->user)
+        ->daily()
+        ->create([
+            'briefing_id' => $this->briefing->id,
+            'parameters' => [],
+        ]);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->patchJson(route('briefing-subscriptions.update', [$this->workspace, $subscription]), [
+            'parameters' => [
+                'start_date' => 'not-a-date',
+            ],
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['start_date']);
+});
+
 it('cancels a subscription by deactivating it', function (): void {
     $subscription = BriefingSubscription::factory()
         ->forWorkspace($this->workspace)
@@ -253,6 +294,21 @@ it('rejects duplicate subscription for same user and briefing in workspace', fun
 
     $response->assertUnprocessable()
         ->assertJsonValidationErrors(['briefing_id']);
+});
+
+it('enforces schedulable guard inside create subscription action', function (): void {
+    $action = app(CreateBriefingSubscription::class);
+    $unschedulableBriefing = Briefing::factory()->system()->notSchedulable()->create();
+
+    expect(fn (): BriefingSubscription => $action->handle(
+        workspace: $this->workspace,
+        user: $this->user,
+        briefing: $unschedulableBriefing,
+        schedulePreset: BriefingSchedulePreset::Daily,
+        deliveryChannels: BriefingDeliveryChannels::fromStrings([BriefingDeliveryChannel::Push->value]),
+        parameters: BriefingParameters::fromArray([]),
+        scheduleHour: 9,
+    ))->toThrow(ValidationException::class);
 });
 
 it('rejects schedule_day above 7 for weekly preset', function (): void {

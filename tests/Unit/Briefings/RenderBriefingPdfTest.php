@@ -55,3 +55,23 @@ test('it fails when slides payload is missing', function () {
     expect(fn () => app()->call([$job, 'handle']))
         ->toThrow(RuntimeException::class, 'Briefing slides payload is missing or invalid.');
 });
+
+test('failed method cleans up orphaned files from storage', function () {
+    Storage::fake('s3');
+    config(['briefings.storage.disk' => 's3']);
+
+    $generation = BriefingGeneration::factory()
+        ->completed()
+        ->create();
+
+    $basePath = sprintf('briefings/%d/%d', $generation->workspace_id, $generation->id);
+    Storage::disk('s3')->put($basePath.'/briefing.html', 'html content');
+    Storage::disk('s3')->put($basePath.'/briefing.md', 'markdown content');
+
+    expect(Storage::disk('s3')->files($basePath))->toHaveCount(2);
+
+    $job = new RenderBriefingPdf($generation);
+    $job->failed(new RuntimeException('PDF rendering failed'));
+
+    expect(Storage::disk('s3')->files($basePath))->toHaveCount(0);
+});
