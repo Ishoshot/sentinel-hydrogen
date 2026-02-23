@@ -45,7 +45,7 @@ final class BriefingExcerptsFactory
     private function generateSlackExcerpt(string $narrative, BriefingSummary $summary): string
     {
         $parts = explode("\n\n", $narrative, 2);
-        $headline = mb_trim($parts[0] ?? '') !== '' ? $parts[0] : $this->buildSummarySentence($summary);
+        $headline = mb_trim($parts[0]) !== '' ? $parts[0] : $this->buildSummarySentence($summary);
 
         return sprintf(
             "*Team Update*\n\n%s\n\n:chart_with_upwards_trend: %d completed | :hourglass: %d in progress",

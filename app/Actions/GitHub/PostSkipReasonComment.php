@@ -111,6 +111,7 @@ final readonly class PostSkipReasonComment implements PostsSkipReasonComment
             SkipReason::PlanLimitReached => $this->messageService->buildPlanLimitReachedComment($detail),
             SkipReason::OrphanedRepository => $this->messageService->buildOrphanedRepositoryComment(),
             SkipReason::InstallationInactive => $this->messageService->buildInstallationInactiveComment(),
+            SkipReason::Superseded => $this->messageService->buildSupersededComment(),
         };
     }
 }
