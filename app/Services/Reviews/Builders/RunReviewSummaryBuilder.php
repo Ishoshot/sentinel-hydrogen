@@ -59,7 +59,7 @@ final readonly class RunReviewSummaryBuilder
         $frontendUrl = config('app.frontend_url');
 
         return sprintf(
-            '%s/workspaces/%s/runs/%s',
+            '%s/%s/runs/%s',
             mb_rtrim($frontendUrl, '/'),
             $run->workspace?->slug,
             $run->id
