@@ -11,6 +11,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Support\Collection;
+use Override;
 
 final class RepositoryReliability extends TableWidget
 {
@@ -21,6 +22,7 @@ final class RepositoryReliability extends TableWidget
         'xl' => 2,
     ];
 
+    #[Override]
     public function table(Table $table): Table
     {
         return $table

@@ -19,6 +19,7 @@ final class EditPromotion extends EditRecord
 {
     protected static string $resource = PromotionResource::class;
 
+    #[Override]
     protected function getHeaderActions(): array
     {
         return [

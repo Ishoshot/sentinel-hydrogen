@@ -42,7 +42,6 @@ final readonly class GetReviewVelocity
             ->orderBy($groupLabel)
             ->get()
             ->map(static function (Run $run) use ($groupLabel): array {
-                /** @var string $period */
                 $period = (string) $run->getAttribute($groupLabel);
                 /** @var int|string $reviewsCount */
                 $reviewsCount = $run->getAttribute('reviews_count');

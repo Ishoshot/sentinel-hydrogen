@@ -15,6 +15,7 @@ use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Override;
 
 final class RecentRuns extends TableWidget
 {
@@ -22,6 +23,7 @@ final class RecentRuns extends TableWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    #[Override]
     public function table(Table $table): Table
     {
         return $table

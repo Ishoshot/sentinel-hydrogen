@@ -34,7 +34,6 @@ final readonly class GetReviewDurationTrends
             ->orderBy('date')
             ->get()
             ->map(static function (Run $run): array {
-                /** @var string $date */
                 $date = (string) $run->getAttribute('date');
                 /** @var float|int|string $avgDuration */
                 $avgDuration = $run->getAttribute('avg_duration');

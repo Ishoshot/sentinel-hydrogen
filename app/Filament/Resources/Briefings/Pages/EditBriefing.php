@@ -20,6 +20,7 @@ final class EditBriefing extends EditRecord
 {
     protected static string $resource = BriefingResource::class;
 
+    #[Override]
     protected function getHeaderActions(): array
     {
         return [

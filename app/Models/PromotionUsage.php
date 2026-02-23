@@ -9,6 +9,7 @@ use Database\Factories\PromotionUsageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Override;
 
 final class PromotionUsage extends Model
 {
@@ -82,6 +83,7 @@ final class PromotionUsage extends Model
     /**
      * @return array<string, string>
      */
+    #[Override]
     protected function casts(): array
     {
         return [

@@ -8,6 +8,7 @@ use App\Enums\Billing\Partner;
 use Database\Factories\IncomingWebhookFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Override;
 
 final class IncomingWebhook extends Model
 {
@@ -63,6 +64,7 @@ final class IncomingWebhook extends Model
     /**
      * @return array<string, string>
      */
+    #[Override]
     protected function casts(): array
     {
         return [

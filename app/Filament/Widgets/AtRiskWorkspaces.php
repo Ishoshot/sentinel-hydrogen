@@ -11,6 +11,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Support\Collection;
+use Override;
 
 final class AtRiskWorkspaces extends TableWidget
 {
@@ -18,6 +19,7 @@ final class AtRiskWorkspaces extends TableWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    #[Override]
     public function table(Table $table): Table
     {
         return $table

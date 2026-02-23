@@ -40,6 +40,7 @@ abstract class BaseAdminDashboardPage extends BaseDashboard
     /**
      * @return array<NavigationItem>
      */
+    #[Override]
     final public function getSubNavigation(): array
     {
         return [
@@ -75,6 +76,7 @@ abstract class BaseAdminDashboardPage extends BaseDashboard
     /**
      * @return array<\Filament\Actions\Action>
      */
+    #[Override]
     protected function getHeaderActions(): array
     {
         return [

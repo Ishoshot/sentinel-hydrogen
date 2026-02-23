@@ -20,6 +20,7 @@ final class EditAiOption extends EditRecord
 {
     protected static string $resource = AiOptionResource::class;
 
+    #[Override]
     protected function getHeaderActions(): array
     {
         return [
