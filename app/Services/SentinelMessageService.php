@@ -127,4 +127,12 @@ final readonly class SentinelMessageService
     {
         return $this->statusCommentBuilder->buildInstallationInactiveComment();
     }
+
+    /**
+     * Build a comment explaining that the review was superseded by a newer run.
+     */
+    public function buildSupersededComment(): string
+    {
+        return $this->statusCommentBuilder->buildSupersededComment();
+    }
 }

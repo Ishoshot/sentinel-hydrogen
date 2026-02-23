@@ -128,6 +128,18 @@ final readonly class SentinelStatusCommentBuilder
     }
 
     /**
+     * Build a comment explaining that the review was superseded by a newer run.
+     */
+    public function buildSupersededComment(): string
+    {
+        return $this->buildAlert('NOTE', 'Review Skipped — Superseded', <<<'BODY'
+        A newer commit was pushed before this review could complete. Sentinel will review the latest commit instead.
+
+        No action is needed — the latest push will be reviewed automatically.
+        BODY);
+    }
+
+    /**
      * Build a GitHub-flavored alert blockquote with branding footer.
      *
      * @param  'NOTE'|'TIP'|'IMPORTANT'|'WARNING'|'CAUTION'  $type
