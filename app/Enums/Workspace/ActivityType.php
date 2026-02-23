@@ -32,6 +32,7 @@ enum ActivityType: string
     case RunCompleted = 'run.completed';
     case RunFailed = 'run.failed';
     case RunSkipped = 'run.skipped';
+    case RunSuperseded = 'run.superseded';
     case AnnotationsPosted = 'annotations.posted';
 
     // Provider Keys (BYOK)
@@ -77,6 +78,7 @@ enum ActivityType: string
             self::RunCompleted => 'Review Run Completed',
             self::RunFailed => 'Review Run Failed',
             self::RunSkipped => 'Review Run Skipped',
+            self::RunSuperseded => 'Review Run Superseded',
             self::AnnotationsPosted => 'Annotations Posted',
             self::ProviderKeyUpdated => 'Provider Key Configured',
             self::ProviderKeyDeleted => 'Provider Key Deleted',
@@ -112,6 +114,7 @@ enum ActivityType: string
             self::RunCompleted => 'check-circle',
             self::RunFailed => 'x-circle',
             self::RunSkipped => 'skip-forward',
+            self::RunSuperseded => 'fast-forward',
             self::AnnotationsPosted => 'message-circle',
             self::ProviderKeyUpdated => 'key',
             self::ProviderKeyDeleted => 'key',
@@ -147,6 +150,7 @@ enum ActivityType: string
             self::RunCompleted,
             self::RunFailed,
             self::RunSkipped,
+            self::RunSuperseded,
             self::AnnotationsPosted => 'review',
             self::ProviderKeyUpdated,
             self::ProviderKeyDeleted => 'settings',

@@ -16,4 +16,5 @@ enum SkipReason: string
     case PlanLimitReached = 'plan_limit_reached';
     case OrphanedRepository = 'orphaned_repository';
     case InstallationInactive = 'installation_inactive';
+    case Superseded = 'superseded';
 }
