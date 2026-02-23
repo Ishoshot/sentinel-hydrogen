@@ -36,7 +36,7 @@ final class BriefingOutputRenderer
      */
     public function storageDisk(): string
     {
-        return (string) config('briefings.storage.disk', 'r2');
+        return (string) config('briefings.storage.disk', 's3');
     }
 
     /**
@@ -76,10 +76,13 @@ final class BriefingOutputRenderer
     {
         $htmlContent = $this->renderHtml($generation);
 
+        $timeout = (int) config('briefings.pdf.timeout', 60);
+
         $browsershot = Browsershot::html($htmlContent)
             ->format('A4')
             ->margins(15, 15, 15, 15)
-            ->showBackground();
+            ->showBackground()
+            ->timeout($timeout);
 
         $chromePath = config('briefings.pdf.chrome_path');
         if ($chromePath !== null) {

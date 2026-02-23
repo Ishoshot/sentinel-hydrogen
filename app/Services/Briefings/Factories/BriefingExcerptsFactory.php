@@ -17,11 +17,13 @@ final class BriefingExcerptsFactory
      */
     public function generate(string $narrative, BriefingSummary $summary): BriefingExcerpts
     {
+        $normalized = $this->normalizeLineEndings($narrative);
+
         return BriefingExcerpts::fromArray([
             'short' => $this->generateShortExcerpt($summary),
-            'slack' => $this->generateSlackExcerpt($narrative, $summary),
-            'email' => $this->generateEmailExcerpt($narrative, $summary),
-            'linkedin' => $this->generateLinkedInExcerpt($narrative, $summary),
+            'slack' => $this->generateSlackExcerpt($normalized, $summary),
+            'email' => $this->generateEmailExcerpt($normalized, $summary),
+            'linkedin' => $this->generateLinkedInExcerpt($normalized, $summary),
         ]);
     }
 
@@ -42,8 +44,8 @@ final class BriefingExcerptsFactory
      */
     private function generateSlackExcerpt(string $narrative, BriefingSummary $summary): string
     {
-        $firstParagraph = strtok($narrative, "\n\n");
-        $headline = $firstParagraph ?: $this->buildSummarySentence($summary);
+        $parts = explode("\n\n", $narrative, 2);
+        $headline = mb_trim($parts[0] ?? '') !== '' ? $parts[0] : $this->buildSummarySentence($summary);
 
         return sprintf(
             "*Team Update*\n\n%s\n\n:chart_with_upwards_trend: %d completed | :hourglass: %d in progress",
@@ -85,6 +87,17 @@ final class BriefingExcerptsFactory
             $summary->completed(),
             mb_substr($narrative, 0, 200).'...'
         );
+    }
+
+    /**
+     * Normalize line endings to unix-style and collapse 3+ newlines into double.
+     */
+    private function normalizeLineEndings(string $text): string
+    {
+        $text = str_replace("\r\n", "\n", $text);
+        $text = str_replace("\r", "\n", $text);
+
+        return preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
     }
 
     /**
