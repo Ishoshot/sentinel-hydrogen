@@ -9,6 +9,7 @@ use App\Models\Briefing;
 use App\Models\BriefingSubscription;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Briefings\BriefingParameterValidator;
 use App\Services\Briefings\ValueObjects\BriefingDeliveryChannels;
 use App\Services\Briefings\ValueObjects\BriefingParameters;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -16,6 +17,13 @@ use Illuminate\Validation\ValidationException;
 
 final readonly class CreateBriefingSubscription
 {
+    /**
+     * Create a new action instance.
+     */
+    public function __construct(
+        private BriefingParameterValidator $parameterValidator,
+    ) {}
+
     /**
      * Create a briefing subscription for a workspace member.
      *
@@ -41,6 +49,17 @@ final readonly class CreateBriefingSubscription
         ?int $scheduleDay = null,
         int $scheduleHour = 9,
     ): BriefingSubscription {
+        if (! $briefing->is_schedulable) {
+            throw ValidationException::withMessages([
+                'briefing_id' => ['This briefing does not support scheduling.'],
+            ]);
+        }
+
+        $validatedParameters = $this->parameterValidator->validate(
+            $briefing,
+            $parameters->toArray(),
+        );
+
         $subscription = new BriefingSubscription([
             'workspace_id' => $workspace->id,
             'user_id' => $user->id,
@@ -48,7 +67,7 @@ final readonly class CreateBriefingSubscription
             'schedule_preset' => $schedulePreset,
             'schedule_day' => $scheduleDay,
             'schedule_hour' => $scheduleHour,
-            'parameters' => $parameters->toArray(),
+            'parameters' => $validatedParameters->toArray(),
             'delivery_channels' => $deliveryChannels->toArray(),
             'is_active' => true,
         ]);

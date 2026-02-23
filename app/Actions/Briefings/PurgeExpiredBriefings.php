@@ -30,7 +30,7 @@ final class PurgeExpiredBriefings
      */
     private function cleanupExpiredGenerations(): void
     {
-        $disk = config('briefings.storage.disk', 'r2');
+        $disk = config('briefings.storage.disk', 's3');
         $basePath = config('briefings.storage.path', 'briefings');
         $chunkSize = (int) config('briefings.retention.cleanup_batch_size', 100);
 

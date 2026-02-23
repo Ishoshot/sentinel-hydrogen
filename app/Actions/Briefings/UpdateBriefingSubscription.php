@@ -5,12 +5,22 @@ declare(strict_types=1);
 namespace App\Actions\Briefings;
 
 use App\Enums\Briefings\BriefingSchedulePreset;
+use App\Models\Briefing;
 use App\Models\BriefingSubscription;
+use App\Services\Briefings\BriefingParameterValidator;
 use App\Services\Briefings\ValueObjects\BriefingDeliveryChannels;
 use App\Services\Briefings\ValueObjects\BriefingParameters;
+use Illuminate\Validation\ValidationException;
 
 final readonly class UpdateBriefingSubscription
 {
+    /**
+     * Create a new action instance.
+     */
+    public function __construct(
+        private BriefingParameterValidator $parameterValidator,
+    ) {}
+
     /**
      * Update a briefing subscription.
      *
@@ -54,7 +64,21 @@ final readonly class UpdateBriefingSubscription
         }
 
         if ($parameters instanceof BriefingParameters) {
-            $subscription->parameters = $parameters->toArray();
+            $subscription->loadMissing('briefing');
+            $briefing = $subscription->briefing;
+
+            if (! $briefing instanceof Briefing) {
+                throw ValidationException::withMessages([
+                    'briefing_id' => ['The subscription briefing is unavailable.'],
+                ]);
+            }
+
+            $validatedParameters = $this->parameterValidator->validate(
+                $briefing,
+                $parameters->toArray(),
+            );
+
+            $subscription->parameters = $validatedParameters->toArray();
         }
 
         if ($isActive !== null) {
