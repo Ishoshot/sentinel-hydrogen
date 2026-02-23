@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Reviews;
 
 use App\Actions\Reviews\Guards\ReviewRunPreflightGuard;
+use App\Actions\Reviews\Guards\ReviewRunSupersededGuard;
 use App\Actions\Reviews\Handlers\ReviewRunAnnotationHandler;
 use App\Actions\Reviews\Handlers\ReviewRunCompletionHandler;
 use App\Actions\Reviews\Handlers\ReviewRunFailureHandler;
@@ -25,6 +26,7 @@ final readonly class ExecuteReviewRun
      */
     public function __construct(
         private ReviewRunPreflightGuard $preflightGuard,
+        private ReviewRunSupersededGuard $supersededGuard,
         private ReviewRunContextPolicyResolver $contextPolicyResolver,
         private ReviewEngine $reviewEngine,
         private FilterReviewFindings $filterReviewFindings,
@@ -55,6 +57,10 @@ final readonly class ExecuteReviewRun
 
         $repository = $run->repository;
         if ($repository === null) {
+            return $run;
+        }
+
+        if ($this->supersededGuard->isSuperseded($run)) {
             return $run;
         }
 

@@ -27,6 +27,7 @@ final readonly class HandlePullRequestWebhook
         private GitHubWebhookService $webhookService,
         private CreatePullRequestRun $createPullRequestRun,
         private SyncPullRequestRunMetadata $syncMetadata,
+        private SupersedeActiveRuns $supersedeActiveRuns,
         private PostsGreetingComment $postGreeting,
         private PostsConfigErrorComment $postConfigError,
         private PostsAutoReviewDisabledComment $postAutoReviewDisabled,
@@ -113,6 +114,8 @@ final readonly class HandlePullRequestWebhook
         }
 
         $this->dispatchPullRequestPreIndex->handle($repository, $data, $ctx);
+
+        $this->supersedeActiveRuns->handle($repository, $data['pull_request_number']);
 
         $greetingCommentId = $this->postGreeting->handle($repository, $data['pull_request_number']);
 
