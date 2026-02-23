@@ -28,6 +28,8 @@ Terminal states: `completed`, `failed`, `skipped`.
 - `in_progress -> failed`
 - `queued -> skipped`
 - `in_progress -> skipped` (only for deterministic policy/eligibility outcomes)
+- `queued -> skipped[superseded]` (newer push to same PR)
+- `in_progress -> skipped[superseded]` (newer push to same PR)
 
 No transition is allowed out of terminal states.
 
@@ -52,6 +54,7 @@ Common skip reasons include:
 - trigger/policy mismatch
 - plan limit reached
 - provider keys unavailable
+- superseded (newer push to same PR)
 
 Skip reasons must be persisted and observable.
 
