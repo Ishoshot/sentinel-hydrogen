@@ -38,6 +38,14 @@ final readonly class UpdateRunAcknowledgmentComment
     }
 
     /**
+     * Mark an existing acknowledgment comment as superseded.
+     */
+    public function markSuperseded(Run $run): bool
+    {
+        return $this->sync($run, $this->statusBodyBuilder->forSuperseded($run));
+    }
+
+    /**
      * Mark an existing acknowledgment comment as failed.
      */
     public function markFailed(Run $run, string $errorType): bool

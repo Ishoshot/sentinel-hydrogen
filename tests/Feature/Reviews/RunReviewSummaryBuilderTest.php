@@ -187,7 +187,7 @@ it('builds the correct run URL in the sign-off', function (): void {
     $result = $builder->build($run);
 
     $expectedUrl = sprintf(
-        'https://app.sentinel.test/workspaces/%s/runs/%s',
+        'https://app.sentinel.test/%s/runs/%s',
         $workspace->slug,
         $run->id
     );
