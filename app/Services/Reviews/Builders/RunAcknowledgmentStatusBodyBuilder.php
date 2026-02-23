@@ -43,6 +43,20 @@ final class RunAcknowledgmentStatusBodyBuilder
     }
 
     /**
+     * Build the superseded-state acknowledgment body.
+     */
+    public function forSuperseded(Run $run): string
+    {
+        $body = <<<'MARKDOWN'
+        ⏭️ **Sentinel Review Superseded**
+
+        A newer commit was pushed to this pull request. This review has been cancelled.
+        MARKDOWN;
+
+        return $this->appendRunLink($body, $run);
+    }
+
+    /**
      * Build the failed-state acknowledgment body.
      */
     public function forFailed(Run $run, string $errorType): string
@@ -87,7 +101,7 @@ final class RunAcknowledgmentStatusBodyBuilder
         $frontendUrl = config('app.frontend_url');
 
         return sprintf(
-            '%s/workspaces/%s/runs/%d',
+            '%s/%s/runs/%d',
             mb_rtrim($frontendUrl, '/'),
             $workspaceSlug,
             $run->id

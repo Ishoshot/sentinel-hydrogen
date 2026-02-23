@@ -139,6 +139,9 @@ return [
 
         // Path to Chrome/Chromium binary (for browsershot)
         'chrome_path' => env('BRIEFINGS_CHROME_PATH'),
+
+        // Timeout in seconds for Browsershot PDF rendering
+        'timeout' => (int) env('BRIEFINGS_PDF_TIMEOUT', 60),
     ],
 
     /*
