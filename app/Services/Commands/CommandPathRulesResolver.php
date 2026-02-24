@@ -98,11 +98,11 @@ final readonly class CommandPathRulesResolver
     {
         $fetchResult = $this->fetchConfig->handle($repository, $branch);
 
-        if (! $fetchResult['found'] || $fetchResult['content'] === null) {
+        if (! $fetchResult->found || $fetchResult->content === null) {
             return null;
         }
 
-        $parseResult = $this->configParser->tryParse($fetchResult['content']);
+        $parseResult = $this->configParser->tryParse($fetchResult->content);
 
         if (! $parseResult['success']) {
             Log::warning('Command path config parse error', [
