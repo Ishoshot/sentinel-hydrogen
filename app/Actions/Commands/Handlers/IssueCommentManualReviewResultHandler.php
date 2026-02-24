@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Commands\Handlers;
 
 use App\Actions\Commands\PostIssueCommentMessage;
+use App\Actions\Reviews\ValueObjects\ManualReviewResult;
+use App\Models\Run;
 
 final readonly class IssueCommentManualReviewResultHandler
 {
@@ -15,17 +17,15 @@ final readonly class IssueCommentManualReviewResultHandler
 
     /**
      * Handle webhook-facing side effects for a manual review trigger result.
-     *
-     * @param  array{success: bool, run: \App\Models\Run|null, message: string}  $result
      */
-    public function handle(array $result, int $installationId, string $repositoryFullName, int $pullRequestNumber): void
+    public function handle(ManualReviewResult $result, int $installationId, string $repositoryFullName, int $pullRequestNumber): void
     {
-        if (! $result['success'] && $result['run'] === null) {
+        if (! $result->success && ! $result->run instanceof Run) {
             $this->postIssueCommentMessage->postReviewError(
                 installationId: $installationId,
                 repositoryFullName: $repositoryFullName,
                 pullRequestNumber: $pullRequestNumber,
-                message: $result['message'],
+                message: $result->message ?? 'An unknown error occurred.',
             );
         }
     }

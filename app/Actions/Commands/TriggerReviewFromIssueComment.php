@@ -42,9 +42,9 @@ final readonly class TriggerReviewFromIssueComment
         $this->resultHandler->handle($result, $installationId, $repository->full_name, $pullRequestNumber);
 
         Log::info('Manual review trigger completed', array_merge($context, [
-            'success' => $result['success'],
-            'run_id' => $result['run']?->id,
-            'message' => $result['message'],
+            'success' => $result->success,
+            'run_id' => $result->run?->id,
+            'message' => $result->message,
         ]));
     }
 }
