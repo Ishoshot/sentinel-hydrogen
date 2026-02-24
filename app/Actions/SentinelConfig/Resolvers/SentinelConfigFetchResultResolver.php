@@ -4,44 +4,36 @@ declare(strict_types=1);
 
 namespace App\Actions\SentinelConfig\Resolvers;
 
+use App\Actions\SentinelConfig\ValueObjects\ConfigFetchResult;
+
 final class SentinelConfigFetchResultResolver
 {
     /**
-     * @return array{found: bool, content: ?string, sha: ?string, error: ?string}
+     * Create a result for a found config file.
      */
-    public function found(?string $content, ?string $sha, ?string $error): array
+    public function found(?string $content, ?string $sha, ?string $error): ConfigFetchResult
     {
-        return [
-            'found' => true,
-            'content' => $content,
-            'sha' => $sha,
-            'error' => $error,
-        ];
+        return new ConfigFetchResult(
+            found: true,
+            content: $content,
+            sha: $sha,
+            error: $error,
+        );
     }
 
     /**
-     * @return array{found: bool, content: ?string, sha: ?string, error: ?string}
+     * Create a result for a config file that was not found.
      */
-    public function notFound(): array
+    public function notFound(): ConfigFetchResult
     {
-        return [
-            'found' => false,
-            'content' => null,
-            'sha' => null,
-            'error' => null,
-        ];
+        return ConfigFetchResult::notFound();
     }
 
     /**
-     * @return array{found: bool, content: ?string, sha: ?string, error: ?string}
+     * Create a result for a failed fetch attempt.
      */
-    public function failed(string $error): array
+    public function failed(string $error): ConfigFetchResult
     {
-        return [
-            'found' => false,
-            'content' => null,
-            'sha' => null,
-            'error' => $error,
-        ];
+        return ConfigFetchResult::failed($error);
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\SentinelConfig\Resolvers;
 
+use App\Actions\SentinelConfig\ValueObjects\ConfigFetchResult;
+
 final readonly class SentinelConfigGitHubResponseResolver
 {
     /**
@@ -15,9 +17,8 @@ final readonly class SentinelConfigGitHubResponseResolver
      * Parse a GitHub file contents response into a config fetch result.
      *
      * @param  array<string, mixed>|string  $response
-     * @return array{found: bool, content: ?string, sha: ?string, error: ?string}
      */
-    public function parse(array|string $response): array
+    public function parse(array|string $response): ConfigFetchResult
     {
         if (is_array($response)) {
             return $this->parseArrayResponse($response);
@@ -28,9 +29,8 @@ final readonly class SentinelConfigGitHubResponseResolver
 
     /**
      * @param  array<string, mixed>  $response
-     * @return array{found: bool, content: ?string, sha: ?string, error: ?string}
      */
-    private function parseArrayResponse(array $response): array
+    private function parseArrayResponse(array $response): ConfigFetchResult
     {
         $responseContent = $response['content'] ?? null;
         $responseEncoding = $response['encoding'] ?? null;

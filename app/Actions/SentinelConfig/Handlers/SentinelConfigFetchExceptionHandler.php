@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\SentinelConfig\Handlers;
 
 use App\Actions\SentinelConfig\Resolvers\SentinelConfigFetchResultResolver;
+use App\Actions\SentinelConfig\ValueObjects\ConfigFetchResult;
 use App\Models\Repository;
 use Github\Exception\RuntimeException;
 use Illuminate\Support\Facades\Log;
@@ -18,10 +19,8 @@ final readonly class SentinelConfigFetchExceptionHandler
 
     /**
      * Map a GitHub API exception to a sentinel config fetch result.
-     *
-     * @return array{found: bool, content: ?string, sha: ?string, error: ?string}
      */
-    public function handle(Repository $repository, RuntimeException $runtimeException): array
+    public function handle(Repository $repository, RuntimeException $runtimeException): ConfigFetchResult
     {
         if ($runtimeException->getCode() === 404) {
             return $this->resultResolver->notFound();
