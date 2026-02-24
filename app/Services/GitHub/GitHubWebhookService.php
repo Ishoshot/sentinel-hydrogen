@@ -9,6 +9,9 @@ use App\Services\GitHub\Contracts\GitHubWebhookServiceContract;
 use App\Services\GitHub\Parsers\GitHubWebhookPayloadParser;
 use App\Services\GitHub\Policies\GitHubPullRequestActionPolicy;
 use App\Services\GitHub\Policies\GitHubWebhookSignaturePolicy;
+use App\Services\GitHub\ValueObjects\InstallationRepositoriesWebhookPayload;
+use App\Services\GitHub\ValueObjects\InstallationWebhookPayload;
+use App\Services\GitHub\ValueObjects\PullRequestWebhookPayload;
 
 final readonly class GitHubWebhookService implements GitHubWebhookServiceContract
 {
@@ -67,9 +70,8 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      * Parse installation event payload.
      *
      * @param  array<string, mixed>  $payload  The webhook payload
-     * @return array{action: string, installation_id: int, account_type: string, account_login: string, account_avatar_url: string|null, permissions: array<string, string>, events: array<int, string>}
      */
-    public function parseInstallationPayload(array $payload): array
+    public function parseInstallationPayload(array $payload): InstallationWebhookPayload
     {
         return $this->payloadParser->parseInstallationPayload($payload);
     }
@@ -78,9 +80,8 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      * Parse installation repositories event payload.
      *
      * @param  array<string, mixed>  $payload  The webhook payload
-     * @return array{action: string, installation_id: int, repositories_added: array<int, array{id: int, name: string, full_name: string, private: bool}>, repositories_removed: array<int, array{id: int, name: string, full_name: string}>}
      */
-    public function parseInstallationRepositoriesPayload(array $payload): array
+    public function parseInstallationRepositoriesPayload(array $payload): InstallationRepositoriesWebhookPayload
     {
         return $this->payloadParser->parseInstallationRepositoriesPayload($payload);
     }
@@ -89,9 +90,8 @@ final readonly class GitHubWebhookService implements GitHubWebhookServiceContrac
      * Parse pull request event payload.
      *
      * @param  array<string, mixed>  $payload  The webhook payload
-     * @return array{action: string, installation_id: int, repository_id: int, repository_full_name: string, pull_request_number: int, pull_request_title: string, pull_request_body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, author: array{login: string, avatar_url: string|null}, is_draft: bool, assignees: array<int, array{login: string, avatar_url: string|null}>, reviewers: array<int, array{login: string, avatar_url: string|null}>, labels: array<int, array{name: string, color: string}>}
      */
-    public function parsePullRequestPayload(array $payload): array
+    public function parsePullRequestPayload(array $payload): PullRequestWebhookPayload
     {
         return $this->payloadParser->parsePullRequestPayload($payload);
     }
