@@ -6,6 +6,7 @@ namespace App\Services\Reviews\Builders;
 
 use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Models\Finding;
+use App\Services\Reviews\ValueObjects\AnnotationConfig;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -18,13 +19,12 @@ final class RunInlineCommentBuilder
 
     /**
      * @param  Collection<int, Finding>  $findings
-     * @param  array{style: string, post_threshold: string, grouped: bool, include_suggestions: bool}  $config
      * @return array<int, array{path: string, line: int, side: string, body: string, start_line: int, start_side: string}>
      */
-    public function build(Collection $findings, array $config): array
+    public function build(Collection $findings, AnnotationConfig $config): array
     {
         $comments = [];
-        $includeSuggestions = $config['include_suggestions'];
+        $includeSuggestions = $config->includeSuggestions;
 
         foreach ($findings as $finding) {
             if ($finding->file_path === null) {
