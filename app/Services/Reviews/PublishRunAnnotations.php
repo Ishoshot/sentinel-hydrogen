@@ -9,6 +9,7 @@ use App\Models\Run;
 use App\Services\Reviews\Publishers\PublishCheckRunAnnotations;
 use App\Services\Reviews\Publishers\PublishCommentAnnotations;
 use App\Services\Reviews\Publishers\PublishReviewAnnotations;
+use App\Services\Reviews\ValueObjects\AnnotationConfig;
 
 final readonly class PublishRunAnnotations
 {
@@ -23,7 +24,6 @@ final readonly class PublishRunAnnotations
 
     /**
      * @param  array<int, array{path: string, line: int, side: string, body: string}>  $inlineComments
-     * @param  array{style: string, post_threshold: string, grouped: bool, include_suggestions: bool}  $config
      * @return array<string, mixed>
      */
     public function handle(
@@ -35,9 +35,9 @@ final readonly class PublishRunAnnotations
         string $reviewBody,
         array $inlineComments,
         ?string $commitId,
-        array $config,
+        AnnotationConfig $config,
     ): array {
-        $style = AnnotationStyle::tryFrom($config['style']) ?? AnnotationStyle::Review;
+        $style = AnnotationStyle::tryFrom($config->style) ?? AnnotationStyle::Review;
 
         return match ($style) {
             AnnotationStyle::Review => $this->reviewAnnotationsPublisher->publish(
@@ -48,7 +48,7 @@ final readonly class PublishRunAnnotations
                 $reviewBody,
                 $inlineComments,
                 $commitId,
-                $config['grouped']
+                $config->grouped
             ),
             AnnotationStyle::Comment => $this->commentAnnotationsPublisher->publish(
                 $installationId,
@@ -57,7 +57,7 @@ final readonly class PublishRunAnnotations
                 $pullRequestNumber,
                 $reviewBody,
                 $inlineComments,
-                $config['grouped']
+                $config->grouped
             ),
             AnnotationStyle::Check => $this->checkRunAnnotationsPublisher->publish(
                 $run,
@@ -72,7 +72,7 @@ final readonly class PublishRunAnnotations
     }
 
     /**
-     * @param  array{style: string, post_threshold: string, grouped: bool, include_suggestions: bool}  $config
+     * Post only a summary comment (no inline annotations).
      */
     public function postSummaryOnly(
         Run $run,
@@ -81,9 +81,9 @@ final readonly class PublishRunAnnotations
         string $repo,
         int $pullRequestNumber,
         string $summary,
-        array $config,
+        AnnotationConfig $config,
     ): void {
-        $style = AnnotationStyle::tryFrom($config['style']) ?? AnnotationStyle::Review;
+        $style = AnnotationStyle::tryFrom($config->style) ?? AnnotationStyle::Review;
 
         $metadata = $run->metadata ?? [];
         $commitId = is_string($metadata['head_sha'] ?? null) ? $metadata['head_sha'] : null;
