@@ -10,6 +10,7 @@ use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;
 use App\Services\CodeIndexing\Strategies\IndexBatchDispatchStrategy;
 use App\Services\CodeIndexing\ValueObjects\CodeIndexScope;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Services\GitHub\ValueObjects\PullRequestWebhookPayload;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -25,9 +26,9 @@ final readonly class HandlePullRequestPreIndex
     ) {}
 
     /**
-     * @param  array{action: string, installation_id: int, repository_id: int, repository_full_name: string, pull_request_number: int, pull_request_title: string, pull_request_body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, author: array{login: string, avatar_url: string|null}, is_draft: bool, assignees: array<int, array{login: string, avatar_url: string|null}>, reviewers: array<int, array{login: string, avatar_url: string|null}>, labels: array<int, array{name: string, color: string}>}  $payload
+     * Handle pre-indexing of pull request files for the given repository.
      */
-    public function handle(Repository $repository, array $payload): void
+    public function handle(Repository $repository, PullRequestWebhookPayload $payload): void
     {
         if (! $this->isEligibleTier($repository)) {
             return;
@@ -37,14 +38,14 @@ final readonly class HandlePullRequestPreIndex
         if (! $installation instanceof \App\Models\Installation) {
             Log::warning('Pull request pre-index skipped: installation missing', [
                 'repository_id' => $repository->id,
-                'pr_number' => $payload['pull_request_number'],
+                'pr_number' => $payload->pullRequestNumber,
             ]);
 
             return;
         }
 
-        $pullRequestNumber = $payload['pull_request_number'];
-        $headSha = $payload['head_sha'];
+        $pullRequestNumber = $payload->pullRequestNumber;
+        $headSha = $payload->headSha;
 
         $lockKey = sprintf('pr_preindex:%d:%d:%s', $repository->id, $pullRequestNumber, $headSha);
         $lock = Cache::lock($lockKey, 180);
