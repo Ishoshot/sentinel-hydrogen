@@ -6,6 +6,9 @@ namespace App\Actions\Reviews;
 
 use App\Models\Repository;
 use App\Models\Run;
+use App\Services\GitHub\ValueObjects\PullRequestWebhookPayload;
+use App\Services\Reviews\ValueObjects\GitHubLabel;
+use App\Services\Reviews\ValueObjects\GitHubUser;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -15,18 +18,16 @@ final readonly class SyncPullRequestRunMetadata
 {
     /**
      * Sync metadata for an existing pull request run.
-     *
-     * @param  array{action: string, installation_id: int, repository_id: int, repository_full_name: string, pull_request_number: int, pull_request_title: string, pull_request_body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, author: array{login: string, avatar_url: string|null}, is_draft: bool, assignees: array<int, array{login: string, avatar_url: string|null}>, reviewers: array<int, array{login: string, avatar_url: string|null}>, labels: array<int, array{name: string, color: string}>}  $payload
      */
-    public function handle(Repository $repository, array $payload): ?Run
+    public function handle(Repository $repository, PullRequestWebhookPayload $payload): ?Run
     {
         // Find the most recent run for this PR
-        $run = $this->findLatestRunForPullRequest($repository, $payload['pull_request_number']);
+        $run = $this->findLatestRunForPullRequest($repository, $payload->pullRequestNumber);
 
         if (! $run instanceof Run) {
             Log::info('No existing run found for metadata sync', [
-                'repository' => $payload['repository_full_name'],
-                'pr_number' => $payload['pull_request_number'],
+                'repository' => $payload->repositoryFullName,
+                'pr_number' => $payload->pullRequestNumber,
             ]);
 
             return null;
@@ -36,9 +37,9 @@ final readonly class SyncPullRequestRunMetadata
 
         Log::info('Pull request metadata synced', [
             'run_id' => $run->id,
-            'repository' => $payload['repository_full_name'],
-            'pr_number' => $payload['pull_request_number'],
-            'action' => $payload['action'],
+            'repository' => $payload->repositoryFullName,
+            'pr_number' => $payload->pullRequestNumber,
+            'action' => $payload->action,
         ]);
 
         return $run;
@@ -58,24 +59,22 @@ final readonly class SyncPullRequestRunMetadata
 
     /**
      * Update the run's metadata with new PR data.
-     *
-     * @param  array{action: string, installation_id: int, repository_id: int, repository_full_name: string, pull_request_number: int, pull_request_title: string, pull_request_body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, author: array{login: string, avatar_url: string|null}, is_draft: bool, assignees: array<int, array{login: string, avatar_url: string|null}>, reviewers: array<int, array{login: string, avatar_url: string|null}>, labels: array<int, array{name: string, color: string}>}  $payload
      */
-    private function updateMetadata(Run $run, array $payload): void
+    private function updateMetadata(Run $run, PullRequestWebhookPayload $payload): void
     {
         /** @var array<string, mixed> $metadata */
         $metadata = $run->metadata ?? [];
 
         // Update mutable metadata fields
-        $metadata['pull_request_title'] = $payload['pull_request_title'];
-        $metadata['pull_request_body'] = $payload['pull_request_body'];
-        $metadata['author'] = $payload['author'];
-        $metadata['is_draft'] = $payload['is_draft'];
-        $metadata['assignees'] = $payload['assignees'];
-        $metadata['reviewers'] = $payload['reviewers'];
-        $metadata['labels'] = $payload['labels'];
+        $metadata['pull_request_title'] = $payload->pullRequestTitle;
+        $metadata['pull_request_body'] = $payload->pullRequestBody;
+        $metadata['author'] = $payload->author->toArray();
+        $metadata['is_draft'] = $payload->isDraft;
+        $metadata['assignees'] = array_map(fn (GitHubUser $user): array => $user->toArray(), $payload->assignees);
+        $metadata['reviewers'] = array_map(fn (GitHubUser $user): array => $user->toArray(), $payload->reviewers);
+        $metadata['labels'] = array_map(fn (GitHubLabel $label): array => $label->toArray(), $payload->labels);
         $metadata['last_synced_at'] = now()->toISOString();
-        $metadata['last_sync_action'] = $payload['action'];
+        $metadata['last_sync_action'] = $payload->action;
 
         $run->metadata = $metadata;
         $run->save();

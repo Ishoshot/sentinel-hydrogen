@@ -5,34 +5,36 @@ declare(strict_types=1);
 namespace App\Actions\Reviews\Builders;
 
 use App\Actions\Reviews\ValueObjects\PullRequestRunSkipResolution;
+use App\Services\GitHub\ValueObjects\PullRequestWebhookPayload;
+use App\Services\Reviews\ValueObjects\GitHubLabel;
+use App\Services\Reviews\ValueObjects\GitHubUser;
 
 final readonly class PullRequestRunMetadataBuilder
 {
     /**
      * Build run metadata for pull request run creation.
      *
-     * @param  array{action: string, installation_id: int, repository_id: int, repository_full_name: string, pull_request_number: int, pull_request_title: string, pull_request_body: string|null, base_branch: string, head_branch: string, head_sha: string, sender_login: string, author: array{login: string, avatar_url: string|null}, is_draft: bool, assignees: array<int, array{login: string, avatar_url: string|null}>, reviewers: array<int, array{login: string, avatar_url: string|null}>, labels: array<int, array{name: string, color: string}>}  $payload
      * @return array<string, mixed>
      */
-    public function build(array $payload, ?int $greetingCommentId, PullRequestRunSkipResolution $skipResolution): array
+    public function build(PullRequestWebhookPayload $payload, ?int $greetingCommentId, PullRequestRunSkipResolution $skipResolution): array
     {
         $metadata = [
             'provider' => 'github',
-            'repository_full_name' => $payload['repository_full_name'],
-            'pull_request_number' => $payload['pull_request_number'],
-            'pull_request_title' => $payload['pull_request_title'],
-            'pull_request_body' => $payload['pull_request_body'],
-            'base_branch' => $payload['base_branch'],
-            'head_branch' => $payload['head_branch'],
-            'head_sha' => $payload['head_sha'],
-            'sender_login' => $payload['sender_login'],
-            'action' => $payload['action'],
-            'installation_id' => $payload['installation_id'],
-            'author' => $payload['author'],
-            'is_draft' => $payload['is_draft'],
-            'assignees' => $payload['assignees'],
-            'reviewers' => $payload['reviewers'],
-            'labels' => $payload['labels'],
+            'repository_full_name' => $payload->repositoryFullName,
+            'pull_request_number' => $payload->pullRequestNumber,
+            'pull_request_title' => $payload->pullRequestTitle,
+            'pull_request_body' => $payload->pullRequestBody,
+            'base_branch' => $payload->baseBranch,
+            'head_branch' => $payload->headBranch,
+            'head_sha' => $payload->headSha,
+            'sender_login' => $payload->senderLogin,
+            'action' => $payload->action,
+            'installation_id' => $payload->installationId,
+            'author' => $payload->author->toArray(),
+            'is_draft' => $payload->isDraft,
+            'assignees' => array_map(fn (GitHubUser $user): array => $user->toArray(), $payload->assignees),
+            'reviewers' => array_map(fn (GitHubUser $user): array => $user->toArray(), $payload->reviewers),
+            'labels' => array_map(fn (GitHubLabel $label): array => $label->toArray(), $payload->labels),
         ];
 
         if ($greetingCommentId !== null) {
