@@ -6,6 +6,7 @@ namespace App\Actions\Reviews\Resolvers;
 
 use App\Models\Installation;
 use App\Models\Repository;
+use App\Services\GitHub\ValueObjects\PullRequestWebhookPayload;
 use Illuminate\Support\Facades\Log;
 
 final readonly class PullRequestWebhookRepositoryResolver
@@ -13,12 +14,11 @@ final readonly class PullRequestWebhookRepositoryResolver
     /**
      * Resolve the repository targeted by a pull request webhook payload.
      *
-     * @param  array{installation_id: int, repository_id: int}  $payload
      * @param  array<string, mixed>  $logContext
      */
-    public function resolve(array $payload, array $logContext): ?Repository
+    public function resolve(PullRequestWebhookPayload $payload, array $logContext): ?Repository
     {
-        $installation = Installation::query()->where('installation_id', $payload['installation_id'])->first();
+        $installation = Installation::query()->where('installation_id', $payload->installationId)->first();
 
         if ($installation === null) {
             Log::warning('Installation not found for pull request webhook', $logContext);
@@ -28,12 +28,12 @@ final readonly class PullRequestWebhookRepositoryResolver
 
         $repository = Repository::query()
             ->where('installation_id', $installation->id)
-            ->where('github_id', $payload['repository_id'])
+            ->where('github_id', $payload->repositoryId)
             ->first();
 
         if ($repository === null) {
             Log::warning('Repository not found for pull request webhook', array_merge($logContext, [
-                'github_repository_id' => $payload['repository_id'],
+                'github_repository_id' => $payload->repositoryId,
             ]));
         }
 
