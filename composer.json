@@ -97,7 +97,7 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "pest --parallel"
+            "pest --parallel --passthru-php=\"-d memory_limit=1G\""
         ],
         "test-all-quality": [
             "@lint:test",
