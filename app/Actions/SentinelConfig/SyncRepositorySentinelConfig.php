@@ -56,18 +56,18 @@ final readonly class SyncRepositorySentinelConfig
         $fetchResult = $this->fetchConfig->handle($repository);
 
         // If there was a fetch error (not just "not found"), record it
-        if ($fetchResult['error'] !== null && $fetchResult['found'] === false) {
-            $this->settingsHandler->markFetchError($settings, $fetchResult['error']);
+        if ($fetchResult->error !== null && $fetchResult->found === false) {
+            $this->settingsHandler->markFetchError($settings, $fetchResult->error);
 
             return [
                 'synced' => false,
                 'config' => null,
-                'error' => $fetchResult['error'],
+                'error' => $fetchResult->error,
             ];
         }
 
         // If config file doesn't exist, clear any existing config
-        if (! $fetchResult['found']) {
+        if (! $fetchResult->found) {
             $this->settingsHandler->clearConfig($settings);
 
             Log::debug('No sentinel config found, cleared existing config', [
@@ -82,7 +82,7 @@ final readonly class SyncRepositorySentinelConfig
         }
 
         // Parse and validate the config
-        $parseResult = $this->parser->tryParse($fetchResult['content'] ?? '');
+        $parseResult = $this->parser->tryParse($fetchResult->content ?? '');
 
         if (! $parseResult['success']) {
             $parseError = $parseResult['error'];
