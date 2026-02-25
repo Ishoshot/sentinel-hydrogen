@@ -20,7 +20,7 @@ final readonly class GitHubUser
     /**
      * Create from array.
      *
-     * @param  array{login: string, avatar_url: string|null}  $data
+     * @param  array{login: string, avatar_url?: string|null}  $data
      */
     public static function fromArray(array $data): self
     {
