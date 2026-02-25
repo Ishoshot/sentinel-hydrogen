@@ -10,6 +10,7 @@ use App\Actions\Reviews\Guards\ReviewRunSupersededGuard;
 use App\Actions\Reviews\HandlePullRequestWebhook;
 use App\Actions\Reviews\SupersedeActiveRuns;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
+use App\Actions\SentinelConfig\ValueObjects\ConfigFetchResult;
 use App\Enums\Auth\ProviderType;
 use App\Enums\Reviews\RunStatus;
 use App\Enums\Reviews\SkipReason;
@@ -36,9 +37,9 @@ beforeEach(function (): void {
 
     app()->instance(FetchesSentinelConfig::class, new class implements FetchesSentinelConfig
     {
-        public function handle(Repository $repository, ?string $ref = null): array
+        public function handle(Repository $repository, ?string $ref = null): ConfigFetchResult
         {
-            return ['found' => false, 'content' => null, 'sha' => null, 'error' => null];
+            return ConfigFetchResult::notFound();
         }
     });
 });
