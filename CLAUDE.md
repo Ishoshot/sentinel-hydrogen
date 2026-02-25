@@ -41,12 +41,6 @@ The task is only complete when the code-reviewer confirms the code is acceptable
 trigger: always_on
 ---
 
-# Project Paths
-
-- **Backend:** `/Users/oluwatobi/Herd/dev/sentinel-api`
-- **Frontend:** `/Users/oluwatobi/Herd/dev/frontend/sentinel`
-- **Admin Frontend:** `/Users/oluwatobi/Herd/dev/sentinel-api` Filament Admin
-
 > **Terminal title.** Update the iTerm title whenever the session topic changes using OSC sequences; use ⚡︎ for Codex. Run: `printf '\033]0;%s\007' "⚡︎ Topic" > "$CODEX_TTY"` where "Topic" is a short (2-4 word) description of the current task.
 
 # Sentinel – Backend Context
