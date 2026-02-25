@@ -7,6 +7,7 @@ namespace App\Services\Reviews\Strategies;
 use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Models\Finding;
 use App\Models\Run;
+use App\Services\Reviews\ValueObjects\AnnotationConfig;
 use Illuminate\Support\Collection;
 
 /**
@@ -15,15 +16,14 @@ use Illuminate\Support\Collection;
 final class EligibleFindingSelectionStrategy
 {
     /**
-     * @param  array{style: string, post_threshold: string, grouped: bool, include_suggestions: bool}  $config
      * @return Collection<int, Finding>
      */
-    public function select(Run $run, array $config): Collection
+    public function select(Run $run, AnnotationConfig $config): Collection
     {
         $policy = $run->policy_snapshot ?? [];
         $commentLimits = is_array($policy['comment_limits'] ?? null) ? $policy['comment_limits'] : [];
 
-        $severityThreshold = $config['post_threshold'];
+        $severityThreshold = $config->postThreshold;
         $maxComments = is_int($commentLimits['max_inline_comments'] ?? null) ? $commentLimits['max_inline_comments'] : 10;
 
         $minSeverityEnum = SentinelConfigSeverity::tryFrom($severityThreshold) ?? SentinelConfigSeverity::Medium;
