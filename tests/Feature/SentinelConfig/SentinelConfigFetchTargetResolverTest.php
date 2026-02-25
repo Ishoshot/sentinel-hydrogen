@@ -22,8 +22,8 @@ it('returns failure when repository has no installation', function (): void {
 
     expect($result->target)->toBeNull()
         ->and($result->failureResult)->not->toBeNull()
-        ->and($result->failureResult['error'])->toBe('Repository has no installation')
-        ->and($result->failureResult['found'])->toBeFalse();
+        ->and($result->failureResult->error)->toBe('Repository has no installation')
+        ->and($result->failureResult->found)->toBeFalse();
 });
 
 it('returns failure when full_name format is invalid', function (): void {
@@ -36,8 +36,8 @@ it('returns failure when full_name format is invalid', function (): void {
 
     expect($result->target)->toBeNull()
         ->and($result->failureResult)->not->toBeNull()
-        ->and($result->failureResult['error'])->toBe('Invalid repository full_name format')
-        ->and($result->failureResult['found'])->toBeFalse();
+        ->and($result->failureResult->error)->toBe('Invalid repository full_name format')
+        ->and($result->failureResult->found)->toBeFalse();
 });
 
 it('returns failure when full_name is empty string', function (): void {
@@ -50,7 +50,7 @@ it('returns failure when full_name is empty string', function (): void {
 
     expect($result->target)->toBeNull()
         ->and($result->failureResult)->not->toBeNull()
-        ->and($result->failureResult['error'])->toBe('Invalid repository full_name format');
+        ->and($result->failureResult->error)->toBe('Invalid repository full_name format');
 });
 
 it('returns target with parsed owner and repo when valid', function (): void {
@@ -109,7 +109,7 @@ it('returns failure when full_name has empty owner part', function (): void {
 
     expect($result->target)->toBeNull()
         ->and($result->failureResult)->not->toBeNull()
-        ->and($result->failureResult['error'])->toBe('Invalid repository full_name format');
+        ->and($result->failureResult->error)->toBe('Invalid repository full_name format');
 });
 
 it('returns failure when full_name has empty repo part', function (): void {
@@ -122,5 +122,5 @@ it('returns failure when full_name has empty repo part', function (): void {
 
     expect($result->target)->toBeNull()
         ->and($result->failureResult)->not->toBeNull()
-        ->and($result->failureResult['error'])->toBe('Invalid repository full_name format');
+        ->and($result->failureResult->error)->toBe('Invalid repository full_name format');
 });

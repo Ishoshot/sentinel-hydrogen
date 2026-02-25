@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\GitHub\HandleInstallationRepositoriesWebhook;
 use App\Actions\GitHub\HandleInstallationWebhook;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
+use App\Actions\SentinelConfig\ValueObjects\ConfigFetchResult;
 use App\Enums\Auth\ProviderType;
 use App\Enums\GitHub\InstallationStatus;
 use App\Jobs\GitHub\CreateConfigPullRequestJob;
@@ -39,12 +40,9 @@ beforeEach(function (): void {
     });
 
     $fetchConfigMock = Mockery::mock(FetchesSentinelConfig::class);
-    $fetchConfigMock->shouldReceive('handle')->andReturn([
-        'found' => false,
-        'content' => null,
-        'sha' => null,
-        'error' => null,
-    ]);
+    $fetchConfigMock->shouldReceive('handle')->andReturn(
+        ConfigFetchResult::notFound()
+    );
     $this->app->instance(FetchesSentinelConfig::class, $fetchConfigMock);
 });
 
