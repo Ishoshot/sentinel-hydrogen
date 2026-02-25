@@ -110,12 +110,12 @@ it('triggers a manual review and creates a run', function (): void {
     );
 
     // Verify result
-    expect($result['success'])->toBeTrue()
-        ->and($result['run'])->toBeInstanceOf(Run::class)
-        ->and($result['message'])->toContain('Review started');
+    expect($result->success)->toBeTrue()
+        ->and($result->run)->toBeInstanceOf(Run::class)
+        ->and($result->message)->toContain('Review started');
 
     // Verify Run was created
-    $run = $result['run'];
+    $run = $result->run;
     expect($run->pr_number)->toBe(42)
         ->and($run->pr_title)->toBe('Test PR')
         ->and($run->status)->toBe(RunStatus::Queued)
@@ -159,9 +159,9 @@ it('returns error when auto-review is disabled', function (): void {
         senderLogin: 'testuser'
     );
 
-    expect($result['success'])->toBeFalse()
-        ->and($result['run'])->toBeNull()
-        ->and($result['message'])->toContain('disabled');
+    expect($result->success)->toBeFalse()
+        ->and($result->run)->toBeNull()
+        ->and($result->message)->toContain('disabled');
 
     // Verify no Run was created
     expect(Run::count())->toBe(0);
@@ -206,9 +206,9 @@ it('returns error when PR cannot be fetched', function (): void {
         senderLogin: 'testuser'
     );
 
-    expect($result['success'])->toBeFalse()
-        ->and($result['run'])->toBeNull()
-        ->and($result['message'])->toContain('Unable to fetch');
+    expect($result->success)->toBeFalse()
+        ->and($result->run)->toBeNull()
+        ->and($result->message)->toContain('Unable to fetch');
 
     expect(Run::count())->toBe(0);
     Bus::assertNotDispatched(ExecuteReviewRun::class);

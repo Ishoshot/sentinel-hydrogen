@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Commands\Handlers\IssueCommentManualReviewResultHandler;
+use App\Actions\Reviews\ValueObjects\ManualReviewResult;
 use App\Models\Run;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
 
@@ -23,11 +24,7 @@ it('posts error comment when result is unsuccessful and run is null', function (
     $handler = app(IssueCommentManualReviewResultHandler::class);
 
     $handler->handle(
-        result: [
-            'success' => false,
-            'run' => null,
-            'message' => 'Review failed due to missing config.',
-        ],
+        result: ManualReviewResult::failure('Review failed due to missing config.'),
         installationId: 12345,
         repositoryFullName: 'owner/repo',
         pullRequestNumber: 42,
@@ -45,11 +42,7 @@ it('does not post comment when result is successful', function (): void {
     $run = Run::factory()->create();
 
     $handler->handle(
-        result: [
-            'success' => true,
-            'run' => $run,
-            'message' => 'Review started.',
-        ],
+        result: ManualReviewResult::success($run, 'Review started.'),
         installationId: 12345,
         repositoryFullName: 'owner/repo',
         pullRequestNumber: 42,
@@ -67,11 +60,7 @@ it('does not post comment when result is unsuccessful but run exists', function 
     $run = Run::factory()->create();
 
     $handler->handle(
-        result: [
-            'success' => false,
-            'run' => $run,
-            'message' => 'Review already in progress.',
-        ],
+        result: ManualReviewResult::skipped($run, 'Review already in progress.'),
         installationId: 12345,
         repositoryFullName: 'owner/repo',
         pullRequestNumber: 42,
@@ -87,11 +76,7 @@ it('does not post comment when result is successful and run is null', function (
     $handler = app(IssueCommentManualReviewResultHandler::class);
 
     $handler->handle(
-        result: [
-            'success' => true,
-            'run' => null,
-            'message' => 'No review needed.',
-        ],
+        result: new ManualReviewResult(success: true, message: 'No review needed.'),
         installationId: 12345,
         repositoryFullName: 'owner/repo',
         pullRequestNumber: 42,

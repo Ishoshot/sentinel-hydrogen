@@ -13,6 +13,7 @@ use App\Models\Provider;
 use App\Models\Repository;
 use App\Models\Run;
 use App\Services\Reviews\Strategies\EligibleFindingSelectionStrategy;
+use App\Services\Reviews\ValueObjects\AnnotationConfig;
 
 beforeEach(function (): void {
     Provider::query()->firstOrCreate(
@@ -120,12 +121,12 @@ it('filters findings below severity threshold', function (): void {
 
     $selector = app(EligibleFindingSelectionStrategy::class);
     $run->loadMissing('findings');
-    $config = [
-        'style' => 'review',
-        'post_threshold' => 'critical',
-        'grouped' => true,
-        'include_suggestions' => true,
-    ];
+    $config = new AnnotationConfig(
+        style: 'review',
+        postThreshold: 'critical',
+        grouped: true,
+        includeSuggestions: true,
+    );
     $eligibleFindings = $selector->select($run, $config);
 
     // Only critical findings should be eligible (none in this case)
@@ -164,12 +165,12 @@ it('respects max inline comments limit in filtering', function (): void {
 
     $selector = app(EligibleFindingSelectionStrategy::class);
     $run->loadMissing('findings');
-    $config = [
-        'style' => 'review',
-        'post_threshold' => 'low',
-        'grouped' => true,
-        'include_suggestions' => true,
-    ];
+    $config = new AnnotationConfig(
+        style: 'review',
+        postThreshold: 'low',
+        grouped: true,
+        includeSuggestions: true,
+    );
     $eligibleFindings = $selector->select($run, $config);
 
     // Should be limited to 2 findings (highest severity first)
@@ -216,12 +217,12 @@ it('excludes findings without file path from filtering', function (): void {
 
     $selector = app(EligibleFindingSelectionStrategy::class);
     $run->loadMissing('findings');
-    $config = [
-        'style' => 'review',
-        'post_threshold' => 'low',
-        'grouped' => true,
-        'include_suggestions' => true,
-    ];
+    $config = new AnnotationConfig(
+        style: 'review',
+        postThreshold: 'low',
+        grouped: true,
+        includeSuggestions: true,
+    );
     $eligibleFindings = $selector->select($run, $config);
 
     // Only the finding with file_path should be eligible
@@ -265,12 +266,12 @@ it('excludes findings without line start from filtering', function (): void {
 
     $selector = app(EligibleFindingSelectionStrategy::class);
     $run->loadMissing('findings');
-    $config = [
-        'style' => 'review',
-        'post_threshold' => 'low',
-        'grouped' => true,
-        'include_suggestions' => true,
-    ];
+    $config = new AnnotationConfig(
+        style: 'review',
+        postThreshold: 'low',
+        grouped: true,
+        includeSuggestions: true,
+    );
     $eligibleFindings = $selector->select($run, $config);
 
     expect($eligibleFindings)->toHaveCount(1)
