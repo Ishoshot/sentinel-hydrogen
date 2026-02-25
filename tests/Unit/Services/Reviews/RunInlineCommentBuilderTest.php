@@ -6,17 +6,18 @@ use App\Enums\Reviews\FindingCategory;
 use App\Enums\SentinelConfig\SentinelConfigSeverity;
 use App\Models\Finding;
 use App\Services\Reviews\Builders\RunInlineCommentBuilder;
+use App\Services\Reviews\ValueObjects\AnnotationConfig;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 beforeEach(function (): void {
     $this->builder = new RunInlineCommentBuilder;
-    $this->config = [
-        'style' => 'inline',
-        'post_threshold' => 'low',
-        'grouped' => false,
-        'include_suggestions' => false,
-    ];
+    $this->config = new AnnotationConfig(
+        style: 'inline',
+        postThreshold: 'low',
+        grouped: false,
+        includeSuggestions: false,
+    );
 });
 
 function createFinding(array $attributes = []): Finding
@@ -201,7 +202,7 @@ it('renders long impact in collapsible block', function (): void {
 });
 
 it('includes replacement code suggestion when enabled', function (): void {
-    $config = array_merge($this->config, ['include_suggestions' => true]);
+    $config = $this->config->with(includeSuggestions: true);
     $finding = createFinding([
         'metadata' => [
             'replacement_code' => 'return $sanitized;',
@@ -224,7 +225,7 @@ it('includes replacement code suggestion when enabled', function (): void {
 });
 
 it('includes text suggestion when no replacement code', function (): void {
-    $config = array_merge($this->config, ['include_suggestions' => true]);
+    $config = $this->config->with(includeSuggestions: true);
     $finding = createFinding([
         'metadata' => ['suggestion' => 'Consider using prepared statements'],
     ]);
@@ -290,7 +291,7 @@ it('handles null category gracefully', function (): void {
 });
 
 it('normalizes replacement code indentation to match current code', function (): void {
-    $config = array_merge($this->config, ['include_suggestions' => true]);
+    $config = $this->config->with(includeSuggestions: true);
     $finding = createFinding([
         'metadata' => [
             'current_code' => '        $rateLimit = $application->rate_limit ?? 10000;',
@@ -305,7 +306,7 @@ it('normalizes replacement code indentation to match current code', function ():
 });
 
 it('normalizes multi-line replacement code indentation', function (): void {
-    $config = array_merge($this->config, ['include_suggestions' => true]);
+    $config = $this->config->with(includeSuggestions: true);
     $finding = createFinding([
         'metadata' => [
             'current_code' => "        Log::info('Incoming webhook payload', [\n            'application_id' => \$request->route('applicationId'),\n        ]);",
@@ -321,7 +322,7 @@ it('normalizes multi-line replacement code indentation', function (): void {
 });
 
 it('does not normalize when replacement already has correct indentation', function (): void {
-    $config = array_merge($this->config, ['include_suggestions' => true]);
+    $config = $this->config->with(includeSuggestions: true);
     $finding = createFinding([
         'metadata' => [
             'current_code' => '    return true;',
@@ -336,7 +337,7 @@ it('does not normalize when replacement already has correct indentation', functi
 });
 
 it('does not normalize when current code has no indentation', function (): void {
-    $config = array_merge($this->config, ['include_suggestions' => true]);
+    $config = $this->config->with(includeSuggestions: true);
     $finding = createFinding([
         'metadata' => [
             'current_code' => 'return true;',
