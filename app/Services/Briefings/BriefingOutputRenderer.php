@@ -85,7 +85,7 @@ final class BriefingOutputRenderer
             ->timeout($timeout);
 
         $chromePath = config('briefings.pdf.chrome_path');
-        if ($chromePath !== null) {
+        if (is_string($chromePath) && $chromePath !== '') {
             $browsershot->setChromePath($chromePath);
         }
 

@@ -6,6 +6,7 @@ namespace App\Actions\Briefings;
 
 use App\Enums\Briefings\BriefingDownloadSource;
 use App\Enums\Briefings\BriefingOutputFormat;
+use App\Models\BriefingGeneration;
 use App\Models\BriefingShare;
 use App\Services\Briefings\ValueObjects\ViewSharedBriefingResult;
 use Illuminate\Http\Request;
@@ -117,7 +118,7 @@ final readonly class ViewSharedBriefing
      */
     private function trackAccess(
         BriefingShare $share,
-        \App\Models\BriefingGeneration $generation,
+        BriefingGeneration $generation,
         Request $request,
     ): bool {
         return DB::transaction(function () use ($share, $generation, $request): bool {
