@@ -8,6 +8,7 @@ use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\Handlers\SentinelConfigFetchExceptionHandler;
 use App\Actions\SentinelConfig\Resolvers\SentinelConfigFetchTargetResolver;
 use App\Actions\SentinelConfig\Resolvers\SentinelConfigGitHubResponseResolver;
+use App\Actions\SentinelConfig\ValueObjects\ConfigFetchResult;
 use App\Actions\SentinelConfig\ValueObjects\SentinelConfigFetchTarget;
 use App\Models\Repository;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
@@ -35,13 +36,12 @@ final readonly class FetchSentinelConfig implements FetchesSentinelConfig
      *
      * @param  Repository  $repository  The repository to fetch the config from
      * @param  string|null  $ref  The branch/ref to fetch from (defaults to repository's default branch)
-     * @return array{found: bool, content: ?string, sha: ?string, error: ?string}
      */
-    public function handle(Repository $repository, ?string $ref = null): array
+    public function handle(Repository $repository, ?string $ref = null): ConfigFetchResult
     {
         $resolution = $this->targetResolver->resolve($repository, $ref);
 
-        if ($resolution->failureResult !== null) {
+        if ($resolution->failureResult instanceof ConfigFetchResult) {
             return $resolution->failureResult;
         }
 
