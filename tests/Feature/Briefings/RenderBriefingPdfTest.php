@@ -5,10 +5,7 @@ declare(strict_types=1);
 use App\Jobs\Briefings\RenderBriefingPdf;
 use App\Models\Briefing;
 use App\Models\BriefingGeneration;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-
-uses(RefreshDatabase::class);
 
 test('it fails when output formats are not configured', function () {
     Storage::fake('s3');
