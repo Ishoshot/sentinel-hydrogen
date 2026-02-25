@@ -8,6 +8,7 @@ use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Actions\GitHub\Contracts\PostsSkipReasonComment;
 use App\Actions\Reviews\HandlePullRequestWebhook;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
+use App\Actions\SentinelConfig\ValueObjects\ConfigFetchResult;
 use App\Enums\Auth\ProviderType;
 use App\Enums\Reviews\RunStatus;
 use App\Jobs\GitHub\ProcessPullRequestWebhook;
@@ -40,21 +41,16 @@ function mockFetchConfigFromSettings(): FetchesSentinelConfig
 {
     return new class implements FetchesSentinelConfig
     {
-        public function handle(Repository $repository, ?string $ref = null): array
+        public function handle(Repository $repository, ?string $ref = null): ConfigFetchResult
         {
             $repository->loadMissing('settings');
             $config = $repository->settings?->sentinel_config;
 
             if ($config === null) {
-                return ['found' => false, 'content' => null, 'sha' => null, 'error' => null];
+                return ConfigFetchResult::notFound();
             }
 
-            return [
-                'found' => true,
-                'content' => Yaml::dump($config),
-                'sha' => 'test-sha',
-                'error' => null,
-            ];
+            return ConfigFetchResult::found(Yaml::dump($config), 'test-sha');
         }
     };
 }
@@ -848,27 +844,25 @@ it('uses config from head branch when available (branch-aware trigger rules)', f
     {
         public ?string $lastRequestedBranch = null;
 
-        public function handle(Repository $repository, ?string $ref = null): array
+        public function handle(Repository $repository, ?string $ref = null): ConfigFetchResult
         {
             $this->lastRequestedBranch = $ref;
 
             // Simulate config only exists in the head branch
             if ($ref === 'feature/my-branch') {
-                return [
-                    'found' => true,
-                    'content' => Yaml::dump([
+                return ConfigFetchResult::found(
+                    Yaml::dump([
                         'version' => 1,
                         'triggers' => [
                             'target_branches' => ['*'], // Allow all branches
                         ],
                     ]),
-                    'sha' => 'test-sha',
-                    'error' => null,
-                ];
+                    'test-sha',
+                );
             }
 
             // Not found in other branches
-            return ['found' => false, 'content' => null, 'sha' => null, 'error' => null];
+            return ConfigFetchResult::notFound();
         }
     };
 
@@ -946,27 +940,25 @@ it('falls back to default branch config when head and base have no config', func
         /** @var array<string> */
         public array $requestedBranches = [];
 
-        public function handle(Repository $repository, ?string $ref = null): array
+        public function handle(Repository $repository, ?string $ref = null): ConfigFetchResult
         {
             $this->requestedBranches[] = $ref;
 
             // Simulate config only exists in the default branch (main)
             if ($ref === 'main') {
-                return [
-                    'found' => true,
-                    'content' => Yaml::dump([
+                return ConfigFetchResult::found(
+                    Yaml::dump([
                         'version' => 1,
                         'triggers' => [
                             'target_branches' => ['main'], // Only allow main
                         ],
                     ]),
-                    'sha' => 'test-sha',
-                    'error' => null,
-                ];
+                    'test-sha',
+                );
             }
 
             // Not found in head or base branches
-            return ['found' => false, 'content' => null, 'sha' => null, 'error' => null];
+            return ConfigFetchResult::notFound();
         }
     };
 

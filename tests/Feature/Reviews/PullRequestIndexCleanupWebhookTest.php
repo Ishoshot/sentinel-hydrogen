@@ -6,6 +6,7 @@ use App\Actions\GitHub\Contracts\PostsAutoReviewDisabledComment;
 use App\Actions\GitHub\Contracts\PostsConfigErrorComment;
 use App\Actions\GitHub\Contracts\PostsGreetingComment;
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
+use App\Actions\SentinelConfig\ValueObjects\ConfigFetchResult;
 use App\Enums\Auth\ProviderType;
 use App\Jobs\CodeIndexing\ProcessPullRequestIndexCleanup;
 use App\Jobs\CodeIndexing\ProcessPullRequestPreIndex;
@@ -47,14 +48,9 @@ beforeEach(function (): void {
 
     app()->instance(FetchesSentinelConfig::class, new class implements FetchesSentinelConfig
     {
-        public function handle(Repository $repository, ?string $ref = null): array
+        public function handle(Repository $repository, ?string $ref = null): ConfigFetchResult
         {
-            return [
-                'found' => false,
-                'content' => null,
-                'sha' => null,
-                'error' => null,
-            ];
+            return ConfigFetchResult::notFound();
         }
     });
 
@@ -162,7 +158,7 @@ it('queues pull request pre-index when pull request is opened', function (): voi
 
     Queue::assertPushed(ProcessPullRequestPreIndex::class, function (ProcessPullRequestPreIndex $job): bool {
         return $job->repository->id === $this->repository->id
-            && $job->payload['pull_request_number'] === 44
-            && $job->payload['head_sha'] === 'open123';
+            && $job->payload->pullRequestNumber === 44
+            && $job->payload->headSha === 'open123';
     });
 });

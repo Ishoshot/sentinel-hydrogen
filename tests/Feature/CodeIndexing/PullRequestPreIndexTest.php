@@ -16,6 +16,8 @@ use App\Models\Repository;
 use App\Models\Workspace;
 use App\Services\CodeIndexing\Contracts\CodeIndexingServiceContract;
 use App\Services\GitHub\Contracts\GitHubApiServiceContract;
+use App\Services\GitHub\ValueObjects\PullRequestWebhookPayload;
+use App\Services\Reviews\ValueObjects\GitHubUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 
@@ -48,28 +50,29 @@ beforeEach(function (): void {
 
     $this->repository = Repository::factory()->forInstallation($installation)->create([
         'workspace_id' => $workspace->id,
+        'github_id' => 987654,
         'full_name' => 'acme/repo',
         'name' => 'repo',
     ]);
 
-    $this->payload = [
-        'action' => 'opened',
-        'installation_id' => 12345,
-        'repository_id' => (int) $this->repository->github_id,
-        'repository_full_name' => 'acme/repo',
-        'pull_request_number' => 42,
-        'pull_request_title' => 'Improve pipeline',
-        'pull_request_body' => null,
-        'base_branch' => 'main',
-        'head_branch' => 'feature/preindex',
-        'head_sha' => 'headsha123',
-        'sender_login' => 'octocat',
-        'author' => ['login' => 'octocat', 'avatar_url' => null],
-        'is_draft' => false,
-        'assignees' => [],
-        'reviewers' => [],
-        'labels' => [],
-    ];
+    $this->payload = new PullRequestWebhookPayload(
+        action: 'opened',
+        installationId: 12345,
+        repositoryId: (int) $this->repository->github_id,
+        repositoryFullName: 'acme/repo',
+        pullRequestNumber: 42,
+        pullRequestTitle: 'Improve pipeline',
+        pullRequestBody: null,
+        baseBranch: 'main',
+        headBranch: 'feature/preindex',
+        headSha: 'headsha123',
+        senderLogin: 'octocat',
+        author: new GitHubUser(login: 'octocat'),
+        isDraft: false,
+        assignees: [],
+        reviewers: [],
+        labels: [],
+    );
 });
 
 it('queues pull request pre-index job in async mode', function (): void {
@@ -80,8 +83,8 @@ it('queues pull request pre-index job in async mode', function (): void {
 
     Queue::assertPushed(ProcessPullRequestPreIndex::class, function (ProcessPullRequestPreIndex $job): bool {
         return $job->repository->id === $this->repository->id
-            && $job->payload['pull_request_number'] === 42
-            && $job->payload['head_sha'] === 'headsha123';
+            && $job->payload->pullRequestNumber === 42
+            && $job->payload->headSha === 'headsha123';
     });
 });
 
