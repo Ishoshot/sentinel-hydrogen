@@ -88,13 +88,13 @@ it('parses installation payload', function (): void {
 
     $result = $service->parseInstallationPayload($payload);
 
-    expect($result['action'])->toBe('created');
-    expect($result['installation_id'])->toBe(12345678);
-    expect($result['account_type'])->toBe('Organization');
-    expect($result['account_login'])->toBe('test-org');
-    expect($result['account_avatar_url'])->toBe('https://example.com/avatar.png');
-    expect($result['permissions'])->toBe(['contents' => 'read']);
-    expect($result['events'])->toBe(['push', 'pull_request']);
+    expect($result->action)->toBe('created');
+    expect($result->installationId)->toBe(12345678);
+    expect($result->accountType)->toBe('Organization');
+    expect($result->accountLogin)->toBe('test-org');
+    expect($result->accountAvatarUrl)->toBe('https://example.com/avatar.png');
+    expect($result->permissions)->toBe(['contents' => 'read']);
+    expect($result->events)->toBe(['push', 'pull_request']);
 });
 
 it('parses installation repositories payload', function (): void {
@@ -112,10 +112,10 @@ it('parses installation repositories payload', function (): void {
 
     $result = $service->parseInstallationRepositoriesPayload($payload);
 
-    expect($result['action'])->toBe('added');
-    expect($result['installation_id'])->toBe(12345678);
-    expect($result['repositories_added'])->toHaveCount(2);
-    expect($result['repositories_removed'])->toBeEmpty();
+    expect($result->action)->toBe('added');
+    expect($result->installationId)->toBe(12345678);
+    expect($result->repositoriesAdded)->toHaveCount(2);
+    expect($result->repositoriesRemoved)->toBeEmpty();
 });
 
 it('parses pull request payload', function (): void {
@@ -156,28 +156,28 @@ it('parses pull request payload', function (): void {
 
     $result = $service->parsePullRequestPayload($payload);
 
-    expect($result['action'])->toBe('opened');
-    expect($result['installation_id'])->toBe(12345678);
-    expect($result['repository_id'])->toBe(987654);
-    expect($result['repository_full_name'])->toBe('org/repo');
-    expect($result['pull_request_number'])->toBe(42);
-    expect($result['pull_request_title'])->toBe('Add new feature');
-    expect($result['pull_request_body'])->toBe('This PR adds a new feature');
-    expect($result['base_branch'])->toBe('main');
-    expect($result['head_branch'])->toBe('feature-branch');
-    expect($result['head_sha'])->toBe('abc123def');
-    expect($result['sender_login'])->toBe('contributor');
-    expect($result['is_draft'])->toBeFalse();
-    expect($result['author'])->toBe([
-        'login' => 'pr-author',
-        'avatar_url' => 'https://example.com/author-avatar.png',
-    ]);
-    expect($result['assignees'])->toHaveCount(1);
-    expect($result['assignees'][0]['login'])->toBe('assignee1');
-    expect($result['reviewers'])->toHaveCount(2);
-    expect($result['reviewers'][0]['login'])->toBe('reviewer1');
-    expect($result['labels'])->toHaveCount(2);
-    expect($result['labels'][0]['name'])->toBe('enhancement');
+    expect($result)->toBeInstanceOf(App\Services\GitHub\ValueObjects\PullRequestWebhookPayload::class);
+    expect($result->action)->toBe('opened');
+    expect($result->installationId)->toBe(12345678);
+    expect($result->repositoryId)->toBe(987654);
+    expect($result->repositoryFullName)->toBe('org/repo');
+    expect($result->pullRequestNumber)->toBe(42);
+    expect($result->pullRequestTitle)->toBe('Add new feature');
+    expect($result->pullRequestBody)->toBe('This PR adds a new feature');
+    expect($result->baseBranch)->toBe('main');
+    expect($result->headBranch)->toBe('feature-branch');
+    expect($result->headSha)->toBe('abc123def');
+    expect($result->senderLogin)->toBe('contributor');
+    expect($result->isDraft)->toBeFalse();
+    expect($result->author)->toBeInstanceOf(App\Services\Reviews\ValueObjects\GitHubUser::class);
+    expect($result->author->login)->toBe('pr-author');
+    expect($result->author->avatarUrl)->toBe('https://example.com/author-avatar.png');
+    expect($result->assignees)->toHaveCount(1);
+    expect($result->assignees[0]->login)->toBe('assignee1');
+    expect($result->reviewers)->toHaveCount(2);
+    expect($result->reviewers[0]->login)->toBe('reviewer1');
+    expect($result->labels)->toHaveCount(2);
+    expect($result->labels[0]->name)->toBe('enhancement');
 });
 
 it('determines if action should trigger review', function (): void {
