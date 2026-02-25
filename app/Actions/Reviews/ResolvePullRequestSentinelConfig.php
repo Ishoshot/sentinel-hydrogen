@@ -34,15 +34,15 @@ final readonly class ResolvePullRequestSentinelConfig
         foreach ($branches as $branch) {
             $fetchResult = $this->fetchConfig->handle($repository, $branch);
 
-            if (! $fetchResult['found']) {
+            if (! $fetchResult->found) {
                 continue;
             }
 
-            if ($fetchResult['content'] === null) {
+            if ($fetchResult->content === null) {
                 continue;
             }
 
-            $parseResult = $this->configParser->tryParse($fetchResult['content']);
+            $parseResult = $this->configParser->tryParse($fetchResult->content);
 
             if (! $parseResult['success']) {
                 continue;

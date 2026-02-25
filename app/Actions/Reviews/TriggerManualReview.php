@@ -7,9 +7,9 @@ namespace App\Actions\Reviews;
 use App\Actions\Reviews\Guards\ManualReviewEligibilityGuard;
 use App\Actions\Reviews\Publishers\ManualReviewAcknowledgmentCommentPublisher;
 use App\Actions\Reviews\Resolvers\ManualReviewPullRequestResolver;
+use App\Actions\Reviews\ValueObjects\ManualReviewResult;
 use App\Enums\Reviews\RunStatus;
 use App\Models\Repository;
-use App\Models\Run;
 use App\Services\Reviews\ManualPullRequestPayloadFactory;
 use Illuminate\Support\Facades\Log;
 
@@ -35,14 +35,12 @@ final readonly class TriggerManualReview
 
     /**
      * Trigger a manual review for a pull request.
-     *
-     * @return array{success: bool, run: Run|null, message: string}
      */
     public function handle(
         Repository $repository,
         int $prNumber,
         string $senderLogin,
-    ): array {
+    ): ManualReviewResult {
         $ctx = [
             'repository_id' => $repository->id,
             'pr_number' => $prNumber,
@@ -53,20 +51,14 @@ final readonly class TriggerManualReview
 
         $eligibility = $this->eligibilityGuard->check($repository, $ctx);
         if (! $eligibility->allowed) {
-            return [
-                'success' => false,
-                'run' => null,
-                'message' => $eligibility->message ?? 'Repository installation not found.',
-            ];
+            return ManualReviewResult::failure(
+                $eligibility->message ?? 'Repository installation not found.',
+            );
         }
 
         $installation = $eligibility->installation;
         if (! $installation instanceof \App\Models\Installation) {
-            return [
-                'success' => false,
-                'run' => null,
-                'message' => 'Repository installation not found.',
-            ];
+            return ManualReviewResult::failure('Repository installation not found.');
         }
 
         $pullRequest = $this->pullRequestFetcher->resolve(
@@ -77,11 +69,9 @@ final readonly class TriggerManualReview
             context: $ctx,
         );
         if (! $pullRequest->successful) {
-            return [
-                'success' => false,
-                'run' => null,
-                'message' => $pullRequest->message ?? 'Unable to fetch pull request details from GitHub.',
-            ];
+            return ManualReviewResult::failure(
+                $pullRequest->message ?? 'Unable to fetch pull request details from GitHub.',
+            );
         }
 
         // Transform GitHub API response to webhook payload format
@@ -110,11 +100,10 @@ final readonly class TriggerManualReview
                 'reason' => $run->metadata['skip_reason'] ?? 'unknown',
             ]));
 
-            return [
-                'success' => false,
-                'run' => $run,
-                'message' => (string) ($run->metadata['skip_reason'] ?? 'Review was skipped.'),
-            ];
+            return ManualReviewResult::skipped(
+                $run,
+                (string) ($run->metadata['skip_reason'] ?? 'Review was skipped.'),
+            );
         }
 
         // Dispatch the review job to the tier-appropriate queue
@@ -125,10 +114,9 @@ final readonly class TriggerManualReview
             'queue' => $queue->value,
         ]));
 
-        return [
-            'success' => true,
-            'run' => $run,
-            'message' => "Review started. I'll analyze the changes and post my findings shortly.",
-        ];
+        return ManualReviewResult::success(
+            $run,
+            "Review started. I'll analyze the changes and post my findings shortly.",
+        );
     }
 }
