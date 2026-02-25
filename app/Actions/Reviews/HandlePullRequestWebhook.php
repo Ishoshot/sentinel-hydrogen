@@ -47,17 +47,17 @@ final readonly class HandlePullRequestWebhook
         $data = $this->webhookService->parsePullRequestPayload($payload);
 
         $webhookCtx = LogContext::forWebhook(
-            $data['installation_id'],
-            $data['repository_full_name'],
-            $data['action']
+            $data->installationId,
+            $data->repositoryFullName,
+            $data->action
         );
-        $webhookCtx['pr_number'] = $data['pull_request_number'];
+        $webhookCtx['pr_number'] = $data->pullRequestNumber;
 
         Log::info('Processing pull request webhook', $webhookCtx);
 
-        $shouldTriggerReview = $this->webhookService->shouldTriggerReview($data['action']);
-        $shouldSyncMetadata = $this->webhookService->shouldSyncMetadata($data['action']);
-        $shouldCleanupPreIndex = $this->webhookService->shouldCleanupPreIndex($data['action']);
+        $shouldTriggerReview = $this->webhookService->shouldTriggerReview($data->action);
+        $shouldSyncMetadata = $this->webhookService->shouldSyncMetadata($data->action);
+        $shouldCleanupPreIndex = $this->webhookService->shouldCleanupPreIndex($data->action);
 
         if (! $shouldTriggerReview && ! $shouldSyncMetadata && ! $shouldCleanupPreIndex) {
             Log::info('Ignoring pull request action', $webhookCtx);
@@ -77,10 +77,10 @@ final readonly class HandlePullRequestWebhook
         }
 
         $ctx = LogContext::fromRepository($repository);
-        $ctx['pr_number'] = $data['pull_request_number'];
+        $ctx['pr_number'] = $data->pullRequestNumber;
 
         if ($shouldCleanupPreIndex) {
-            ProcessPullRequestIndexCleanup::dispatch($repository, $data['pull_request_number']);
+            ProcessPullRequestIndexCleanup::dispatch($repository, $data->pullRequestNumber);
 
             Log::info('Queued pull request pre-index cleanup', $ctx);
 
@@ -89,7 +89,7 @@ final readonly class HandlePullRequestWebhook
 
         $preflight = $this->preflightGuard->evaluate($repository, $data, $ctx);
         if ($preflight->shouldPostAutoReviewDisabledComment) {
-            $this->postAutoReviewDisabled->handle($repository, $data['pull_request_number']);
+            $this->postAutoReviewDisabled->handle($repository, $data->pullRequestNumber);
 
             return;
         }
@@ -97,7 +97,7 @@ final readonly class HandlePullRequestWebhook
         if ($preflight->configErrorMessage !== null) {
             $this->postConfigError->handle(
                 $repository,
-                $data['pull_request_number'],
+                $data->pullRequestNumber,
                 $preflight->configErrorMessage
             );
 
@@ -115,9 +115,9 @@ final readonly class HandlePullRequestWebhook
 
         $this->dispatchPullRequestPreIndex->handle($repository, $data, $ctx);
 
-        $this->supersedeActiveRuns->handle($repository, $data['pull_request_number']);
+        $this->supersedeActiveRuns->handle($repository, $data->pullRequestNumber);
 
-        $greetingCommentId = $this->postGreeting->handle($repository, $data['pull_request_number']);
+        $greetingCommentId = $this->postGreeting->handle($repository, $data->pullRequestNumber);
 
         $run = $this->createPullRequestRun->handle($repository, $data, $greetingCommentId);
 
@@ -125,8 +125,8 @@ final readonly class HandlePullRequestWebhook
 
         Log::info('Pull request queued for review', array_merge($ctx, [
             'run_id' => $run->id,
-            'pr_title' => $data['pull_request_title'],
-            'head_sha' => $data['head_sha'],
+            'pr_title' => $data->pullRequestTitle,
+            'head_sha' => $data->headSha,
             'queue' => $queue->value,
             'greeting_comment_id' => $greetingCommentId,
         ]));
