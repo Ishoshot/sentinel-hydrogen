@@ -8,6 +8,7 @@ use App\Actions\GitHub\Handlers\InstallationWebhookLifecycleHandler;
 use App\Actions\GitHub\Resolvers\InstallationWebhookInstallationResolver;
 use App\Services\GitHub\Contracts\GitHubAppServiceContract;
 use App\Services\GitHub\GitHubWebhookService;
+use App\Services\GitHub\ValueObjects\InstallationWebhookPayload;
 use Illuminate\Support\Facades\Log;
 
 final readonly class HandleInstallationWebhook
@@ -28,66 +29,62 @@ final readonly class HandleInstallationWebhook
     public function handle(array $payload): void
     {
         $data = $this->webhookService->parseInstallationPayload($payload);
-        $action = $data['action'];
 
         Log::info('Processing installation webhook', [
-            'action' => $action,
-            'installation_id' => $data['installation_id'],
-            'account_login' => $data['account_login'],
+            'action' => $data->action,
+            'installation_id' => $data->installationId,
+            'account_login' => $data->accountLogin,
         ]);
 
-        match ($action) {
+        match ($data->action) {
             'created' => $this->handleCreated($data),
             'deleted' => $this->handleDeleted($data),
             'suspend' => $this->handleSuspend($data),
             'unsuspend' => $this->handleUnsuspend($data),
-            default => Log::info('Ignoring installation action', ['action' => $action]),
+            default => Log::info('Ignoring installation action', ['action' => $data->action]),
         };
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * Handle a new installation being created.
      */
-    private function handleCreated(array $data): void
+    private function handleCreated(InstallationWebhookPayload $data): void
     {
-        $installation = $this->installationResolver->resolve((int) $data['installation_id']);
+        $installation = $this->installationResolver->resolve($data->installationId);
 
         if (! $installation instanceof \App\Models\Installation) {
             Log::warning('Installation created webhook received but no installation record found', [
-                'installation_id' => $data['installation_id'],
+                'installation_id' => $data->installationId,
             ]);
         }
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * Handle an installation being deleted (uninstalled).
      */
-    private function handleDeleted(array $data): void
+    private function handleDeleted(InstallationWebhookPayload $data): void
     {
-        $installation = $this->installationResolver->resolve((int) $data['installation_id']);
+        $installation = $this->installationResolver->resolve($data->installationId);
 
         if (! $installation instanceof \App\Models\Installation) {
             return;
         }
 
-        /** @var int $installationId */
-        $installationId = $data['installation_id'];
-
-        $this->appService->clearInstallationToken($installationId);
+        $this->appService->clearInstallationToken($data->installationId);
 
         $this->lifecycleUpdater->markUninstalled($installation);
 
         Log::info('Installation uninstalled', [
-            'installation_id' => $data['installation_id'],
+            'installation_id' => $data->installationId,
         ]);
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * Handle an installation being suspended.
      */
-    private function handleSuspend(array $data): void
+    private function handleSuspend(InstallationWebhookPayload $data): void
     {
-        $installation = $this->installationResolver->resolve((int) $data['installation_id']);
+        $installation = $this->installationResolver->resolve($data->installationId);
 
         if (! $installation instanceof \App\Models\Installation) {
             return;
@@ -96,16 +93,16 @@ final readonly class HandleInstallationWebhook
         $this->lifecycleUpdater->markSuspended($installation);
 
         Log::info('Installation suspended', [
-            'installation_id' => $data['installation_id'],
+            'installation_id' => $data->installationId,
         ]);
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * Handle an installation being unsuspended.
      */
-    private function handleUnsuspend(array $data): void
+    private function handleUnsuspend(InstallationWebhookPayload $data): void
     {
-        $installation = $this->installationResolver->resolve((int) $data['installation_id']);
+        $installation = $this->installationResolver->resolve($data->installationId);
 
         if (! $installation instanceof \App\Models\Installation) {
             return;
@@ -114,7 +111,7 @@ final readonly class HandleInstallationWebhook
         $this->lifecycleUpdater->markUnsuspended($installation);
 
         Log::info('Installation unsuspended', [
-            'installation_id' => $data['installation_id'],
+            'installation_id' => $data->installationId,
         ]);
     }
 }

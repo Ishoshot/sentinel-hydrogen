@@ -26,26 +26,26 @@ final readonly class HandleInstallationRepositoriesWebhook
         $data = $this->webhookService->parseInstallationRepositoriesPayload($payload);
 
         Log::info('Processing installation repositories webhook', [
-            'action' => $data['action'],
-            'installation_id' => $data['installation_id'],
-            'added_count' => count($data['repositories_added']),
-            'removed_count' => count($data['repositories_removed']),
+            'action' => $data->action,
+            'installation_id' => $data->installationId,
+            'added_count' => count($data->repositoriesAdded),
+            'removed_count' => count($data->repositoriesRemoved),
         ]);
 
-        $installation = Installation::where('installation_id', $data['installation_id'])->first();
+        $installation = Installation::where('installation_id', $data->installationId)->first();
 
         if ($installation === null) {
             Log::warning('Installation not found for repositories webhook', [
-                'installation_id' => $data['installation_id'],
+                'installation_id' => $data->installationId,
             ]);
 
             return;
         }
 
-        match ($data['action']) {
-            'added' => $this->handleAdded($installation, $data['repositories_added']),
-            'removed' => $this->handleRemoved($installation, $data['repositories_removed']),
-            default => Log::info('Ignoring repositories action', ['action' => $data['action']]),
+        match ($data->action) {
+            'added' => $this->handleAdded($installation, $data->repositoriesAdded),
+            'removed' => $this->handleRemoved($installation, $data->repositoriesRemoved),
+            default => Log::info('Ignoring repositories action', ['action' => $data->action]),
         };
     }
 
