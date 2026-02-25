@@ -43,10 +43,10 @@ it('returns found true with content when config file exists', function (): void 
     $action = app(FetchSentinelConfig::class);
     $result = $action->handle($repository);
 
-    expect($result['found'])->toBeTrue();
-    expect($result['content'])->toBe($configContent);
-    expect($result['sha'])->toBe('abc123');
-    expect($result['error'])->toBeNull();
+    expect($result->found)->toBeTrue();
+    expect($result->content)->toBe($configContent);
+    expect($result->sha)->toBe('abc123');
+    expect($result->error)->toBeNull();
 });
 
 it('returns found false when config file does not exist', function (): void {
@@ -66,9 +66,9 @@ it('returns found false when config file does not exist', function (): void {
     $action = app(FetchSentinelConfig::class);
     $result = $action->handle($repository);
 
-    expect($result['found'])->toBeFalse();
-    expect($result['content'])->toBeNull();
-    expect($result['error'])->toBeNull();
+    expect($result->found)->toBeFalse();
+    expect($result->content)->toBeNull();
+    expect($result->error)->toBeNull();
 });
 
 it('returns error when GitHub API fails', function (): void {
@@ -88,9 +88,9 @@ it('returns error when GitHub API fails', function (): void {
     $action = app(FetchSentinelConfig::class);
     $result = $action->handle($repository);
 
-    expect($result['found'])->toBeFalse();
-    expect($result['content'])->toBeNull();
-    expect($result['error'])->toContain('Rate limit exceeded');
+    expect($result->found)->toBeFalse();
+    expect($result->content)->toBeNull();
+    expect($result->error)->toContain('Rate limit exceeded');
 });
 
 // Note: Test for "repository has no installation" is omitted because the database
@@ -126,6 +126,6 @@ YAML;
     $action = app(FetchSentinelConfig::class);
     $result = $action->handle($repository);
 
-    expect($result['found'])->toBeTrue();
-    expect($result['content'])->toBe($yamlContent);
+    expect($result->found)->toBeTrue();
+    expect($result->content)->toBe($yamlContent);
 });

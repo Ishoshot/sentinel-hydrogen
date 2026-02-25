@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\SentinelConfig\Contracts\FetchesSentinelConfig;
 use App\Actions\SentinelConfig\Handlers\RepositorySentinelConfigSettingsHandler;
 use App\Actions\SentinelConfig\SyncRepositorySentinelConfig;
+use App\Actions\SentinelConfig\ValueObjects\ConfigFetchResult;
 use App\Enums\Auth\ProviderType;
 use App\Enums\Billing\PlanFeature;
 use App\Enums\Billing\SubscriptionStatus;
@@ -43,12 +44,7 @@ YAML;
     $this->mock(FetchesSentinelConfig::class)
         ->shouldReceive('handle')
         ->once()
-        ->andReturn([
-            'found' => true,
-            'content' => $yamlContent,
-            'sha' => 'abc123',
-            'error' => null,
-        ]);
+        ->andReturn(ConfigFetchResult::found($yamlContent, 'abc123'));
 
     $action = app(SyncRepositorySentinelConfig::class);
     $result = $action->handle($repository);
@@ -79,12 +75,7 @@ it('clears config when file does not exist', function (): void {
     $this->mock(FetchesSentinelConfig::class)
         ->shouldReceive('handle')
         ->once()
-        ->andReturn([
-            'found' => false,
-            'content' => null,
-            'sha' => null,
-            'error' => null,
-        ]);
+        ->andReturn(ConfigFetchResult::notFound());
 
     $action = app(SyncRepositorySentinelConfig::class);
     $result = $action->handle($repository);
@@ -119,12 +110,7 @@ YAML;
     $this->mock(FetchesSentinelConfig::class)
         ->shouldReceive('handle')
         ->once()
-        ->andReturn([
-            'found' => true,
-            'content' => $invalidYaml,
-            'sha' => 'abc123',
-            'error' => null,
-        ]);
+        ->andReturn(ConfigFetchResult::found($invalidYaml, 'abc123'));
 
     $action = app(SyncRepositorySentinelConfig::class);
     $result = $action->handle($repository);
@@ -151,12 +137,7 @@ it('stores error when fetch fails', function (): void {
     $this->mock(FetchesSentinelConfig::class)
         ->shouldReceive('handle')
         ->once()
-        ->andReturn([
-            'found' => false,
-            'content' => null,
-            'sha' => null,
-            'error' => 'GitHub API error: Rate limit exceeded',
-        ]);
+        ->andReturn(ConfigFetchResult::failed('GitHub API error: Rate limit exceeded'));
 
     $action = app(SyncRepositorySentinelConfig::class);
     $result = $action->handle($repository);
@@ -223,12 +204,7 @@ YAML;
     $this->mock(FetchesSentinelConfig::class)
         ->shouldReceive('handle')
         ->once()
-        ->andReturn([
-            'found' => true,
-            'content' => $yamlContent,
-            'sha' => 'abc123',
-            'error' => null,
-        ]);
+        ->andReturn(ConfigFetchResult::found($yamlContent, 'abc123'));
 
     $action = app(SyncRepositorySentinelConfig::class);
     $result = $action->handle($repository);
