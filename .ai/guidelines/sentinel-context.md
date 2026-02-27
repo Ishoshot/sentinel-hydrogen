@@ -2,6 +2,8 @@
 trigger: always_on
 ---
 
+- **`../../../sentinel-web/`** — Nuxt 4 frontend (Vue 3, TypeScript, TailwindCSS, PrimeVue 4, pnpm)
+
 > **Terminal title.** Update the iTerm title whenever the session topic changes using OSC sequences; use ⚡︎ for Codex. Run: `printf '\033]0;%s\007' "⚡︎ Topic" > "$CODEX_TTY"` where "Topic" is a short (2-4 word) description of the current task.
 
 # Sentinel – Backend Context

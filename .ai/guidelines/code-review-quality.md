@@ -10,24 +10,32 @@ After writing or modifying code, **pause and critically review your own work** b
 
 - **Logic bugs:** Does every method do exactly what its name and docblock promise? Trace through edge cases mentally.
 - **Blast radius:** Does a method that should affect one record accidentally affect many? Does a query scope filter tightly enough?
-- **Dependency correctness:** When action A calls action B, does B's behavior match what A expects in all cases? Look for mismatches in scope, side effects, or return values.
+- **Dependency correctness:** When an Action calls a Service, does the Service's behavior match what the Action expects in all cases? Look for mismatches in scope, side effects, or return values.
 - **Race conditions:** If this code runs concurrently (e.g., queued jobs, webhook retries), does it still behave correctly?
 - **State transitions:** Are only the intended records transitioned? Could adjacent or unrelated records be caught in the blast?
+- **Workspace isolation:** Does every query and mutation scope to `workspace_id`? Could data leak across tenants?
 
 If you find an issue during self-review, fix it immediately — do not leave it for the user to catch.
 
-## Code Review (Required)
+## Code Review Gate (Required)
 
-Before considering any code-writing task complete, invoke the **code-reviewer** agent to review your changes. This applies when you've created new files or made non-trivial edits.
+Before considering any non-trivial code-writing task complete, run **all 4 reviewers in parallel** from the main conversation:
+
+- `review-correctness` — logic bugs, regressions, state transitions, workspace scoping
+- `review-architecture` — layering, naming conventions, queue routing, migration rules
+- `review-tests` — coverage gaps, assertion quality, Pest patterns, workspace scoping in tests
+- `review-security` — OWASP risks, workspace isolation, BYOK credential handling, webhook verification, concurrency/idempotency
 
 **Review cycle:**
 
-1. Run the code-reviewer agent after completing your changes
-2. If the reviewer identifies issues that need fixing, fix them
-3. Re-run the code-reviewer to verify the fixes are correct (very important)
-4. Repeat until the reviewer passes with no critical issues
-5. It is important that you check in with the reviewer after addressing issues it raised (do not ignore this)
-6. If you're running in claude code web/remote ensure this is done before pushing changes to git remote
-7. When re-running the code-reviewer to verify fixes, if you attempt to resume the agent and you get an error, spawn a new agent instead
+1. Run all 4 reviewers in parallel after completing your changes
+2. Do not rely on nested subagents (a subagent cannot spawn other subagents)
+3. Fix reported issues
+4. Re-run only the reviewer(s) that requested changes
+5. Repeat until all reviewers approve
+6. If reviewer resume fails, start a new reviewer run
+7. In web/remote workflows, complete this before pushing
 
-The task is only complete when the code-reviewer confirms the code is acceptable.
+All reviewer feedback should be practical and high-signal, not pedantic.
+
+Work is only complete when all reviewer outputs confirm the changes are acceptable.

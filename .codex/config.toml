@@ -2,3 +2,22 @@
 command = "php"
 args = ["/Users/oluwatobi/Herd/dev/sentinel-project/sentinel-api/artisan", "boost:mcp"]
 cwd = "/Users/oluwatobi/Herd/dev/sentinel-project/sentinel-api"
+
+[agents]
+max_threads = 4
+
+[agents."review-correctness"]
+description = "Focused reviewer for logic correctness and behavioral regressions. Use after code changes to detect bugs, broken flows, workspace-scoping errors, and edge-case failures with high signal and low noise."
+config_file = "agents/review-correctness.toml"
+
+[agents."review-architecture"]
+description = "Focused reviewer for architecture and project-convention compliance (layering, naming, queue routing, Laravel patterns). Use after code changes to verify structural correctness without pedantic style policing."
+config_file = "agents/review-architecture.toml"
+
+[agents."review-tests"]
+description = "Focused reviewer for test adequacy and quality. Use after code changes to verify missing coverage, weak assertions, and incorrect test scope while keeping feedback pragmatic."
+config_file = "agents/review-tests.toml"
+
+[agents."review-security"]
+description = "Focused security reviewer for OWASP-style risks, workspace isolation, BYOK credential handling, webhook verification, and concurrency/idempotency hazards. Use after code changes to catch real security and race-condition risks."
+config_file = "agents/review-security.toml"
